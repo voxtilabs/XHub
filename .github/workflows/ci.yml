@@ -1,0 +1,87 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: xhub
+          POSTGRES_USER: xhub
+          POSTGRES_DB: xhub_test
+        options: >-
+          --health-cmd "pg_isready -U xhub"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+        ports: ["5432:5432"]
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+        ports: ["6379:6379"]
+    env:
+      # turbo usa entorno ESTRICTO: si la tarea no declara estas variables no
+      # llegan al test y la suite corre SIN BASE, en verde, tapando bugs reales.
+      DATABASE_URL: postgres://xhub:xhub@localhost:5432/xhub_test
+      REDIS_URL: redis://localhost:6379
+      TZ: America/Santiago
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Leyes de la casa
+        run: |
+          set -e
+          echo "· el rol nunca decide"
+          if git grep -nE "\b(rol|role)\s*===" -- '*.ts' '*.tsx' \
+             ':!*base-roles.ts' ':!*traductor-roles.ts' ':!*.test.ts' | grep .; then
+            echo "FALLA: comparación por rol fuera del traductor. Usa un permiso (ADR 0006)."
+            exit 1
+          fi
+          echo "· sin verificación TLS desactivada"
+          if git grep -nE "rejectUnauthorized\s*:\s*false" -- '*.ts' '*.tsx' \
+             ':!*conector*' | grep .; then
+            echo "FALLA: TLS desactivado fuera del conector (ADR 0010)."
+            exit 1
+          fi
+          echo "ok"
+
+      - name: ¿Hay monorepo todavía?
+        id: mono
+        run: |
+          if [ -f pnpm-workspace.yaml ]; then echo "hay=si" >> $GITHUB_OUTPUT
+          else echo "hay=no" >> $GITHUB_OUTPUT
+               echo "Fase 0: aún no hay código. Solo corren las leyes de la casa."
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.mono.outputs.hay == 'si'
+        with: {version: 10}
+      - uses: actions/setup-node@v4
+        if: steps.mono.outputs.hay == 'si'
+        with: {node-version: 22, cache: pnpm}
+
+      - if: steps.mono.outputs.hay == 'si'
+        run: pnpm install --frozen-lockfile
+      - if: steps.mono.outputs.hay == 'si'
+        run: pnpm turbo lint typecheck build
+      - if: steps.mono.outputs.hay == 'si'
+        run: pnpm turbo test --concurrency=1
+
+      - name: La suite escribió en la base
+        if: steps.mono.outputs.hay == 'si'
+        run: |
+          # Si la suite no tocó la base, corrió sin base: verde mentiroso.
+          n=$(psql "$DATABASE_URL" -tAc \
+            "select count(*) from information_schema.tables where table_schema not in ('pg_catalog','information_schema')")
+          echo "tablas creadas por la suite: $n"
+          [ "$n" -gt 0 ] || { echo "FALLA: la suite no escribió nada en la base."; exit 1; }

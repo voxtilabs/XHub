@@ -1,0 +1,80 @@
+name: deploy-staging
+
+on:
+  workflow_run:
+    workflows: [build]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha: {description: "SHA completo (40 chars) a desplegar", required: true}
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    environment: staging
+    steps:
+      - name: Faltan secretos
+        id: sec
+        run: |
+          if [ -z "${{ secrets.DOKPLOY_URL }}" ]; then
+            echo "hay=no" >> $GITHUB_OUTPUT
+            echo "::warning::Sin secretos de Dokploy todavía. Ver issue de Fase 1."
+          else echo "hay=si" >> $GITHUB_OUTPUT; fi
+
+      - name: Imagen existe antes de tocar nada
+        if: steps.sec.outputs.hay == 'si'
+        run: |
+          SHA="${{ github.event.inputs.sha || github.sha }}"
+          # Los tags son el SHA de 40 caracteres. Un SHA corto falla DESPUÉS de
+          # haber cambiado la configuración, que es el peor momento.
+          docker manifest inspect ghcr.io/voxtilabs/xhub:$SHA > /dev/null
+          echo "SHA=$SHA" >> $GITHUB_ENV
+
+      - name: Fijar IMAGE y desplegar
+        if: steps.sec.outputs.hay == 'si'
+        env:
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          COMPOSE_ID: ${{ secrets.DOKPLOY_COMPOSE_ID_STAGING }}
+        run: |
+          set -euo pipefail
+          api () { curl -fsS -H "x-api-key: $DOKPLOY_API_KEY" -H 'content-type: application/json' "$@"; }
+
+          # OJO: el campo `env` de Dokploy es el BLOQUE COMPLETO. Mandar solo
+          # "IMAGE=..." borra DATABASE_URL, REDIS_URL y todo lo demás — justo
+          # cuando más falta hacen. Se lee entero, se cambia la línea, se devuelve entero.
+          api "$DOKPLOY_URL/api/compose.one?composeId=$COMPOSE_ID" | jq -r '.env' > env.txt
+          if grep -q '^IMAGE=' env.txt; then
+            sed -i "s|^IMAGE=.*|IMAGE=ghcr.io/voxtilabs/xhub:${SHA}|" env.txt
+          else
+            echo "IMAGE=ghcr.io/voxtilabs/xhub:${SHA}" >> env.txt
+          fi
+          jq -n --arg id "$COMPOSE_ID" --rawfile env env.txt '{composeId:$id, env:$env}' > body.json
+          api -X POST "$DOKPLOY_URL/api/compose.update" -d @body.json > /dev/null
+          api -X POST "$DOKPLOY_URL/api/compose.deploy" -d "{\"composeId\":\"$COMPOSE_ID\"}" > /dev/null
+
+          for i in $(seq 1 60); do
+            s=$(api "$DOKPLOY_URL/api/compose.one?composeId=$COMPOSE_ID" | jq -r '.composeStatus')
+            echo "estado: $s"
+            [ "$s" = "done" ] && exit 0
+            [ "$s" = "error" ] && { echo "despliegue con error"; exit 1; }
+            sleep 10
+          done
+          echo "tiempo agotado esperando el despliegue"; exit 1
+
+      - name: La ruta nueva existe
+        if: steps.sec.outputs.hay == 'si'
+        run: |
+          # /salud solo dice que el proceso vive. Lo que prueba que corre el
+          # código nuevo es que una ruta protegida responda 401 (existe) mientras
+          # una inventada responde 404.
+          B="${{ secrets.STAGING_API_URL }}"
+          [ -z "$B" ] && exit 0
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$B/salud") && [ "$code" = "200" ] && break
+            sleep 10
+          done
+          inv=$(curl -s -o /dev/null -w '%{http_code}' "$B/v1/ruta-que-no-existe")
+          [ "$inv" = "404" ] || { echo "404 esperado en ruta inventada, llegó $inv"; exit 1; }

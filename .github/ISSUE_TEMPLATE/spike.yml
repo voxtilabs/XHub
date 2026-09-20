@@ -1,0 +1,20 @@
+name: Spike
+description: Investigación acotada que termina en una decisión escrita
+labels: ["type:spike"]
+body:
+  - type: textarea
+    id: pregunta
+    attributes:
+      label: Pregunta que hay que responder
+    validations: {required: true}
+  - type: textarea
+    id: entregable
+    attributes:
+      label: Entregable
+      description: Documento, ADR o evidencia. Un spike sin entregable no se cierra.
+    validations: {required: true}
+  - type: input
+    id: caja
+    attributes:
+      label: Caja de tiempo
+      placeholder: "2 días"

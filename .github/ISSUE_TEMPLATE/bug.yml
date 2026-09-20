@@ -1,0 +1,20 @@
+name: Bug
+description: Algo se comporta distinto de lo declarado
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Qué esperaba y qué pasó
+    validations: {required: true}
+  - type: textarea
+    id: repro
+    attributes:
+      label: Cómo reproducirlo
+    validations: {required: true}
+  - type: dropdown
+    id: donde
+    attributes:
+      label: Dónde
+      options: ["xHub", "API de xContact (ajena)", "Infraestructura", "CI"]
+    validations: {required: true}

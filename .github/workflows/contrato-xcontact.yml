@@ -1,0 +1,36 @@
+name: contrato-xcontact
+
+# La API de X5 puede cambiar sin avisarnos. Esto compara el Swagger vivo contra
+# el snapshot versionado y abre issue cuando deriva. Necesita el túnel, así que
+# corre en un runner con acceso; mientras no exista, queda en manual.
+on:
+  schedule: [{cron: "0 12 * * 1"}]
+  workflow_dispatch:
+
+jobs:
+  deriva:
+    runs-on: ubuntu-latest
+    permissions: {contents: read, issues: write}
+    steps:
+      - uses: actions/checkout@v4
+      - id: g
+        run: |
+          if [ -n "${{ secrets.XCONTACT_SWAGGER_URL }}" ] && [ -f docs/xcontact/swagger-v4.snapshot.json ]; then
+            echo "hay=si" >> $GITHUB_OUTPUT
+          else
+            echo "hay=no" >> $GITHUB_OUTPUT
+            echo "::notice::Sin snapshot o sin acceso al Swagger todavía (Fase 0)."
+          fi
+      - if: steps.g.outputs.hay == 'si'
+        run: |
+          curl -fsS --insecure "${{ secrets.XCONTACT_SWAGGER_URL }}" | jq -S . > vivo.json
+          jq -S . docs/xcontact/swagger-v4.snapshot.json > snap.json
+          if ! diff -q snap.json vivo.json > /dev/null; then
+            diff -u snap.json vivo.json | head -200 > deriva.txt
+            gh issue create -R ${{ github.repository }} \
+              --title "Deriva del contrato de xContact detectada" \
+              --label "type:bug,module:conector,priority:alta" \
+              --body-file deriva.txt
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

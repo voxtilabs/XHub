@@ -1,0 +1,38 @@
+name: rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "SHA completo (40 chars) de la imagen a la que volver"
+        required: true
+
+jobs:
+  volver:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: La imagen existe
+        run: docker manifest inspect ghcr.io/voxtilabs/xhub:${{ inputs.sha }} > /dev/null
+      - name: Volver
+        env:
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          COMPOSE_ID: ${{ secrets.DOKPLOY_COMPOSE_ID_STAGING }}
+        run: |
+          set -euo pipefail
+          api () { curl -fsS -H "x-api-key: $DOKPLOY_API_KEY" -H 'content-type: application/json' "$@"; }
+          # Mismo cuidado que el despliegue: el bloque env viaja ENTERO.
+          api "$DOKPLOY_URL/api/compose.one?composeId=$COMPOSE_ID" | jq -r '.env' > env.txt
+          sed -i "s|^IMAGE=.*|IMAGE=ghcr.io/voxtilabs/xhub:${{ inputs.sha }}|" env.txt
+          jq -n --arg id "$COMPOSE_ID" --rawfile env env.txt '{composeId:$id, env:$env}' > body.json
+          api -X POST "$DOKPLOY_URL/api/compose.update" -d @body.json > /dev/null
+          SECONDS=0
+          api -X POST "$DOKPLOY_URL/api/compose.deploy" -d "{\"composeId\":\"$COMPOSE_ID\"}" > /dev/null
+          for i in $(seq 1 60); do
+            s=$(api "$DOKPLOY_URL/api/compose.one?composeId=$COMPOSE_ID" | jq -r '.composeStatus')
+            [ "$s" = "done" ] && { echo "vuelta en ${SECONDS}s — anótalo en docs/runbooks/RESULTADOS-DR.md"; exit 0; }
+            [ "$s" = "error" ] && exit 1
+            sleep 10
+          done
+          exit 1

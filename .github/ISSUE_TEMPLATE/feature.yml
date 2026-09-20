@@ -1,0 +1,27 @@
+name: Funcionalidad
+description: Una pieza de producto con criterio de salida verificable
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto
+      description: Por qué existe esto y qué problema resuelve.
+    validations: {required: true}
+  - type: textarea
+    id: alcance
+    attributes:
+      label: Alcance
+      description: Qué entra. Y explícitamente qué NO entra.
+    validations: {required: true}
+  - type: textarea
+    id: salida
+    attributes:
+      label: Criterio de salida
+      description: Cómo se comprueba desde afuera. Un curl, una consulta, una pantalla.
+    validations: {required: true}
+  - type: input
+    id: depende
+    attributes:
+      label: Dependencias
+      placeholder: "Bloqueado por #12, #15 — o: ninguna"
