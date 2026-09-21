@@ -116,9 +116,59 @@ catálogo operación por operación vive en aquel repositorio.
 |---|---|---|
 | Staging del descubrimiento | `192.168.37.250` | Donde se hizo el inventario |
 | Producción | `10.0.0.71` | **No contactada** |
-| Entregada por el cliente | `192.168.37.212` `:8004` y `:8011` | **Host distinto al del descubrimiento — confirmar cuál corresponde** |
+| Entregada por el cliente | `192.168.37.212` `:8004` y `:8011` | **Es la que usamos.** `xcontact-server` **3.9.15** |
 
 Se llega por el túnel WireGuard de X5. El perfil entregado es de **túnel completo**
 (`AllowedIPs = 0.0.0.0/0` + DNS propio): levantarlo tal cual secuestra todo el tráfico
 de la máquina. Va en el contenedor del conector con túnel partido. Ver ADR 0010 e
 issues de Fase 0.
+
+
+---
+
+## Verificación por el túnel — 2026-09-20
+
+Conectado por WireGuard en túnel partido desde el contenedor `xcontact-gw`.
+Handshake correcto; ambos hosts alcanzables.
+
+### Las dos instancias no son la misma versión
+
+| Host | Versión | Rutas | Operaciones | v4 | Modelos |
+|---|---|---:|---:|---:|---:|
+| `192.168.37.212` (la que nos dieron) | **3.9.15** | 464 | 640 | **212** | 214 |
+| `192.168.37.250` (la del descubrimiento) | 3.9.14 | 461 | 637 | 209 | 213 |
+
+**La diferencia es puramente aditiva**: 3.9.15 agrega tres operaciones y no quita
+ninguna.
+
+```
++ GET   /v4/email-oauth2/connect/{fila}
++ GET   /v4/email-oauth2/demo
++ POST  /v4/email-oauth2/update-fila/{fila}
+```
+
+Consecuencia: **el inventario de `Xcontactv2` sigue siendo válido** para la
+instancia que vamos a usar. El contrato está congelado en
+`docs/xcontact/swagger-v4.snapshot.json` (3.9.15, desde `.212`).
+
+### El "follón" de v5 tiene nombre
+
+`:8011` sirve **el paquete estático de Swagger UI sin configurar**: su
+`swagger-initializer.js` sigue apuntando a `https://petstore.swagger.io/v2/swagger.json`,
+el ejemplo de demostración que viene de fábrica. `/swagger.json` responde 404.
+
+**No es que su contrato sea difícil: no hay contrato.** Nadie conectó esa UI a su
+servicio. Cualquier trabajo sobre v5 exige que X5 entregue documentación o
+configure su Swagger. Confirma ADR 0008: seguimos en v4.
+
+### Comportamiento observado en `.212:8004`
+
+| Prueba | Resultado | Lectura |
+|---|---|---|
+| `GET /api/v4/agente` sin bearer | **401** | La autenticación funciona como documenta el contrato |
+| `GET /api/v4/ruta-inventada` | 404 | Distingue ruta inexistente de no autorizado |
+| `GET /api/v4/contato` sin bearer | **404** | Ojo: no es 401. La ruta del módulo `contato` **no está donde el nombre sugiere** — hay que ubicarla en el contrato antes de asumirla |
+| TLS **sin** `-k` | conexión rechazada | Certificado no válido para esa IP. Confirma ADR 0010: se resuelve con nombre o fijación, **no** desactivando la verificación |
+
+El `404` de `/api/v4/contato` es exactamente el tipo de suposición que la matriz
+de cobertura debe eliminar: el nombre del módulo en el código no es la ruta.
