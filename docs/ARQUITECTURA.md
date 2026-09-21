@@ -11,7 +11,7 @@ El caso que define el producto, en palabras del usuario: *si una persona manda u
 Restricciones confirmadas:
 - **xContact sigue siendo el producto de atención.** El agente no se muda a xHub. xHub administra, consolida y suma módulos.
 - **Despliegue en infraestructura de X5**, sobre una VPS con Dokploy. Por ahora se usa la de Bruno, pero **debe ser súper migrable**: mover todo a otra VPS no puede ser un proyecto.
-- **Topología de xContact desconocida** (instancia única compartida vs. una por cliente) → se diseña para el caso general: N instancias.
+- **Topología de xContact: una instancia por cliente** (VPS dedicada; XContact no es multi-tenant). Confirmación preliminar de Lino, pendiente de cerrar con X5. **xHub sí es multi-tenant.** Ver §18: esta asimetría es la restricción más cara del proyecto.
 - **Capacidades de integración desconocidas** (¿webhooks? ¿solo sondeo?) → se asume lo peor y se deja el enchufe listo.
 - **Acceso ya entregado**: túnel WireGuard hacia la red de X5, y dos superficies de API en la misma máquina interna — `https://192.168.37.212:8004` (v1 a v4) y `https://192.168.37.212:8011` (v5, con problemas conocidos). **Conviven cuatro generaciones de API más una quinta en otro puerto**: eso no es un detalle de despliegue, es un requisito del conector.
 
@@ -396,3 +396,73 @@ En este repo vive `modulos/ejemplo`: un módulo mínimo pero completo —manifie
 - **`CODEOWNERS`** por carpeta, para que la revisión llegue a quien conoce esa zona.
 - **Plantillas** de issue y de PR con el criterio de salida obligatorio.
 - **Rama limpia desde `main`** siempre: una rama apilada sobre commits ya fusionados con squash deja el CI sin disparar y el PR no se puede validar.
+
+
+---
+
+## 18. Una instancia por cliente: la restricción más cara
+
+XContact **no es multi-tenant**: cada cliente tiene su propia VPS. xHub **sí** lo es.
+Esa asimetría —un xHub multi-tenant hablándole a N instancias de un solo inquilino—
+es la restricción que más condiciona el proyecto, y conviene mirarla de frente.
+
+El modelo de datos ya la cubre (`instancias_xcontact`, `vinculos_cliente_instancia`),
+así que **no hay rediseño**. Lo que cambia no es el código: es la operación.
+
+### 18.1 Lo que se multiplica por N
+
+| Cosa | Con una instancia | Con una por cliente |
+|---|---|---|
+| Túneles y credenciales de red | 1 | **N**, cada una con su firewall y su NAT |
+| Versiones de XContact en producción | 1 | **N**, cada VPS quedó en la versión que le instalaron |
+| Certificados TLS | 1 | **N**, y ya sabemos que caducan |
+| Bearer y scopes | 1 | **N** |
+| Superficie de fallo | 1 | **N** — y una instancia enferma no puede frenar a las demás |
+| Costo de dar de alta un cliente | 0 | **un proyecto de red por cliente** |
+
+Ya tenemos la prueba de la segunda fila sin salir de staging: `.212` corre 3.9.15
+y `.250` corre 3.9.14. Dos instancias, dos versiones. En producción eso será un
+abanico, no un número.
+
+### 18.2 La consecuencia que no es técnica
+
+**Dar de alta un cliente deja de ser un formulario y pasa a ser trabajo de
+infraestructura.** Ese, y no el rendimiento, es el techo de crecimiento de xHub. Si
+conectar un cliente cuesta un día de red, el producto no escala por mucho que el
+código aguante.
+
+De ahí una decisión de producto: **conectar una instancia tiene que ser una
+funcionalidad del panel superadmin**, con verificación automática y diagnóstico
+legible, no un runbook que ejecuta una persona.
+
+### 18.3 Cómo llegan los datos: tres caminos, en orden de preferencia
+
+**A. XContact empuja (lo mejor).** X5 agrega webhooks a su producto y cada instancia
+nos avisa. Es su código, su mantenimiento, y escala solo. **Es la petición de mayor
+palanca que podemos hacerles**, más valiosa que cualquier decisión nuestra.
+
+**B. Un agente nuestro junto a cada instancia (lo realista).** Un contenedor pequeño
+desplegado en la VPS del cliente que sondea XContact **en su red local** y empuja a
+xHub por HTTPS saliente.
+- Solo tráfico **saliente** desde el cliente: sin reglas de entrada, sin NAT, sin
+  túnel por cliente. Es lo que hace viable a N.
+- El sondeo ocurre en red local: rápido, barato, sin latencia de túnel.
+- Una credencial por cliente, emitida por nosotros y revocable.
+- A cambio: hay que desplegar y actualizar software en infraestructura ajena, y X5
+  tiene que aceptarlo.
+
+**C. N túneles desde xHub (lo que pasa si no decidimos).** Funciona con dos clientes
+y se vuelve inmanejable con veinte. Si los clientes están on-premise detrás de un
+firewall corporativo, directamente puede ser imposible.
+
+**El camino por defecto es C, y es el peor.** Elegir A o B es una conversación con
+X5, no una tarea de programación — y hay que tenerla temprano, porque el conector se
+diseña distinto en cada caso.
+
+### 18.4 Matriz de capacidades, no número de versión
+
+Con N versiones en producción, preguntar «¿qué versión es?» no alcanza. El conector
+necesita saber **qué sabe hacer** cada instancia: operaciones presentes, campos
+disponibles, rarezas conocidas. Se deriva del Swagger de cada instancia al darla de
+alta y se guarda con ella. Una operación que la instancia no expone **no se ofrece
+en el producto** para ese cliente, en vez de fallar cuando alguien la usa.
