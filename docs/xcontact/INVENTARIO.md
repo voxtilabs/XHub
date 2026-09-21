@@ -172,3 +172,37 @@ configure su Swagger. Confirma ADR 0008: seguimos en v4.
 
 El `404` de `/api/v4/contato` es exactamente el tipo de suposición que la matriz
 de cobertura debe eliminar: el nombre del módulo en el código no es la ruta.
+
+
+## XContact es single-tenant — probado con su propio contrato
+
+No hace falta esperar a X5 para cerrar esta pregunta: el contrato la responde.
+
+**En los 214 modelos del Swagger no existe ni un campo de inquilino.** Cero
+apariciones de `tenant`, `empresa`, `company`, `organizacao`, `conta_id`,
+`account_id` o equivalente. Ningún parámetro de entrada los pide. Un sistema
+multi-inquilino no puede funcionar así: toda entidad tendría que llevar a cuestas
+a quién pertenece.
+
+Dos palabras se prestan a confusión y conviene fijarlas en el glosario:
+
+| Palabra en XContact | Lo que **no** es | Lo que **sí** es |
+|---|---|---|
+| `cliente` | Un inquilino de la plataforma | **La persona atendida.** `/v4/contato/findCliente/{Numero}` busca por número de teléfono |
+| `instancia` | Una instalación separada | **La cuenta de WhatsApp vinculada a una cola.** El contrato lo dice literal: *"Nome da fila do Xcontact vinculada a conta de WhatsApp"*, y `pode_selecionar_instancias` indica *"se o agente pode mudar a instancia do WhatsApp na hora de enviar mensagem"* |
+
+Conclusión: **una instalación por cliente, sin separación interna**. El aislamiento
+entre clientes de X5 es la VPS, no el software.
+
+### Lo que eso implica para xHub
+
+1. **xHub es el único lugar donde existe el concepto de cliente.** Es literalmente
+   lo que justifica que exista: XContact no puede darles una visión por cliente
+   porque no sabe qué es un cliente.
+2. **El aislamiento entre clientes lo hereda de la topología**, no de nuestra RLS —
+   pero la RLS sigue siendo obligatoria, porque en xHub sí conviven todos.
+3. **No hay riesgo de fuga entre clientes por parte de XContact**: cada instalación
+   solo conoce sus propios datos. Nuestro riesgo está en el vínculo
+   cliente ↔ instancia (#58): equivocarlo mezcla los datos de dos empresas.
+4. **Queda descartada** cualquier esperanza de una sola conexión que sirva a todos.
+   La pregunta que sigue abierta no es si son N, sino **cómo llegamos a las N** (#134).
