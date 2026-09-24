@@ -1,6 +1,6 @@
 # ADR 0008 — La versión de API de xContact se fija por instancia
 
-**Estado:** aceptada · 2026-09-20
+**Estado:** aceptada · 2026-09-20 · **su regla de credenciales queda corregida por la ADR 0011**
 
 ## Contexto
 En la instancia conocida, `xcontact-server` 3.9.14 sirve v2/v3/v4 en `:8004`
