@@ -1,0 +1,26 @@
+[
+  {
+    "id": 4,
+    "fila": null,
+    "nome": "Intervalo",
+    "editavel": true,
+    "produtiva": false,
+    "comando": "Pausa"
+  },
+  {
+    "id": 11,
+    "fila": null,
+    "nome": "Atendimento",
+    "editavel": true,
+    "produtiva": false,
+    "comando": "Pausa"
+  },
+  {
+    "id": 14,
+    "fila": "teste",
+    "nome": "Protocolo",
+    "editavel": true,
+    "produtiva": true,
+    "comando": "Pausa"
+  }
+]

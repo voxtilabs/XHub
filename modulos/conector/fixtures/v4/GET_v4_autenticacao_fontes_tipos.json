@@ -1,0 +1,7 @@
+[
+  {
+    "id": 2,
+    "nome": "LDAP/AD",
+    "descricao": "Autenticação realizada pelo LDAP server ou AD da Microsoft"
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "nome": "asterisk_timezone",
+    "config": "America/Sao_Paulo"
+  },
+  {
+    "id": 2,
+    "nome": "utc_migration_cutoff",
+    "config": "2026-04-14T00:00:00"
+  }
+]

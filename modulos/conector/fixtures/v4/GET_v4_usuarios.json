@@ -1,0 +1,11 @@
+[
+  {
+    "id": 9,
+    "nome": "admin",
+    "fullname": "Admin",
+    "status": null,
+    "autenticacao_fonte": null,
+    "usa_grupo_fila": false,
+    "autenticacaoFontes": []
+  }
+]
