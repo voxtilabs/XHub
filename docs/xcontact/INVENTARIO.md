@@ -173,6 +173,67 @@ configure su Swagger. Confirma ADR 0008: seguimos en v4.
 El `404` de `/api/v4/contato` es exactamente el tipo de suposición que la matriz
 de cobertura debe eliminar: el nombre del módulo en el código no es la ruta.
 
+---
+
+## v5 SÍ existe — es lo que usa la consola Xcontact4 (2026-09-22)
+
+Corrección de lo dicho antes. `:8011` no es un servicio muerto ni el Swagger de
+fábrica «a secas»: **es la API v5**, viva y en producción. Lo que no tiene es
+contrato publicado.
+
+Lo prueba el código de la consola nueva `/xcontact4/` (SPA Quasar/Vite). Su cliente
+axios se arma así:
+
+```js
+const puerto = location.protocol === "http:" ? 8010 : 8011
+axios.create({ baseURL: `${location.protocol}//${location.hostname}:${puerto}/api/v5` })
+```
+
+Es decir: **el único mapa de v5 que existe es el bundle de Xcontact4.** No hay
+Swagger; hay un cliente compilado del que se pueden leer las rutas.
+
+### Cómo autentica v5
+
+- **Login de supervisor:** v5 **reutiliza v4** para esto — llama a
+  `POST /v4/login/supervisor` (campos `nome`, `senha`, `duplo_fator`, `session_id`).
+- Devuelve un `token` que trae `supervisores_modulos` (qué módulos ve el supervisor)
+  y `nome`. Viaja como `Authorization: Bearer <token>`, igual que v4.
+- Renovación propia de v5: `POST /auth/supervisor/refresh_token`. También hay
+  `POST /auth/supervisor`.
+
+### Rutas de v5 observadas en el bundle (parcial, solo lectura del código)
+
+| Área | Rutas |
+|---|---|
+| Auth | `/auth/supervisor`, `/auth/supervisor/refresh_token` |
+| Supervisión de agentes | `/supervisor/agentes/logoff`, `/supervisor/agentes/pausar`, `/supervisor/agentes/remover-filas` |
+| Listas de transmisión | `/supervisor/lista-transmissao` (+ `agentes-disponiveis`, `filas-disponiveis`, `metricas`, `export.csv`, `lote/cancelar`) |
+| Campañas de voz | `/campanhas-voz` (+ `blacklist`, `canais-virtuais`, `contextos-disponiveis`, `tags`, `layouts-importacao`, `importacao/preview`) |
+| Telefonía | `/filas`, `/troncos`, `/voice/integrations`, `/xc-config/ddi_ddd_padrao` |
+| WebRTC | `/webrtc/relatorio/sessoes` |
+
+### Tiempo real por WebSocket
+
+Xcontact4 usa **socket.io / engine.io**, no solo REST. Hay estado en vivo
+(agentes, colas) que llega por socket y **no está en ninguna API REST**. Para el
+conector eso significa: lo que se quiera reflejar «en vivo» en xHub o llega por
+sondeo REST periódico, o exige hablar su socket — que no tiene contrato tampoco.
+
+### Consecuencias para xHub
+
+1. **La decisión sigue en pie: el conector se construye sobre v4** (ADR 0008), que
+   es la única con contrato. Pero la razón se corrige: v5 no está abandonada, es la
+   generación activa de supervisión. No nos integramos contra ella porque no publica
+   contrato, no porque esté muerta.
+2. **v5 reutiliza el login de v4.** Un mismo bearer de supervisor probablemente sirve
+   para ambas; hay que verificarlo cuando lleguen las credenciales.
+3. **La telefonía en vivo (agentes, colas, WebRTC) vive en v5 + socket.io**, no en
+   v4 REST. Refuerza que xHub no intente ser la consola del supervisor: no podríamos
+   replicar el tiempo real sin reimplementar su socket sin contrato.
+4. **Hallazgo de seguridad de SU producto** (no del nuestro): el bundle de Xcontact4
+   trae un `Bearer <token>` incrustado en el JavaScript público para un segundo
+   cliente axios. Un token en código servido al navegador es un secreto quemado.
+   Anotarlo para X5; no es acción nuestra.
 
 ## XContact es single-tenant — probado con su propio contrato
 
