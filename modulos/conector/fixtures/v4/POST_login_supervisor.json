@@ -1,0 +1,385 @@
+{
+  "id": 9,
+  "nome": "admin",
+  "senha": "<hash-redactado>",
+  "fullname": "Admin",
+  "token": "00000000-0000-0000-0000-000000000000",
+  "status": null,
+  "autenticacao_fonte": null,
+  "token_create": "2026-01-01T00:00:00.000Z",
+  "session_id": "00000000-0000-0000-0000-000000000000",
+  "ip_login": "10.0.0.0",
+  "pc_login": "host-demo",
+  "duplo_fator_secret": null,
+  "duplo_fator_uri": null,
+  "duplo_fator_qr": null,
+  "usa_grupo_fila": false,
+  "filas": [],
+  "gruposFila": [],
+  "modulos": [
+    {
+      "id": 1,
+      "parent": null,
+      "nome": null,
+      "descricao": "Dashboards",
+      "icon": "fa fa-lg fa-fw fa-dashboard",
+      "ordem": 1,
+      "extra": null,
+      "modulos": [
+        {
+          "id": 4,
+          "parent": 1,
+          "nome": "app.painelsupervisor.online",
+          "descricao": "Online",
+          "icon": "fa fa-database",
+          "ordem": 11,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 5,
+          "parent": 1,
+          "nome": "app.painelsupervisor.dashborad",
+          "descricao": "Classificações",
+          "icon": "fa fa-sliders",
+          "ordem": 12,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 6,
+          "parent": 1,
+          "nome": "app.painelsupervisor.ligacoes",
+          "descricao": "Ligações",
+          "icon": "fa fa-clock-o",
+          "ordem": 13,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 25,
+          "parent": 1,
+          "nome": "app.painelsupervisor.performancefila",
+          "descricao": "Filas",
+          "icon": "fa fa-paper-plane-o",
+          "ordem": 15,
+          "extra": null,
+          "modulos": []
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "parent": null,
+      "nome": null,
+      "descricao": "Campanhas",
+      "icon": "fa fa-bullhorn",
+      "ordem": 2,
+      "extra": null,
+      "modulos": [
+        {
+          "id": 31,
+          "parent": 30,
+          "nome": "app.campanhas",
+          "descricao": "Campanhas",
+          "icon": "fa fa-crosshairs",
+          "ordem": 1,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 32,
+          "parent": 30,
+          "nome": "app.layouts",
+          "descricao": "Layouts",
+          "icon": "fa fa-file-text",
+          "ordem": 2,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 34,
+          "parent": 30,
+          "nome": "app.campanhas.log",
+          "descricao": "Registros",
+          "icon": "fa fa-archive",
+          "ordem": 4,
+          "extra": null,
+          "modulos": []
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "parent": null,
+      "nome": null,
+      "descricao": "Relatórios",
+      "icon": "fa fa-lg fa-fw fa-desktop",
+      "ordem": 4,
+      "extra": null,
+      "modulos": [
+        {
+          "id": 37,
+          "parent": 2,
+          "nome": "app.filasperformance",
+          "descricao": "Performance de filas",
+          "icon": "fa fa-line-chart",
+          "ordem": 4,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 39,
+          "parent": 2,
+          "nome": "app.agenteperformance",
+          "descricao": "Performance de agentes",
+          "icon": "fa fa-bar-chart",
+          "ordem": 5,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 8,
+          "parent": 2,
+          "nome": "app.cdr",
+          "descricao": "Ligações",
+          "icon": "fa fa-phone",
+          "ordem": 8,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 9,
+          "parent": 2,
+          "nome": "app.cdrfilas",
+          "descricao": "Ligações de filas",
+          "icon": "fa fa-database",
+          "ordem": 9,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 54,
+          "parent": 2,
+          "nome": "app.webchat",
+          "descricao": "Mensagens",
+          "icon": "fa fa-comments",
+          "ordem": 10,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 10,
+          "parent": 2,
+          "nome": "app.agenteeventos",
+          "descricao": "Eventos de Agentes",
+          "icon": "fa fa-map-marker",
+          "ordem": 10,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 44,
+          "parent": 2,
+          "nome": "app.dashboards_pesquisa_satisfacao",
+          "descricao": "Pesquisas",
+          "icon": "fa fa-search",
+          "ordem": 16,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 55,
+          "parent": 2,
+          "nome": "app.fluxoura",
+          "descricao": "Fluxo de URA",
+          "icon": "fa fa-sitemap",
+          "ordem": 99,
+          "extra": null,
+          "modulos": []
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "parent": null,
+      "nome": null,
+      "descricao": "Configurações",
+      "icon": "fa fa-lg fa-fw fa-gears",
+      "ordem": 5,
+      "extra": null,
+      "modulos": [
+        {
+          "id": 35,
+          "parent": 3,
+          "nome": "app.troncos",
+          "descricao": "Troncos",
+          "icon": "fa fa-cloud",
+          "ordem": 1,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 11,
+          "parent": 3,
+          "nome": "app.agenda",
+          "descricao": "Agenda",
+          "icon": "fa fa-calendar",
+          "ordem": 11,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 12,
+          "parent": 3,
+          "nome": "app.agentes",
+          "descricao": "Agentes",
+          "icon": "fa fa-users",
+          "ordem": 12,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 13,
+          "parent": 3,
+          "nome": "app.classificacoes",
+          "descricao": "Classificações",
+          "icon": "fa fa-sliders",
+          "ordem": 13,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 14,
+          "parent": 3,
+          "nome": "app.filas",
+          "descricao": "Filas",
+          "icon": "fa fa-database",
+          "ordem": 14,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 15,
+          "parent": 3,
+          "nome": "app.ramais",
+          "descricao": "Ramais",
+          "icon": "fa fa-phone",
+          "ordem": 15,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 16,
+          "parent": 3,
+          "nome": "app.pausas",
+          "descricao": "Pausas",
+          "icon": "fa fa-history",
+          "ordem": 16,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 42,
+          "parent": 3,
+          "nome": "app.configuracoes_pesquisa_satisfacao",
+          "descricao": "Pesquisas",
+          "icon": "fa fa-search",
+          "ordem": 17,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 17,
+          "parent": 3,
+          "nome": "app.usuarios",
+          "descricao": "Usuários",
+          "icon": "glyphicon glyphicon-tower",
+          "ordem": 18,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 57,
+          "parent": 3,
+          "nome": "app.autocomplete",
+          "descricao": "Autocomplete",
+          "icon": "fa fa fa-magic",
+          "ordem": 19,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 23,
+          "parent": 3,
+          "nome": "app.membros",
+          "descricao": "Agentes estáticos",
+          "icon": "fa fa-users",
+          "ordem": 20,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 24,
+          "parent": 3,
+          "nome": "app.rotas",
+          "descricao": "Rotas",
+          "icon": "fa fa-share-alt",
+          "ordem": 35,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 40,
+          "parent": 3,
+          "nome": "app.audios",
+          "descricao": "Áudios",
+          "icon": "fa fa-music",
+          "ordem": 98,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 36,
+          "parent": 3,
+          "nome": "app.sms",
+          "descricao": "SMS",
+          "icon": "fa fa-paper-plane",
+          "ordem": 99,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 45,
+          "parent": 3,
+          "nome": "app.pin",
+          "descricao": "PIN",
+          "icon": "fa fa-key",
+          "ordem": 100,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 47,
+          "parent": 3,
+          "nome": "app.tempos",
+          "descricao": "Definições de Tempo",
+          "icon": "fa fa-clock-o",
+          "ordem": 101,
+          "extra": null,
+          "modulos": []
+        },
+        {
+          "id": 48,
+          "parent": 3,
+          "nome": "app.ura",
+          "descricao": "URA",
+          "icon": "fa fa-sitemap",
+          "ordem": 102,
+          "extra": null,
+          "modulos": []
+        }
+      ]
+    }
+  ]
+}
