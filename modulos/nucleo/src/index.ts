@@ -5,3 +5,5 @@ export * from "./interacciones.js";
 export * from "./enlaces.js";
 export * from "./etiquetas.js";
 export * from "./ficha.js";
+export * from "./entitlements.js";
+export * from "./apikeys.js";
