@@ -152,3 +152,5 @@ export const definicion: DefinicionModulo = {
     { metodo: "PUT", ruta: "/tickets/:id/asignar", scope: "tickets.asignar" },
   ],
 };
+
+export * from "./reportes.js";
