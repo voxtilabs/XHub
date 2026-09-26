@@ -214,3 +214,5 @@ export * from "./contexto.js";
 export * from "./urgencia.js";
 
 export * from "./triage.js";
+
+export * from "./consumidor.js";
