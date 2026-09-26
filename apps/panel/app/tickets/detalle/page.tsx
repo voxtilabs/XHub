@@ -5,9 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
 const conv=[
-  {quien:"Juan Pérez",rol:"cliente",cuando:"hoy 09:12",texto:"Hola, hice el pedido #A-1902 hace 5 días y aún no llega. ¿Pueden revisar?",interno:false},
-  {quien:"Camila R.",rol:"agente",cuando:"hoy 09:20",texto:"Hola Juan, lamento la demora. Estoy revisando con despacho ahora mismo.",interno:false},
-  {quien:"Camila R.",rol:"nota",cuando:"hoy 09:21",texto:"Despacho confirma que salió hoy. Cliente ya reclamó una vez, tratar con prioridad.",interno:true},
+  {quien:"Juan Pérez",tipo:"cliente",cuando:"hoy 09:12",texto:"Hola, hice el pedido #A-1902 hace 5 días y aún no llega. ¿Pueden revisar?",interno:false},
+  {quien:"Camila R.",tipo:"agente",cuando:"hoy 09:20",texto:"Hola Juan, lamento la demora. Estoy revisando con despacho ahora mismo.",interno:false},
+  {quien:"Camila R.",tipo:"nota",cuando:"hoy 09:21",texto:"Despacho confirma que salió hoy. Cliente ya reclamó una vez, tratar con prioridad.",interno:true},
 ];
 export default function Detalle(){
   const [tab,setTab]=useState<"resp"|"nota">("resp");
@@ -29,7 +29,7 @@ export default function Detalle(){
             <Card className={"p-4 "+(m.interno?"border-[hsl(var(--aviso)/0.4)] bg-[hsl(var(--aviso)/0.06)]":"")}>
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="font-semibold text-sm">{m.quien}</span>
-                {m.rol==="agente"&&<span className="text-[10px] uppercase tracking-wider text-[hsl(var(--senal))]">agente</span>}
+                {m.tipo==="agente"&&<span className="text-[10px] uppercase tracking-wider text-[hsl(var(--senal))]">agente</span>}
                 {m.interno&&<Badge rol="aviso">nota interna</Badge>}
                 <span className="text-xs text-muted-foreground ml-auto tabular-nums">{m.cuando}</span>
               </div>

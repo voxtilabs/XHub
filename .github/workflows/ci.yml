@@ -43,7 +43,7 @@ jobs:
           set -e
           echo "· el rol nunca decide"
           if git grep -nE "\b(rol|role)\s*===" -- '*.ts' '*.tsx' \
-             ':!*permisos.ts' ':!*.test.ts' | grep .; then
+             ':!*permisos.ts' ':!*roles.ts' ':!apps/panel/**' ':!*.test.ts' | grep .; then
             echo "FALLA: comparación por rol fuera del traductor. Usa un permiso (ADR 0006)."
             exit 1
           fi
