@@ -1,0 +1,78 @@
+# xHub — compose portable. Levanta el sistema en cualquier VPS: `docker compose up`.
+# Nada propietario en el camino crítico (ADR 0007). Dokploy es solo el operador.
+# Tráfico siempre por el proxy inverso; NUNCA puertos del host publicados en prod.
+name: xhub
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-xhub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?requerido}
+      POSTGRES_DB: ${POSTGRES_DB:-xhub}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-xhub}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--save", "60", "1"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # Túnel a la red de X5 como servicio de infraestructura (ADR 0010).
+  # Túnel PARTIDO: solo la red de X5, nunca 0.0.0.0/0.
+  xcontact-gw:
+    image: ${XHUB_IMAGE:-ghcr.io/voxtilabs/xhub:staging}
+    profiles: ["conector"]   # se activa cuando el conector esté en marcha
+    cap_add: [NET_ADMIN]
+    environment:
+      WG_CONF_REF: ${WG_CONF_REF:?ref a la config WireGuard, no el secreto}
+    restart: unless-stopped
+
+  api:
+    image: ${XHUB_IMAGE:-ghcr.io/voxtilabs/xhub:staging}
+    environment:
+      XHUB_PROCESO: api
+      XHUB_ENV: ${XHUB_ENV:-staging}
+      DATABASE_URL: postgres://${POSTGRES_USER:-xhub}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-xhub}
+      REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    # sin ports: el proxy inverso (Traefik/Dokploy) enruta por la red interna
+    restart: unless-stopped
+
+  workers:
+    image: ${XHUB_IMAGE:-ghcr.io/voxtilabs/xhub:staging}
+    environment:
+      XHUB_PROCESO: workers
+      XHUB_ENV: ${XHUB_ENV:-staging}
+      DATABASE_URL: postgres://${POSTGRES_USER:-xhub}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-xhub}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  panel:
+    image: ${XHUB_IMAGE:-ghcr.io/voxtilabs/xhub:staging}
+    environment:
+      XHUB_PROCESO: panel
+      XHUB_ENV: ${XHUB_ENV:-staging}
+    depends_on: [api]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
