@@ -103,6 +103,9 @@ services:
       XHUB_PROCESO: panel
       XHUB_ENV: ${XHUB_ENV:-staging}
       XHUB_DOMINIO_PANEL: ${XHUB_DOMINIO_PANEL:-}
+      # El panel proxea el API por su mismo origen (cookie de primera parte). Va al
+      # API por la red interna del compose.
+      XHUB_API_INTERNO: http://api:3000
     depends_on: [api]
     # (El Basic Auth de transición se retiró: ahora el panel se protege con el login
     #  propio de Better Auth. Sin definición de middleware, no hay candado del proxy.)
