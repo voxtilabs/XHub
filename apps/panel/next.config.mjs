@@ -11,6 +11,7 @@ export default {
     return [
       { source: "/api/auth/:path*", destination: `${api}/api/auth/:path*` },
       { source: "/admin/:path*", destination: `${api}/admin/:path*` },
+      { source: "/cliente/:path*", destination: `${api}/cliente/:path*` },
       { source: "/v1/:path*", destination: `${api}/v1/:path*` },
     ];
   },
