@@ -33,6 +33,14 @@ export function registrarRutasTickets(app: FastifyInstance): void {
     }));
   });
 
+
+  // Sugerencia de respuesta para el agente (IA). Devuelve null si la IA está apagada.
+  app.get("/tickets/:id/sugerencia", async (req) => {
+    exigirScope(req.ctx!, "tickets.responder");
+    const { id } = req.params as { id: string };
+    const sugerencia = await conContexto(req, (c) => T.sugerirRespuesta(c, id));
+    return { sugerencia };
+  });
   // Cambiar estado
   app.put("/tickets/:id/estado", async (req) => {
     exigirScope(req.ctx!, "tickets.responder");
