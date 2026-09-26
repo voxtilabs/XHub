@@ -1,9 +1,9 @@
 name: build
 
+# DESACTIVADO en push: Bruno (la VPS) construye la imagen al desplegar en Dokploy —
+# no GitHub. Se ahorra minutos de Actions y se evita bajar una imagen de ~1GB por la
+# red. Queda solo el disparo manual por si alguna vez se quiere publicar a GHCR.
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
   workflow_dispatch:
 
 jobs:
