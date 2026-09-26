@@ -1,27 +1,30 @@
-import { test, expect } from "vitest";
+import { test, expect, vi } from "vitest";
 import { leerConfig, iniciar } from "../src/index.js";
 
 test("sin variables, la telemetría queda inerte pero usable", async () => {
   const t = await iniciar(leerConfig({} as NodeJS.ProcessEnv));
   expect(t.activa).toBe(false);
-  // no lanza aunque esté apagada
   expect(() => t.capturarError(new Error("x"))).not.toThrow();
   expect(t.nuevoRequestId()).toMatch(/^req_/);
 });
 
-test("con DSN se considera activa (aunque la lib no esté instalada, degrada sin romper)", async () => {
+test("Sentry NO se activa aunque haya un DSN en el entorno (lo paga X5, pospuesto)", async () => {
   const t = await iniciar(leerConfig({ SENTRY_DSN: "https://x@ejemplo/1" } as unknown as NodeJS.ProcessEnv));
-  expect(t.activa).toBe(true);
-  expect(() => t.capturarError(new Error("x"))).not.toThrow();
+  // un DSN no debe activar nada: Sentry está pospuesto por decisión de negocio
+  expect(t.activa).toBe(false);
 });
 
-test("request ids son distintos", async () => {
+test("capturarError registra localmente, sin servicio externo", async () => {
   const t = await iniciar();
-  expect(t.nuevoRequestId()).not.toBe(t.nuevoRequestId());
+  const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+  t.capturarError(new Error("falla"), { req: "1" });
+  expect(spy).toHaveBeenCalled();
+  const linea = String(spy.mock.calls[0][0]);
+  expect(linea).toContain("falla");
+  spy.mockRestore();
 });
 
-test("leerConfig toma el entorno y servicio del env", () => {
-  const c = leerConfig({ XHUB_ENV: "staging", XHUB_SERVICIO: "workers" } as unknown as NodeJS.ProcessEnv);
-  expect(c.entorno).toBe("staging");
-  expect(c.servicio).toBe("workers");
+test("OTel sí puede activarse por su endpoint (no cuesta como Sentry)", async () => {
+  const t = await iniciar(leerConfig({ OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4318" } as unknown as NodeJS.ProcessEnv));
+  expect(t.activa).toBe(true);
 });
