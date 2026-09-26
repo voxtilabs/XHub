@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
 import { apiDocsUrl } from "@/lib/api";
 
@@ -12,9 +12,10 @@ import { apiDocsUrl } from "@/lib/api";
  * usa <Link> para navegar sin recargar la página (sin el flash blanco de antes).
  */
 
-type Ruta = { href: string; label: string; soloPlataforma?: boolean };
+type Ruta = { href: string; label: string; soloPlataforma?: boolean; soloCliente?: boolean };
 const RUTAS: Ruta[] = [
   { href: "/superadmin", label: "Clientes", soloPlataforma: true },
+  { href: "/equipo", label: "Mi equipo", soloCliente: true },
   { href: "/tickets", label: "Bandeja" },
   { href: "/persona", label: "Personas" },
 ];
@@ -46,10 +47,21 @@ function BotonTema() {
 
 export function AppShell() {
   const path = usePathname();
-  const { data: sesion } = useSession();
+  const router = useRouter();
+  const { data: sesion, isPending } = useSession();
   const usuario = sesion?.user as { email?: string; name?: string; rol?: string } | undefined;
   const esPlataforma = !usuario || usuario.rol === "plataforma";
-  const rutas = RUTAS.filter((r) => !r.soloPlataforma || esPlataforma);
+  // Defensa en profundidad: el middleware solo ve que EXISTA la cookie; aquí, ya
+  // validada contra el backend, si la sesión es inválida echamos a /login (cierra el
+  // "entro con cookie basura"). Y enrutamos por rol: el admin de cliente no cae en
+  // /superadmin (le daría 403) ni la plataforma en /equipo.
+  useEffect(() => {
+    if (isPending) return;
+    if (!sesion?.user) { router.replace("/login"); return; }
+    if (!esPlataforma && path.startsWith("/superadmin")) router.replace("/equipo");
+    if (esPlataforma && path.startsWith("/equipo")) router.replace("/superadmin");
+  }, [isPending, sesion, esPlataforma, path, router]);
+  const rutas = RUTAS.filter((r) => (!r.soloPlataforma || esPlataforma) && (!r.soloCliente || !esPlataforma));
   const inic = (usuario?.name || usuario?.email || "X5").split(/[ @.]/).map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
   const activa = (href: string) => path === href || path.startsWith(href + "/");
 

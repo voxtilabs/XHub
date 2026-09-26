@@ -42,6 +42,17 @@ export const crearUsuarioCliente = z.object({
   password: z.string().min(10).max(200),
   nombre: z.string().min(2).max(120),
 }).strict();
+// Alta de un usuario del equipo (lo crea el admin del cliente); permisos opcionales.
+export const crearUsuarioEquipo = z.object({
+  email: z.string().email().max(200),
+  password: z.string().min(10).max(200),
+  nombre: z.string().min(2).max(120),
+  permisos: z.array(z.string().max(60)).max(50).optional(),
+}).strict();
+// Fijar el set de permisos de un usuario (reemplaza).
+export const fijarPermisosUsuario = z.object({
+  permisos: z.array(z.string().max(60)).max(50),
+}).strict();
 
 /** Valida `data` con `schema` de Zod; lanza ErrorApi('VALIDACION') con el detalle. */
 export function validar<T>(schema: z.ZodType<T>, data: unknown): T {

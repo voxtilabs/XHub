@@ -9,6 +9,7 @@ import { auth } from "./auth.js";
 import { registrarRutasTickets } from "./rutas/tickets.js";
 import { registrarRutasPersonas } from "./rutas/personas.js";
 import { registrarRutasAdmin } from "./rutas/admin.js";
+import { registrarRutasCliente } from "./rutas/cliente.js";
 import { generarOpenApi } from "./openapi.js";
 
 const orígenesPanel = (process.env.XHUB_CORS_ORIGENES || "http://localhost:3000")
@@ -113,6 +114,7 @@ export function crearApp(): FastifyInstance {
   }, { prefix: "/v1" });
 
   registrarRutasAdmin(app);
+  registrarRutasCliente(app);
 
   return app;
 }
