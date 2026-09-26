@@ -2,9 +2,10 @@ import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify";
 import { ErrorApi, aCuerpo } from "@xhub/core";
 import { conCliente, conPlataforma, baseViva } from "@xhub/db";
 import { rateLimit, consumirCuota } from "@xhub/cuotas";
-import { autenticarApi, type ContextoApi } from "@xhub/modulo-nucleo";
+import { autenticarApi, cuotaDe, type ContextoApi } from "@xhub/modulo-nucleo";
 import { registrarRutasTickets } from "./rutas/tickets.js";
 import { registrarRutasPersonas } from "./rutas/personas.js";
+import { registrarRutasAdmin } from "./rutas/admin.js";
 
 declare module "fastify" { interface FastifyRequest { ctx?: ContextoApi; requestId: string; } }
 
@@ -50,7 +51,8 @@ export function crearApp(): FastifyInstance {
     reply.header("x-ratelimit-remaining", String(rl.restante));
     if (!rl.permitido) throw new ErrorApi("CUOTA_EXCEDIDA", "Demasiadas peticiones por minuto");
     // cuota mensual
-    const cuota = await consumirCuota(ctx.clienteId, 50000);
+    const limite = await conPlataforma((c) => cuotaDe(c, ctx.clienteId));
+    const cuota = await consumirCuota(ctx.clienteId, limite);
     reply.header("x-cuota-restante", String(cuota.restante));
     if (!cuota.permitido) throw new ErrorApi("CUOTA_EXCEDIDA", "Cuota mensual de API agotada");
   };
@@ -61,6 +63,8 @@ export function crearApp(): FastifyInstance {
     registrarRutasTickets(v1);
     registrarRutasPersonas(v1);
   }, { prefix: "/v1" });
+
+  registrarRutasAdmin(app);
 
   return app;
 }
