@@ -234,3 +234,5 @@ export * from "./urgencia.js";
 export * from "./triage.js";
 
 export * from "./consumidor.js";
+
+export * from "./derechos.js";
