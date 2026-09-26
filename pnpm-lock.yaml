@@ -24,6 +24,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/db
     devDependencies:
+      '@types/pg':
+        specifier: ^8.11.0
+        version: 8.23.1
       pg:
         specifier: ^8.13.0
         version: 8.23.0
