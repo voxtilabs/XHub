@@ -30,7 +30,18 @@
 
 * { border-color: hsl(var(--border)); min-width: 0; }
 html, body { max-width: 100%; overflow-x: hidden; }
-body { background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: Inter, system-ui, sans-serif; }
+/* Fondo formal de toda la plataforma: dos resplandores sutiles (señal cian arriba,
+   acción naranja abajo) fijos sobre el fondo del tema. Da profundidad de marca sin
+   estorbar el contenido; se adapta a día/noche por los tokens. */
+body {
+  background:
+    radial-gradient(900px 520px at 85% -10%, hsl(var(--senal) / 0.07), transparent 60%),
+    radial-gradient(820px 520px at 8% 110%, hsl(var(--primary) / 0.06), transparent 60%),
+    hsl(var(--background));
+  background-attachment: fixed;
+  color: hsl(var(--foreground));
+  font-family: Inter, system-ui, sans-serif;
+}
 /* Nada desborda el ancho: medios flexibles y palabras largas que no empujan el layout. */
 img, svg, video, canvas { max-width: 100%; }
 .break-anywhere, td, th { overflow-wrap: anywhere; }
