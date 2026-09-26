@@ -21,10 +21,13 @@ una VPS y otra. Procesos:
 
 ```sh
 cp .env.example .env            # completa POSTGRES_PASSWORD (mínimo)
-export XHUB_IMAGE=xhub:local
-docker build -t "$XHUB_IMAGE" .
-docker compose up -d api        # arrastra postgres, redis y migrate por depends_on
+docker compose up -d --build api  # construye la imagen local y arrastra postgres, redis y migrate
 ```
+
+La imagen se **construye en la propia máquina** desde el `Dockerfile` (un solo build
+reutilizado por los 4 procesos vía el ancla `x-xhub`). En Dokploy es igual: clona el
+repo y hace `docker compose up --build` en la VPS — **no se baja de ningún registro**,
+así que no cuesta minutos de CI ni un pull de ~1 GB por la red.
 
 Orden garantizado por `depends_on`: **postgres (healthy) → migrate (completa) → api**.
 Las migraciones corren una sola vez, antes de que el api acepte tráfico.

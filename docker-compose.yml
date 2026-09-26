@@ -1,7 +1,17 @@
-# xHub — compose portable. Levanta el sistema en cualquier VPS: `docker compose up`.
-# Nada propietario en el camino crítico (ADR 0007). Dokploy es solo el operador.
+# xHub — compose portable. Levanta el sistema en cualquier VPS: `docker compose up --build`.
+# Nada propietario en el camino crítico (ADR 0007). Dokploy es solo el operador: clona
+# el repo y CONSTRUYE la imagen en la propia VPS (no se baja de ningún registro).
 # Tráfico siempre por el proxy inverso; NUNCA puertos del host publicados en prod.
 name: xhub
+
+# La imagen de xHub se construye UNA vez desde el Dockerfile y se reutiliza en todos
+# los procesos (migrate/api/workers/panel) — un solo artefacto, varios entrypoints (ADR 0002).
+x-xhub: &xhub
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: xhub-local:latest
+  restart: unless-stopped
 
 services:
   postgres:
@@ -29,32 +39,19 @@ services:
       retries: 10
     restart: unless-stopped
 
-  # Túnel a la red de X5 como servicio de infraestructura (ADR 0010).
-  # Túnel PARTIDO: solo la red de X5, nunca 0.0.0.0/0.
-  xcontact-gw:
-    image: ${XHUB_IMAGE:-ghcr.io/voxtilabs/xhub:staging}
-    profiles: ["conector"]   # se activa cuando el conector esté en marcha
-    cap_add: [NET_ADMIN]
-    environment:
-      # Opcional a nivel de compose (se interpola aunque el perfil esté apagado); el
-      # gateway valida en su arranque que traiga una ref real. Así el stack central
-      # levanta sin tocar nada de WireGuard.
-      WG_CONF_REF: ${WG_CONF_REF:-}
-    restart: unless-stopped
-
   # Migraciones como paso previo, de una sola vez: la base queda al día ANTES de que
   # arranque el api. Idempotente (corre como el rol dueño; aplica solo lo pendiente).
   migrate:
-    image: ${XHUB_IMAGE:-ghcr.io/voxtilabs/xhub:staging}
+    <<: *xhub
+    restart: "no"
     environment:
       XHUB_PROCESO: migrate
       DATABASE_URL: postgres://${POSTGRES_USER:-xhub}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-xhub}
     depends_on:
       postgres: { condition: service_healthy }
-    restart: "no"
 
   api:
-    image: ${XHUB_IMAGE:-ghcr.io/voxtilabs/xhub:staging}
+    <<: *xhub
     environment:
       XHUB_PROCESO: api
       XHUB_ENV: ${XHUB_ENV:-staging}
@@ -68,10 +65,9 @@ services:
       redis: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }
     # sin ports: el proxy inverso (Traefik/Dokploy) enruta por la red interna
-    restart: unless-stopped
 
   workers:
-    image: ${XHUB_IMAGE:-ghcr.io/voxtilabs/xhub:staging}
+    <<: *xhub
     environment:
       XHUB_PROCESO: workers
       XHUB_ENV: ${XHUB_ENV:-staging}
@@ -80,16 +76,26 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
-    restart: unless-stopped
+      migrate: { condition: service_completed_successfully }
 
   panel:
-    image: ${XHUB_IMAGE:-ghcr.io/voxtilabs/xhub:staging}
+    <<: *xhub
     environment:
       XHUB_PROCESO: panel
       XHUB_ENV: ${XHUB_ENV:-staging}
       XHUB_DOMINIO_PANEL: ${XHUB_DOMINIO_PANEL:-}
     depends_on: [api]
-    restart: unless-stopped
+
+  # Túnel a la red de X5 como servicio de infraestructura (ADR 0010). Túnel PARTIDO:
+  # solo la red de X5, nunca 0.0.0.0/0. Apagado por defecto (perfil conector).
+  xcontact-gw:
+    <<: *xhub
+    profiles: ["conector"]
+    cap_add: [NET_ADMIN]
+    environment:
+      # Opcional a nivel de compose (se interpola aunque el perfil esté apagado); el
+      # gateway valida en su arranque que traiga una ref real.
+      WG_CONF_REF: ${WG_CONF_REF:-}
 
 volumes:
   pgdata:
