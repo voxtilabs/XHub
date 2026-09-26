@@ -20,9 +20,21 @@ export default function Login() {
   }
 
   return (
-    <main className="min-h-screen grid place-items-center p-4"
-      style={{ background: "radial-gradient(1000px 500px at 80% -10%, hsl(var(--senal)/0.10), transparent 60%), hsl(var(--background))" }}>
-      <Card className="w-full max-w-sm p-8">
+    <main className="relative min-h-screen grid place-items-center p-4 overflow-hidden" style={{ background: "#05070a" }}>
+      {/* Rejilla tenue que se desvanece arriba y abajo (x5s.cl). */}
+      <div aria-hidden className="absolute inset-0" style={{
+        backgroundImage: "linear-gradient(90deg,#ffffff08 1px,transparent 1px),linear-gradient(#ffffff08 1px,transparent 1px)",
+        backgroundSize: "60px 60px",
+        maskImage: "linear-gradient(transparent,#000 28% 72%,transparent)",
+        WebkitMaskImage: "linear-gradient(transparent,#000 28% 72%,transparent)",
+      }} />
+      {/* Aurora cian→naranja que respira (footer de x5s.cl). */}
+      <div aria-hidden className="aurora absolute top-1/2 left-1/2 rounded-full" style={{
+        width: "min(85vw,60rem)", height: "62%",
+        background: "radial-gradient(circle,#75d8ee29 0%,#ff7a1a1f 42%,transparent 70%)",
+        filter: "blur(80px)", animation: "aurora-breathe 9s ease-in-out infinite alternate",
+      }} />
+      <Card className="relative w-full max-w-sm p-8">
         <div className="flex items-center gap-2 mb-1">
           <span className="h-2.5 w-2.5 rounded-full bg-primary" style={{ boxShadow: "0 0 12px hsl(var(--primary))" }} />
           <span className="text-xl font-semibold tracking-tight">xHub</span>
