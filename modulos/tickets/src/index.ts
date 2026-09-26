@@ -3,6 +3,7 @@ import { ErrorApi, codificarCursor, decodificarCursor } from "@xhub/core";
 import type { DefinicionModulo, NucleoApi } from "@xhub/sdk-modulo";
 import { politicaSla, sumarMinutosHabiles } from "./sla.js";
 import { type Agente, filtroVisibilidad, permisosDe } from "./roles.js";
+import { analizarUrgencia } from "./urgencia.js";
 
 export type EstadoTicket = "nuevo" | "abierto" | "pendiente" | "resuelto" | "cerrado";
 export type Prioridad = "baja" | "media" | "alta" | "urgente";
@@ -50,7 +51,12 @@ export function crearModuloTickets(nucleo: NucleoApi) {
            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id, numero::text, persona_id, asunto, estado, prioridad, canal_origen, asignado_a, resumen`,
         [cid, numero, persona.id, args.asunto.trim(), prioridad, args.canalOrigen ?? args.canal, args.equipoId ?? null, args.categoria ?? null, args.etiquetas ?? [], vencePR, venceRes]);
       const t = r.rows[0] as Ticket;
-      if (args.cuerpo) await c.query("insert into tickets_mensajes (cliente_id, ticket_id, autor_tipo, cuerpo) values ($1,$2,'persona',$3)", [cid, t.id, args.cuerpo]);
+      if (args.cuerpo) {
+        await c.query("insert into tickets_mensajes (cliente_id, ticket_id, autor_tipo, cuerpo) values ($1,$2,'persona',$3)", [cid, t.id, args.cuerpo]);
+        const an = analizarUrgencia(args.cuerpo);
+        await c.query("update tickets set urgencia_detectada=$2 where id=$1", [t.id, an.urgencia]);
+        if (an.urgencia === "alta" && prioridad !== "urgente") await c.query("update tickets set prioridad='urgente' where id=$1", [t.id]);
+      }
       await nucleo.registrarInteraccion(c, { personaId: persona.id, tipo: "ticket.creado", moduloOrigen: "tickets", objetoTipo: "ticket", objetoId: t.id, resumen: `Ticket #${numero}: ${args.asunto.slice(0, 60)}` });
       return t;
     },
@@ -66,7 +72,11 @@ export function crearModuloTickets(nucleo: NucleoApi) {
       const de = cur.rows[0].estado as EstadoTicket;
       if (de !== a && !puedeTransicionar(de, a)) throw new ErrorApi("CONFLICTO", `Transición inválida: ${de} → ${a}`, { de, a });
       const resuelto = a === "resuelto" ? "resuelto_en=now()," : "";
-      const r = await c.query(`update tickets set estado=$2, ${resuelto} actualizado_en=now() where id=$1 returning id, numero::text, persona_id, asunto, estado, prioridad, canal_origen, asignado_a, resumen`, [ticketId, a]);
+      // SLA pausa: entrar a 'pendiente' congela el reloj; salir lo reanuda sumando lo esperado.
+      let slaSql = "";
+      if (a === "pendiente" && de !== "pendiente") slaSql = "sla_pausa_desde=now(),";
+      else if (de === "pendiente" && a !== "pendiente") slaSql = "sla_pausa_acum_seg = sla_pausa_acum_seg + coalesce(extract(epoch from (now() - sla_pausa_desde))::bigint,0), sla_pausa_desde=null,";
+      const r = await c.query(`update tickets set estado=$2, ${resuelto} ${slaSql} actualizado_en=now() where id=$1 returning id, numero::text, persona_id, asunto, estado, prioridad, canal_origen, asignado_a, resumen`, [ticketId, a]);
       await nucleo.registrarInteraccion(c, { personaId: cur.rows[0].persona_id, tipo: "ticket.estado", moduloOrigen: "tickets", objetoTipo: "ticket", objetoId: ticketId, resumen: `Ticket #${cur.rows[0].numero} → ${a}` });
       return r.rows[0] as Ticket;
     },
@@ -144,7 +154,7 @@ export function crearModuloTickets(nucleo: NucleoApi) {
 
 export const definicion: DefinicionModulo = {
   manifiesto: { nombre: "tickets", depende: ["nucleo"], permisos: ["tickets.leer", "tickets.crear", "tickets.responder", "tickets.asignar", "tickets.manage"], eventos: ["ticket.creado", "ticket.estado", "ticket.asignado"] },
-  migraciones: ["0013_tickets.sql", "0014_tickets_pro.sql", "0015_tickets_auto.sql", "0016_tickets_fusion.sql"],
+  migraciones: ["0013_tickets.sql", "0014_tickets_pro.sql", "0015_tickets_auto.sql", "0016_tickets_fusion.sql", "0017_tickets_sla_pausa.sql"],
   rutas: [
     { metodo: "GET", ruta: "/tickets", scope: "tickets.leer" },
     { metodo: "POST", ruta: "/tickets", scope: "tickets.crear" },
@@ -158,3 +168,5 @@ export * from "./reportes.js";
 export * from "./automatizacion.js";
 
 export * from "./contexto.js";
+
+export * from "./urgencia.js";
