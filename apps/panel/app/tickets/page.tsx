@@ -81,7 +81,7 @@ export default function Bandeja() {
 
   return (
     <main className="min-h-screen">
-      <header className="flex items-center gap-3 px-7 py-4 border-b border-border">
+      <header className="flex flex-wrap items-center gap-3 px-4 sm:px-7 py-4 border-b border-border">
         <span className="h-2.5 w-2.5 rounded-full bg-primary" style={{ boxShadow: "0 0 10px hsl(var(--primary))" }} />
         <span className="font-semibold text-lg tracking-tight">xTickets</span>
         <span className="text-[10px] font-black tracking-[0.14em] uppercase text-[hsl(var(--senal))] border border-border rounded-pill px-2 py-0.5">Consola X5</span>
@@ -89,7 +89,7 @@ export default function Bandeja() {
         <div className="flex items-center gap-2 text-xs"><span className="h-2 w-2 rounded-full" style={{ background: "hsl(var(--exito))" }} /><span className="text-muted-foreground">Camila R. · Supervisor · Soporte N1</span></div>
       </header>
 
-      <div className="max-w-6xl mx-auto p-7">
+      <div className="max-w-6xl mx-auto p-4 sm:p-7">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Bandeja</h1>

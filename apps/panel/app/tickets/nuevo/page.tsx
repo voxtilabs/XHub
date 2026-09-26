@@ -75,13 +75,13 @@ export default function NuevoTicket() {
 
   return (
     <main className="min-h-screen">
-      <header className="flex items-center gap-3 px-7 py-4 border-b border-border">
+      <header className="flex flex-wrap items-center gap-3 px-4 sm:px-7 py-4 border-b border-border">
         <span className="h-2.5 w-2.5 rounded-full bg-primary" style={{ boxShadow: "0 0 10px hsl(var(--primary))" }} />
         <span className="font-semibold text-lg tracking-tight">xTickets</span>
         <span className="text-[10px] font-black tracking-[0.14em] uppercase text-[hsl(var(--senal))] border border-border rounded-pill px-2 py-0.5">Consola X5</span>
       </header>
 
-      <div className="max-w-2xl mx-auto p-7">
+      <div className="max-w-2xl mx-auto p-4 sm:p-7">
         <button onClick={() => (location.href = "/tickets")} className="text-sm text-muted-foreground hover:text-foreground mb-4">← Bandeja</button>
         <h1 className="text-2xl font-semibold tracking-tight mb-1">Nuevo ticket</h1>
         <p className="text-muted-foreground text-sm mb-6">Alta manual — el camino directo, sin pasar por el triage de IA. Se crea la persona si no existe y queda en su línea de tiempo.</p>

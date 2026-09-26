@@ -19,5 +19,9 @@
   --muted: 210 30% 90%; --muted-foreground: 215 16% 40%;
   --border: 214 20% 85%; --input: 214 20% 85%; --senal: 192 50% 36%; --aviso: 30 90% 45%; --critico: 0 72% 50%;
 }
-* { border-color: hsl(var(--border)); }
+* { border-color: hsl(var(--border)); min-width: 0; }
+html, body { max-width: 100%; overflow-x: hidden; }
 body { background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: Inter, system-ui, sans-serif; }
+/* Nada desborda el ancho: medios flexibles y palabras largas que no empujan el layout. */
+img, svg, video, canvas { max-width: 100%; }
+.break-anywhere, td, th { overflow-wrap: anywhere; }

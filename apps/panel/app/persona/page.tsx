@@ -17,11 +17,11 @@ const identidades = [
 export default function Persona() {
   return (
     <main className="min-h-screen">
-      <header className="flex items-center gap-2 px-8 py-5 border-b border-border">
+      <header className="flex flex-wrap items-center gap-2 px-4 sm:px-8 py-4 sm:py-5 border-b border-border">
         <span className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary))]" />
         <span className="font-semibold text-lg tracking-tight">xHub</span>
       </header>
-      <div className="max-w-4xl mx-auto p-8">
+      <div className="max-w-4xl mx-auto p-4 sm:p-8">
         <div className="flex items-center gap-4 mb-6">
           <div className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center text-lg font-semibold">JP</div>
           <div>
