@@ -12,12 +12,21 @@ export interface ConfigIA {
   clave: string;
 }
 
-export function leerConfigIA(env = process.env): ConfigIA {
-  const clave = env.IA_API_KEY ?? "";
+/**
+ * Config de IA POR TAREA (proveedor por tarea). Cada tarea puede usar su propio
+ * proveedor/modelo: p.ej. las DECISIONES (triage) con JEV en OpenRouter, y los
+ * RESUMENES con GLM en NVIDIA. Se leen IA_<TAREA>_API_KEY/_BASE/_MODELO y, si no
+ * están, se cae a las globales IA_API_KEY/_BASE/_MODELO. Cambiar de modelo o de
+ * proveedor por tarea es cambiar el .env, sin tocar codigo.
+ */
+export function leerConfigIA(tarea?: string, env = process.env): ConfigIA {
+  const p = tarea ? `IA_${tarea.toUpperCase()}_` : "IA_";
+  const g = "IA_";
+  const clave = env[`${p}API_KEY`] ?? env[`${g}API_KEY`] ?? "";
   return {
     activa: Boolean(clave),
-    base: env.IA_API_BASE ?? "https://integrate.api.nvidia.com/v1",
-    modelo: env.IA_MODELO ?? "z-ai/glm-5.3-flash",
+    base: env[`${p}API_BASE`] ?? env[`${g}API_BASE`] ?? "https://integrate.api.nvidia.com/v1",
+    modelo: env[`${p}MODELO`] ?? env[`${g}MODELO`] ?? "z-ai/glm-5.3-flash",
     clave,
   };
 }
@@ -58,7 +67,7 @@ export async function completar(
 }
 
 /** Resume una conversación en una frase. Devuelve null si la IA está apagada o falla. */
-export async function resumirConversacionIA(mensajes: { autor: string; texto: string }[], cfg = leerConfigIA()): Promise<string | null> {
+export async function resumirConversacionIA(mensajes: { autor: string; texto: string }[], cfg = leerConfigIA("RESUMEN")): Promise<string | null> {
   if (!cfg.activa || mensajes.length === 0) return null;
   const conv = mensajes.map((m) => `${m.autor}: ${m.texto}`).join("\n");
   return completar([

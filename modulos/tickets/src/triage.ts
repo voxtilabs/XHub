@@ -45,7 +45,7 @@ export function clasificarPorReglas(mensajes: MensajeConv[]): Evaluacion {
  * Clasifica una conversación: IA-first (GLM en JSON) con fallback determinista.
  * Decide si la conversación necesita un ticket de seguimiento.
  */
-export async function clasificar(mensajes: MensajeConv[], cfgIA = leerConfigIA()): Promise<Evaluacion> {
+export async function clasificar(mensajes: MensajeConv[], cfgIA = leerConfigIA("DECISION")): Promise<Evaluacion> {
   if (!cfgIA.activa || mensajes.length === 0) return clasificarPorReglas(mensajes);
   const conv = mensajes.map((m) => `${m.autor}: ${m.texto}`).join("\n");
   const salida = await completar([
