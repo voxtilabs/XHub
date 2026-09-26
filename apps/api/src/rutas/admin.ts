@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi } from "@xhub/core";
 import { conPlataforma } from "@xhub/db";
 import {
@@ -8,13 +9,23 @@ import {
 import { consumoDelDia } from "@xhub/cuotas";
 import { fijarConfigTriage, configTriage } from "@xhub/modulo-tickets";
 import { conCliente } from "@xhub/db";
+import { auth } from "../auth.js";
 import * as E from "../esquemas.js";
 
-/** Guard de superadmin: token de administrador de plataforma (cross-cliente). */
+/**
+ * Guard de superadmin. Dos caminos:
+ *  1) Token de administrador de plataforma (xhadm_, cross-cliente) — para integraciones.
+ *  2) Sesión de Better Auth (usuario logueado en el panel) — para la consola web.
+ * Como el registro está CERRADO (las cuentas las crea un admin), todo usuario con
+ * sesión válida es superadmin de plataforma por ahora. Los roles finos (plataforma vs
+ * cliente) llegan con el plugin de organizaciones.
+ */
 async function guardAdmin(req: FastifyRequest): Promise<void> {
-  const auth = req.headers["authorization"];
-  const token = typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  await conPlataforma((c) => resolverAdmin(c, token));  // lanza NO_AUTENTICADO si no vale
+  const authz = req.headers["authorization"];
+  const token = typeof authz === "string" && authz.startsWith("Bearer ") ? authz.slice(7) : "";
+  if (token) { await conPlataforma((c) => resolverAdmin(c, token)); return; }
+  const sesion = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+  if (!sesion?.user) throw new ErrorApi("NO_AUTENTICADO", "Sesión de superadmin requerida");
 }
 
 export function registrarRutasAdmin(app: FastifyInstance): void {
