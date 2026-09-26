@@ -1,0 +1,28 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<title>Consola X5 — sistema de xHub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../src/tokens.css">
+<style>
+  body{margin:0;background:var(--fondo);color:var(--texto);font-family:var(--fuente);padding:3rem}
+  .lbl{color:var(--senal);font-size:.75rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+  h1{font-weight:600;letter-spacing:-.035em;font-size:clamp(2rem,5vw,3.5rem);line-height:1;margin:.5rem 0 2rem}
+  .panel{background:var(--vidrio);border:1px solid var(--borde);border-radius:var(--radio-xl);padding:1.5rem;max-width:520px}
+  .bp{background:var(--accion);color:var(--texto-accion);border:none;border-radius:var(--radio-pill);height:3rem;padding:0 1.5rem;font-weight:600;font-family:var(--fuente);cursor:pointer}
+  .bs{background:var(--vidrio);color:var(--texto);border:1px solid var(--borde);border-radius:var(--radio-pill);height:3rem;padding:0 1.5rem;font-weight:600;font-family:var(--fuente);cursor:pointer}
+  .fila{display:flex;gap:1rem;margin-top:1.5rem;align-items:center}
+  .estado{color:var(--exito);font-size:.85rem}
+</style></head>
+<body>
+  <div class="lbl">Panel de control · X5 Soluciones</div>
+  <h1>xHub</h1>
+  <div class="panel">
+    <div class="lbl">Cliente conectado</div>
+    <p style="color:var(--texto-2)">Toda la información de todos los módulos, en un solo lugar.</p>
+    <div class="fila">
+      <button class="bp">Crear cliente</button>
+      <button class="bs">Ver módulos</button>
+      <span class="estado">● Sincronización activa</span>
+    </div>
+  </div>
+</body></html>

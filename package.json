@@ -1,0 +1,16 @@
+{
+  "name": "xhub",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "build": "turbo build",
+    "test": "turbo test --concurrency=1",
+    "dev": "turbo dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,314 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-26T00:00:00Z",
+  "title": "Design System: XContact Website",
+  "extensions": {
+    "colorMeta": {
+      "negro-medianoche": {
+        "role": "neutral",
+        "displayName": "Negro Medianoche",
+        "canonical": "#05070a",
+        "tonalRamp": [
+          "#05070a",
+          "#0a0f16",
+          "#131a24",
+          "#1f2833",
+          "#2f3a47",
+          "#4a5665",
+          "#7d8894",
+          "#c3cad3"
+        ]
+      },
+      "azul-abismo": {
+        "role": "neutral",
+        "displayName": "Azul Abismo",
+        "canonical": "#071017",
+        "tonalRamp": [
+          "#071017",
+          "#0c1721",
+          "#14212e",
+          "#1f303f",
+          "#2f4254",
+          "#4a5d70",
+          "#7e909f",
+          "#c4ced7"
+        ]
+      },
+      "naranja-senal": {
+        "role": "primary",
+        "displayName": "Naranja Señal",
+        "canonical": "#ff7a1a",
+        "tonalRamp": [
+          "#4a2001",
+          "#7a3503",
+          "#a94a06",
+          "#d65f0c",
+          "#ff7a1a",
+          "#ff9a4d",
+          "#ffbd88",
+          "#ffe1c7"
+        ]
+      },
+      "cyan-radar": {
+        "role": "secondary",
+        "displayName": "Cyan Radar",
+        "canonical": "#75d8ee",
+        "tonalRamp": [
+          "#0a3540",
+          "#11525f",
+          "#1a7284",
+          "#2c95a9",
+          "#4bb8cd",
+          "#75d8ee",
+          "#a5e7f5",
+          "#d6f5fb"
+        ]
+      },
+      "teal-consola": {
+        "role": "tertiary",
+        "displayName": "Teal Consola",
+        "canonical": "#0e6f86",
+        "tonalRamp": [
+          "#062a33",
+          "#094452",
+          "#0e6f86",
+          "#1a8ba5",
+          "#37a7bf",
+          "#63c2d6",
+          "#9adbe8",
+          "#d0f0f6"
+        ]
+      },
+      "blanco": {
+        "role": "neutral",
+        "displayName": "Blanco",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#26272b",
+          "#4b4d52",
+          "#6e7076",
+          "#919399",
+          "#b3b5ba",
+          "#d2d4d8",
+          "#eceded",
+          "#ffffff"
+        ]
+      },
+      "tinta-slate": {
+        "role": "neutral",
+        "displayName": "Tinta Slate",
+        "canonical": "#020617",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#e2e8f0"
+        ]
+      },
+      "verde-flujo": {
+        "role": "tertiary",
+        "displayName": "Verde Flujo",
+        "canonical": "#34d399",
+        "tonalRamp": [
+          "#064e3b",
+          "#065f46",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#34d399",
+          "#6ee7b7",
+          "#d1fae5"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Héroe de página: gigante, tracking −0.035em, leading 0.98. Una por vista."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Apertura de sección, frecuentemente animada palabra a palabra."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Micro-etiquetas MAYÚSCULAS font-black tracking 0.1em; cyan sobre oscuro, teal sobre claro."
+      },
+      "body-sm": {
+        "displayName": "Body SM",
+        "purpose": "Densidad alta: filas de datos, chips de capacidades y descripciones dentro de tarjetas."
+      }
+    },
+    "shadows": [
+      {
+        "name": "glow-accion",
+        "value": "0 10px 15px -3px rgb(249 115 22 / 0.25), 0 4px 6px -4px rgb(249 115 22 / 0.25)",
+        "purpose": "Exclusivo del botón primario naranja."
+      },
+      {
+        "name": "flotante-oscuro",
+        "value": "0 25px 50px -12px rgb(0 0 0 / 0.4)",
+        "purpose": "Tarjetas y mockups flotando sobre fondo oscuro."
+      },
+      {
+        "name": "cinematico",
+        "value": "0 55px 150px rgba(0,0,0,.6)",
+        "purpose": "Solo visuales hero de gran formato."
+      },
+      {
+        "name": "susurro-claro",
+        "value": "0 10px 15px -3px rgb(15 23 42 / 0.05)",
+        "purpose": "Tarjetas en secciones blancas."
+      }
+    ],
+    "motion": [
+      {
+        "name": "transition-standard",
+        "value": "all 150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Transición por defecto de hover/focus (clase `transition` de Tailwind)."
+      },
+      {
+        "name": "glow-fade",
+        "value": "opacity 450ms ease",
+        "purpose": "Aparición del glow radial que sigue al puntero."
+      },
+      {
+        "name": "hover-lift",
+        "value": "translateY(-2px)",
+        "purpose": "Micro-elevación de botones y tarjetas al hover."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón Primario",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "La acción principal: píldora naranja con texto casi negro font-black y glow naranja.",
+      "html": "<button class=\"ds-btn-primary\">Solicitar demo</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 3rem; padding: 0 1.25rem; border: none; border-radius: 9999px; background: #ff7a1a; color: #020617; font-weight: 900; font-size: 1rem; font-family: ui-sans-serif, system-ui, sans-serif; box-shadow: 0 10px 15px -3px rgb(249 115 22 / 0.25), 0 4px 6px -4px rgb(249 115 22 / 0.25); transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; } .ds-btn-primary:hover { transform: translateY(-2px); } .ds-btn-primary:focus-visible { outline: 2px solid #fb923c; outline-offset: 2px; }"
+    },
+    {
+      "name": "Botón Secundario",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Acción secundaria en vidrio: píldora translúcida con borde blanco tenue.",
+      "html": "<button class=\"ds-btn-secondary\">Ver plataforma</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 3rem; padding: 0 1.25rem; border: 1px solid rgb(255 255 255 / 0.15); border-radius: 9999px; background: rgb(255 255 255 / 0.1); color: #ffffff; font-weight: 900; font-size: 1rem; font-family: ui-sans-serif, system-ui, sans-serif; transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; } .ds-btn-secondary:hover { background: rgb(255 255 255 / 0.16); transform: translateY(-2px); } .ds-btn-secondary:focus-visible { outline: 2px solid #fb923c; outline-offset: 2px; }"
+    },
+    {
+      "name": "Etiqueta Cyan",
+      "kind": "chip",
+      "refersTo": "chip-label",
+      "description": "Micro-etiqueta de señalización técnica: mayúsculas, font-black, tracking amplio.",
+      "html": "<span class=\"ds-label-cyan\">Omnicanalidad</span>",
+      "css": ".ds-label-cyan { display: inline-block; font-size: 0.75rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: #67e8f9; font-family: ui-sans-serif, system-ui, sans-serif; }"
+    },
+    {
+      "name": "Chip Píldora",
+      "kind": "chip",
+      "refersTo": "chip-label",
+      "description": "Variante contenida: píldora de vidrio cyan con punto de estado.",
+      "html": "<span class=\"ds-chip\"><span class=\"ds-chip-dot\"></span>WhatsApp</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.875rem; border: 1px solid rgb(103 232 249 / 0.3); border-radius: 9999px; background: rgb(103 232 249 / 0.1); color: #67e8f9; font-size: 0.75rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; font-family: ui-sans-serif, system-ui, sans-serif; } .ds-chip-dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: #ff7a1a; }"
+    },
+    {
+      "name": "Tarjeta de Vidrio",
+      "kind": "card",
+      "refersTo": "card-glass",
+      "description": "Panel de la sala de control: vidrio translúcido con borde tenue sobre fondo oscuro.",
+      "html": "<div class=\"ds-card-glass\"><span class=\"ds-card-glass-label\">Contact Center</span><h3 class=\"ds-card-glass-title\">Telefonía inbound y outbound, gestionada en simultáneo.</h3><p class=\"ds-card-glass-body\">Colas, IVR, call back, grabaciones y campañas desde la misma plataforma.</p></div>",
+      "css": ".ds-card-glass { max-width: 22rem; padding: 1.25rem; border: 1px solid rgb(255 255 255 / 0.1); border-radius: 2rem; background: rgb(255 255 255 / 0.06); color: #ffffff; font-family: ui-sans-serif, system-ui, sans-serif; transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-card-glass:hover { transform: translateY(-2px); border-color: rgb(255 255 255 / 0.15); } .ds-card-glass-label { display: inline-block; font-size: 0.75rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: #67e8f9; } .ds-card-glass-title { margin: 0.75rem 0 0; font-size: 1.25rem; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; } .ds-card-glass-body { margin: 0.5rem 0 0; font-size: 0.875rem; line-height: 1.6; color: rgb(255 255 255 / 0.75); }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo siempre blanco, incluso sobre oscuro; foco naranja.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Tu correo de trabajo\" />",
+      "css": ".ds-input { min-height: 3rem; width: 16rem; padding: 0 1rem; border: 1px solid rgb(255 255 255 / 0.1); border-radius: 1rem; background: #ffffff; color: #020617; font-size: 1rem; font-family: ui-sans-serif, system-ui, sans-serif; outline: none; transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-input::placeholder { color: #64748b; } .ds-input:focus { border-color: #fb923c; }"
+    },
+    {
+      "name": "Barra de Progreso de Scroll",
+      "kind": "custom",
+      "refersTo": "button-primary",
+      "description": "Firma del sitio: línea de luz cyan→naranja de 2px con glow, escalada por el scroll.",
+      "html": "<div class=\"ds-scroll-progress\"></div>",
+      "css": ".ds-scroll-progress { width: 16rem; height: 2px; border-radius: 9999px; background: linear-gradient(90deg, #75d8ee, #ff7a1a); box-shadow: 0 0 14px rgba(255, 122, 26, 0.65); }"
+    },
+    {
+      "name": "Nav CTA",
+      "kind": "nav",
+      "refersTo": "button-primary",
+      "description": "CTA del header flotante: mismo naranja primario en altura compacta.",
+      "html": "<nav class=\"ds-nav\"><span class=\"ds-nav-link\">Plataforma</span><span class=\"ds-nav-link\">Industrias</span><button class=\"ds-nav-cta\">Solicitar demo</button></nav>",
+      "css": ".ds-nav { display: inline-flex; align-items: center; gap: 1rem; padding: 0.5rem 0.5rem 0.5rem 1.25rem; border: 1px solid rgb(255 255 255 / 0.1); border-radius: 9999px; background: rgb(255 255 255 / 0.06); font-family: ui-sans-serif, system-ui, sans-serif; } .ds-nav-link { font-size: 0.875rem; font-weight: 600; color: rgb(255 255 255 / 0.8); cursor: pointer; transition: color 150ms ease; } .ds-nav-link:hover { color: #ffffff; } .ds-nav-cta { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 1.25rem; border: none; border-radius: 9999px; background: #ff7a1a; color: #020617; font-weight: 900; font-size: 0.875rem; box-shadow: 0 10px 15px -3px rgb(249 115 22 / 0.25); cursor: pointer; transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-nav-cta:hover { transform: translateY(-2px); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La Sala de Control Nocturna",
+    "overview": "El sitio es un centro de operaciones de noche. El fondo es un negro azulado casi absoluto donde la actividad se lee como señales de luz: el cyan recorre la pantalla marcando lo que está vivo, y el naranja es el único botón que importa — la acción. Sobre esa oscuridad flotan paneles de vidrio apenas iluminados, como monitores de una consola. Secciones claras alternan con las oscuras como quien enciende la luz de la sala para revisar los detalles. La personalidad es técnica, confiable, ultra moderna y premium — con la vara de calidad de Apple. Los componentes son vivos y juguetones: reaccionan al puntero con brillos, tilt 3D y micro-elevaciones que invitan a tocar.",
+    "keyCharacteristics": [
+      "Fondo negro-azulado (#05070a) con secciones blancas alternadas de contraste total.",
+      "Naranja (#ff7a1a) reservado para la acción; cyan (#75d8ee) para la señal técnica.",
+      "Paneles de vidrio: blanco al 6% con borde blanco al 10%, esquinas de 2rem.",
+      "Titulares gigantes (hasta text-7xl), peso 600, tracking negativo, leading ≤1.02.",
+      "Micro-etiquetas mayúsculas font-black con tracking 0.1em.",
+      "Motion cinematográfico (GSAP) con fallback prefers-reduced-motion."
+    ],
+    "rules": [
+      {
+        "name": "La Regla del Único Naranja",
+        "body": "El naranja es acción o señal de estado — un botón, un foco, un punto en un timeline. Nunca un fondo de sección, nunca decoración extensa. Su escasez es lo que lo hace legible como \"el botón que importa\".",
+        "section": "colors"
+      },
+      {
+        "name": "La Regla Cyan-Señala",
+        "body": "El cyan marca actividad y sistema (etiquetas, glows, líneas de luz), jamás compite con el naranja como acción. Sobre fondo claro, cede su rol a Teal Consola.",
+        "section": "colors"
+      },
+      {
+        "name": "La Regla del Peso Extremo",
+        "body": "Solo dos voces de peso fuerte: 600 para titulares grandes, 900 (font-black) para lo pequeño (labels y botones). No hay términos medios decorativos.",
+        "section": "typography"
+      },
+      {
+        "name": "La Regla Luz-Antes-Que-Sombra",
+        "body": "En lo oscuro, la jerarquía se construye con luz (borde, vidrio, glow) antes que con sombra. Una sombra negra sobre negro solo se gana su lugar en los artefactos flotantes protagónicos.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do usar Naranja Señal solo para acción y estado; texto sobre él siempre Tinta Slate en font-black.",
+      "Do construir todo panel oscuro como vidrio: bg-white/[0.06] + border-white/10 + esquinas ≥1rem.",
+      "Do acompañar cada micro-interacción con transition y respetar prefers-reduced-motion con fallback visible.",
+      "Do mantener los titulares en peso 600 con tracking negativo y leading ≤1.05; las etiquetas en mayúsculas font-black tracking 0.1em.",
+      "Do alternar secciones oscuras y claras a ancho completo, con el contenedor de 1180px dentro."
+    ],
+    "donts": [
+      "Don't usar cyan como color de botón ni naranja como decoración extensa — cada acento tiene un solo rol.",
+      "Don't introducir esquinas rectas, radios < 1rem, ni bordes gruesos: el lenguaje es cápsula y monitor.",
+      "Don't añadir webfonts: la identidad tipográfica vive en el stack de sistema con tamaño/peso/tracking.",
+      "Don't poner sombras negras pequeñas sobre fondo oscuro; la jerarquía ahí se hace con luz.",
+      "Don't dejar componentes inertes: todo elemento interactivo reacciona al hover/focus, aunque sea con una micro-elevación."
+    ]
+  }
+}

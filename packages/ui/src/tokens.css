@@ -1,0 +1,32 @@
+/* Consola X5 — tokens de xHub. ÚNICO archivo con valores de color.
+   Derivado de la identidad de x5s.cl. Ver docs/diseno/SISTEMA.md */
+:root {
+  --accion: #ff7a1a;
+  --accion-tenue: #e8631a;
+  --senal: #75d8ee;
+  --senal-claro: #0e6f86;
+  --exito: #34d399;
+  --fondo: #05070a;
+  --superficie: #0a1118;
+  --superficie-2: #071017;
+  --vidrio: rgba(255, 255, 255, 0.06);
+  --borde: rgba(255, 255, 255, 0.10);
+  --texto: #ffffff;
+  --texto-2: rgba(255, 255, 255, 0.78);
+  --texto-accion: #020617;
+  --radio-md: 1rem;
+  --radio-lg: 1.5rem;
+  --radio-xl: 2rem;
+  --radio-pill: 9999px;
+  --fuente: 'Inter', system-ui, Arial, sans-serif;
+}
+:root[data-tema="claro"] {
+  --fondo: #f1f5f9;
+  --superficie: #ffffff;
+  --superficie-2: #e2e8f0;
+  --vidrio: rgba(2, 6, 23, 0.04);
+  --borde: rgba(2, 6, 23, 0.10);
+  --texto: #020617;
+  --texto-2: #475569;
+  --senal: #0e6f86; /* el cyan cede a teal sobre claro */
+}
