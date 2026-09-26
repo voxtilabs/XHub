@@ -13,12 +13,12 @@ const rol = (r: string) => (r === "ok" ? "exito" : "accion") as "exito" | "accio
 export default function Auditoria() {
   return (
     <main className="min-h-screen">
-      <header className="flex items-center gap-2 px-8 py-5 border-b border-border">
+      <header className="flex flex-wrap items-center gap-2 px-4 sm:px-8 py-4 sm:py-5 border-b border-border">
         <span className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary))]" />
         <span className="font-semibold text-lg tracking-tight">xHub</span>
         <span className="ml-2 text-[0.65rem] font-black tracking-[0.14em] uppercase text-[hsl(var(--senal))] border border-border rounded-pill px-2 py-0.5">Superadmin · X5</span>
       </header>
-      <div className="max-w-5xl mx-auto p-8 space-y-4">
+      <div className="max-w-5xl mx-auto p-4 sm:p-8 space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold tracking-tight">Auditoría</h1>
           <div className="flex items-center gap-2 text-xs text-[hsl(var(--exito))]">

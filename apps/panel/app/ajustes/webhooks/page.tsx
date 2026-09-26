@@ -13,11 +13,11 @@ const rol = (e: string) => (e === "entregado" ? "exito" : e === "fallido" ? "acc
 export default function Webhooks() {
   return (
     <main className="min-h-screen">
-      <header className="flex items-center gap-2 px-8 py-5 border-b border-border">
+      <header className="flex flex-wrap items-center gap-2 px-4 sm:px-8 py-4 sm:py-5 border-b border-border">
         <span className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary))]" />
         <span className="font-semibold text-lg tracking-tight">xHub</span>
       </header>
-      <div className="max-w-4xl mx-auto p-8 space-y-6">
+      <div className="max-w-4xl mx-auto p-4 sm:p-8 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold tracking-tight">Webhooks</h1>
           <Button size="sm">+ Nuevo webhook</Button>

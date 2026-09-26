@@ -12,7 +12,7 @@ const conv=[
 export default function Detalle(){
   const [tab,setTab]=useState<"resp"|"nota">("resp");
   return (<main className="min-h-screen">
-    <header className="flex items-center gap-3 px-7 py-4 border-b border-border">
+    <header className="flex flex-wrap items-center gap-3 px-4 sm:px-7 py-4 border-b border-border">
       <a href="/tickets" className="text-muted-foreground hover:text-foreground text-sm">← Bandeja</a>
       <span className="font-semibold tracking-tight">Ticket #4821</span>
       <Badge rol="aviso">abierto</Badge><Badge rol="aviso">alta</Badge>
@@ -20,7 +20,7 @@ export default function Detalle(){
       <Button variant="secondary" size="sm">Escalar a N2</Button>
       <Button size="sm">Resolver</Button>
     </header>
-    <div className="max-w-6xl mx-auto p-7 grid gap-6" style={{gridTemplateColumns:"1fr 320px"}}>
+    <div className="max-w-6xl mx-auto p-4 sm:p-7 grid gap-6 grid-cols-1 lg:grid-cols-[1fr_320px]">
       <div>
         <h1 className="text-xl font-semibold tracking-tight mb-1">No llegó mi pedido #A-1902</h1>
         <div className="text-muted-foreground text-sm mb-5">Abierto por Juan Pérez · vía WhatsApp · hace 3 h</div>
