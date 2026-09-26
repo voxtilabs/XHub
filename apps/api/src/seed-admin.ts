@@ -11,8 +11,9 @@ async function main(): Promise<void> {
   const password = process.env.SEED_ADMIN_PASSWORD;
   const name = process.env.SEED_ADMIN_NAME || "Superadmin";
   if (!email || !password) {
-    process.stderr.write("[seed] faltan SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD\n");
-    process.exit(1);
+    // Sin configurar: no es un error, simplemente no hay nada que sembrar.
+    process.stdout.write("[seed] SEED_ADMIN_EMAIL/PASSWORD sin definir; se omite\n");
+    process.exit(0);
   }
   const ctx = await auth.$context;
   // internalAdapter es una API interna de Better Auth con tipos estrictos/variables entre

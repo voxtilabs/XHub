@@ -50,6 +50,21 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
 
+  # Primer superadmin (idempotente): crea la cuenta si no existe. Corre tras migrate.
+  # Sin SEED_ADMIN_* definido, se omite sin error.
+  seed:
+    <<: *xhub
+    restart: "no"
+    environment:
+      XHUB_PROCESO: seed-admin
+      DATABASE_URL: postgres://${POSTGRES_USER:-xhub}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-xhub}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Superadmin}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
   api:
     <<: *xhub
     environment:
@@ -60,6 +75,10 @@ services:
       XHUB_DOMINIO_API: ${XHUB_DOMINIO_API:-}
       XHUB_CORS_ORIGENES: ${XHUB_CORS_ORIGENES:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      # Login (Better Auth)
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-}
+      XHUB_COOKIE_DOMINIO: ${XHUB_COOKIE_DOMINIO:-}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
