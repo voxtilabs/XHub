@@ -98,14 +98,13 @@ export default function Bandeja() {
           <Button size="sm" onClick={() => (location.href = "/tickets/nuevo")}>+ Nuevo ticket</Button>
         </div>
 
-        {/* barra de herramientas */}
-        <div className="flex items-center gap-3 mb-4 flex-wrap">
-          <div className="relative flex-1 min-w-[230px] max-w-[340px]">
+        {/* barra de herramientas — apila en móvil, en fila desde sm */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+          <div className="relative w-full sm:flex-1 sm:max-w-[340px]">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
-            <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por asunto, persona o #…" className="h-9 pl-9 rounded-pill" aria-label="Buscar tickets" />
+            <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por asunto, persona o #…" className="h-9 pl-9 rounded-pill w-full" aria-label="Buscar tickets" />
           </div>
-          <div className="flex-1" />
-          <div className="inline-flex gap-0.5 bg-secondary/60 p-0.5 rounded-md border border-border">
+          <div className="inline-flex gap-0.5 bg-secondary/60 p-0.5 rounded-md border border-border self-start sm:self-auto sm:ml-auto">
             {(["lista", "tablero"] as const).map((v) => (
               <button key={v} onClick={() => setVista(v)} aria-pressed={vista === v}
                 className={"inline-flex items-center gap-1.5 px-3 h-8 rounded-[0.4rem] text-[13px] font-medium capitalize " + (vista === v ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground")}>
@@ -160,7 +159,8 @@ export default function Bandeja() {
               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" /></svg>
               Arrastra una tarjeta — solo se iluminan los estados a los que la máquina de transiciones permite mover.
             </div>
-            <div className="grid grid-flow-col auto-cols-[minmax(232px,1fr)] gap-3 overflow-x-auto pb-2 items-start">
+            <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+              <div className="flex gap-3 items-start w-max">
               {ESTADOS.map((est) => {
                 const items = tickets.filter((t) => t.estado === est && match(t));
                 const arrastrando = dragFrom !== null;
@@ -171,7 +171,7 @@ export default function Bandeja() {
                     onDragOver={(e) => { if (valido) { e.preventDefault(); setSobre(est); } }}
                     onDragLeave={() => setSobre((s) => (s === est ? null : s))}
                     onDrop={(e) => { e.preventDefault(); if (dragId != null) mover(dragId, est); setSobre(null); }}
-                    className={"flex flex-col rounded-md border min-h-[130px] transition-colors " +
+                    className={"w-[80vw] max-w-[300px] shrink-0 sm:w-[210px] sm:max-w-none flex flex-col rounded-md border min-h-[130px] transition-colors " +
                       (invalido ? "opacity-40 border-border " : "") +
                       (valido ? "border-[hsl(var(--exito)/0.7)] " : "border-border ") +
                       (valido && sobre === est ? "bg-[hsl(var(--exito)/0.1)] " : "bg-card ")}>
@@ -207,6 +207,7 @@ export default function Bandeja() {
                   </div>
                 );
               })}
+              </div>
             </div>
           </>
         )}
