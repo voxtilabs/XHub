@@ -6,6 +6,7 @@ import {
   fijarCuota, cuotaDe, listarClientesAdmin,
 } from "@xhub/modulo-nucleo";
 import { consumoDelDia } from "@xhub/cuotas";
+import * as E from "../esquemas.js";
 
 /** Guard de superadmin: token de administrador de plataforma (cross-cliente). */
 async function guardAdmin(req: FastifyRequest): Promise<void> {
@@ -20,8 +21,7 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
 
     // Crear cliente
     admin.post("/clientes", async (req) => {
-      const b = req.body as { nombre: string };
-      if (!b?.nombre) throw new ErrorApi("VALIDACION", "El nombre es obligatorio");
+      const b = E.validar(E.crearCliente, req.body);
       return conPlataforma((c) => crearCliente(c, b.nombre));
     });
 
@@ -31,14 +31,14 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
     // Cambiar estado del cliente
     admin.put("/clientes/:id/estado", async (req) => {
       const { id } = req.params as { id: string };
-      const b = req.body as { estado: string };
+      const b = E.validar(E.cambiarEstadoCliente, req.body);
       return conPlataforma((c) => cambiarEstado(c, id, b.estado as never));
     });
 
     // Encender / apagar un módulo del cliente
     admin.put("/clientes/:id/modulos/:modulo", async (req) => {
       const { id, modulo } = req.params as { id: string; modulo: string };
-      const b = req.body as { encendido: boolean };
+      const b = E.validar(E.modulo, req.body);
       await conPlataforma((c) => fijarEntitlement(c, id, modulo, b.encendido));
       return { cliente: id, modulo, encendido: b.encendido };
     });
@@ -46,16 +46,14 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
     // Crear una llave de API para el cliente
     admin.post("/clientes/:id/llaves", async (req) => {
       const { id } = req.params as { id: string };
-      const b = req.body as { nombre: string; scopes?: string[] };
-      // la llave se muestra UNA vez
-      return conPlataforma((c) => crearLlave(c, id, b?.nombre ?? "llave", b?.scopes ?? []));
+      const b = E.validar(E.crearLlave, req.body);
+      return conPlataforma((c) => crearLlave(c, id, b.nombre, b.scopes ?? []));
     });
 
     // Fijar la cuota mensual del cliente
     admin.put("/clientes/:id/cuota", async (req) => {
       const { id } = req.params as { id: string };
-      const b = req.body as { limiteMensual: number };
-      if (!Number.isInteger(b?.limiteMensual) || b.limiteMensual < 0) throw new ErrorApi("VALIDACION", "limiteMensual inválido");
+      const b = E.validar(E.fijarCuota, req.body);
       await conPlataforma((c) => fijarCuota(c, id, b.limiteMensual));
       return { cliente: id, limiteMensual: b.limiteMensual };
     });
