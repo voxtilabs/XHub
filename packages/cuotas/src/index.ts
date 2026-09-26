@@ -68,3 +68,4 @@ export async function exigirCuota(clienteId: string, limiteMensual: number): Pro
   if (!r.permitido) throw new ErrorApi("CUOTA_EXCEDIDA", "Cuota mensual de API agotada", { restante: 0 });
   return r;
 }
+export * from "./consumo.js";
