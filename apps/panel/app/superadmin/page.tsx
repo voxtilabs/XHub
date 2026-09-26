@@ -4,8 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { apiFetch, apiDocsUrl } from "@/lib/api";
-import { signOut, useSession } from "@/lib/auth-client";
+import { apiFetch } from "@/lib/api";
+import { AppShell } from "@/components/app-shell";
 
 type Cliente = { id: string; nombre: string; estado: string; modulos: string[] };
 const MODULOS: { k: string; nombre: string }[] = [
@@ -16,7 +16,6 @@ const estRol = (e: string): "exito" | "senal" | "critico" | "neutro" =>
   e === "activo" ? "exito" : e === "en_alta" ? "senal" : e === "moroso" ? "critico" : "neutro";
 
 export default function Superadmin() {
-  const { data: sesion } = useSession();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,16 +56,7 @@ export default function Superadmin() {
 
   return (
     <main className="min-h-screen">
-      <header className="flex flex-wrap items-center gap-2 px-4 sm:px-8 py-4 sm:py-5 border-b border-border">
-        <span className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary))]" />
-        <span className="font-semibold text-lg tracking-tight">xHub</span>
-        <span className="ml-1 text-[0.65rem] font-black tracking-[0.14em] uppercase text-[hsl(var(--senal))] border border-border rounded-pill px-2 py-0.5">Superadmin · X5</span>
-        <div className="flex-1" />
-        <a href="/tickets" className="text-xs text-muted-foreground hover:text-foreground">xTickets</a>
-        <a href={apiDocsUrl()} target="_blank" rel="noreferrer" className="text-xs text-[hsl(var(--senal))] hover:underline">API ↗</a>
-        <span className="text-xs text-muted-foreground max-w-[36vw] truncate">{sesion?.user?.email ?? "…"}</span>
-        <Button variant="ghost" size="sm" onClick={() => signOut().finally(() => (location.href = "/login"))}>Salir</Button>
-      </header>
+      <AppShell />
 
       <div className="max-w-5xl mx-auto p-4 sm:p-8">
         <div className="flex gap-4 mb-8 flex-wrap">

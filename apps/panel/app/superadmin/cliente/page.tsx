@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
+import { AppShell } from "@/components/app-shell";
 
 type Cliente = { id: string; nombre: string; estado: string; modulos: string[] };
 type Consumo = { total: number; cuotaMensual: number; dia: string };
@@ -58,11 +59,13 @@ export default function ClienteDetalle() {
 
   return (
     <main className="min-h-screen">
-      <header className="flex flex-wrap items-center gap-2 px-4 sm:px-8 py-4 sm:py-5 border-b border-border">
-        <a href="/superadmin" className="text-sm text-muted-foreground hover:text-foreground mr-1">← Superadmin</a>
-        <span className="font-semibold text-lg tracking-tight">{cli?.nombre ?? "Cliente"}</span>
+      <AppShell />
+
+      <div className="max-w-3xl mx-auto px-4 sm:px-8 pt-6 flex items-center gap-3 flex-wrap">
+        <a href="/superadmin" className="text-sm text-muted-foreground hover:text-foreground">← Clientes</a>
+        <span className="font-semibold text-xl tracking-tight">{cli?.nombre ?? "Cliente"}</span>
         {cli && <Badge rol={estRol(cli.estado)}>{cli.estado.replace("_", " ")}</Badge>}
-      </header>
+      </div>
 
       <div className="max-w-3xl mx-auto p-4 sm:p-8 flex flex-col gap-5">
         {error && <div className="p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}>▲ {error}</div>}

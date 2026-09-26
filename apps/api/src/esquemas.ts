@@ -35,6 +35,12 @@ export const crearLlave = z.object({
 }).strict();
 // Supresión de un titular (Ley 21.719): el motivo es obligatorio y queda como evidencia.
 export const suprimirTitular = z.object({ motivo: z.string().min(3).max(500) }).strict();
+// Alta de un admin de cliente (lo crea el admin de plataforma).
+export const crearUsuarioCliente = z.object({
+  email: z.string().email().max(200),
+  password: z.string().min(10).max(200),
+  nombre: z.string().min(2).max(120),
+}).strict();
 
 /** Valida `data` con `schema` de Zod; lanza ErrorApi('VALIDACION') con el detalle. */
 export function validar<T>(schema: z.ZodType<T>, data: unknown): T {
