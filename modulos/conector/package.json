@@ -1,0 +1,10 @@
+{
+  "name": "@xhub/modulo-conector",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": { "lint": "echo ok", "typecheck": "tsc --noEmit", "build": "echo ok", "test": "vitest run" },
+  "dependencies": { "@xhub/core": "workspace:*" },
+  "devDependencies": { "typescript": "^5.6.0", "vitest": "^2.1.0" }
+}
