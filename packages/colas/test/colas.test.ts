@@ -1,8 +1,7 @@
 import { test, expect, afterAll } from "vitest";
-import { Queue, Worker } from "bullmq";
 import { crearCola, crearWorkerDeModulo, nombreCola } from "../src/index.js";
 
-const abiertos: (Queue | Worker)[] = [];
+const abiertos: { close: () => Promise<void> }[] = [];
 afterAll(async () => { for (const x of abiertos) await x.close(); });
 
 test("nombreCola aísla por módulo", () => {
