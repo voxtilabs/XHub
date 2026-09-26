@@ -4,7 +4,7 @@ import type { DefinicionModulo, NucleoApi } from "@xhub/sdk-modulo";
 import { politicaSla, sumarMinutosHabiles } from "./sla.js";
 import { type Agente, filtroVisibilidad, permisosDe } from "./roles.js";
 import { analizarUrgencia } from "./urgencia.js";
-import { resumirConversacionIA } from "@xhub/ia";
+import { resumirConversacionIA, sugerirRespuestaIA } from "@xhub/ia";
 import { clasificar, decidir, configTriage, type MensajeConv } from "./triage.js";
 
 export type EstadoTicket = "nuevo" | "abierto" | "pendiente" | "resuelto" | "cerrado";
@@ -176,6 +176,24 @@ export function crearModuloTickets(nucleo: NucleoApi) {
            values ($1,$2,$3,$4,$5,$6,$7,$8)`,
         [cid, args.dedupeId, ev.necesitaTicket, ev.confianza, accion, ticket?.id ?? null, ev.fuente, ev.motivo]);
       return { accion, confianza: ev.confianza, motivo: ev.motivo, fuente: ev.fuente, ticket };
+    },
+
+    /**
+     * Sugiere una respuesta al agente (IA, tarea RESPUESTA) usando la conversación
+     * del ticket + contexto de reincidencia. Devuelve null si la IA está apagada.
+     * El agente decide si la usa: es una sugerencia, no un envío automático.
+     */
+    async sugerirRespuesta(c: PoolClient, ticketId: string): Promise<string | null> {
+      const cid = await clienteDe(c);
+      const m = await c.query("select autor_tipo, cuerpo from tickets_mensajes where cliente_id=$1 and ticket_id=$2 and interno=false order by seq asc", [cid, ticketId]);
+      if ((m.rowCount ?? 0) === 0) return null;
+      const t = await c.query("select prioridad, canal_origen from tickets where id=$1 and cliente_id=$2", [ticketId, cid]);
+      const contexto: string[] = [];
+      if (t.rowCount) {
+        if (t.rows[0].prioridad === "urgente") contexto.push("Ticket de prioridad urgente");
+        if (t.rows[0].canal_origen) contexto.push(`Llegó por ${t.rows[0].canal_origen}`);
+      }
+      return sugerirRespuestaIA(m.rows.map((x) => ({ autor: x.autor_tipo, texto: x.cuerpo })), contexto);
     },
     async listarBandeja(c: PoolClient, filtro: { estado?: EstadoTicket; asignadoA?: string } = {}, cursor?: string, limite = 25) {
       const cid = await clienteDe(c);

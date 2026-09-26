@@ -75,3 +75,20 @@ export async function resumirConversacionIA(mensajes: { autor: string; texto: st
     { role: "user", content: conv },
   ], cfg, { maxTokens: 1200, topeMs: 55000 });
 }
+
+/**
+ * Sugiere una respuesta para el agente, a partir de la conversación y notas de
+ * contexto. Usa la tarea "RESPUESTA" (proveedor por tarea). Devuelve null si la IA
+ * está apagada o falla — el agente sigue escribiendo a mano.
+ */
+export async function sugerirRespuestaIA(
+  mensajes: { autor: string; texto: string }[], contexto: string[] = [], cfg = leerConfigIA("RESPUESTA"),
+): Promise<string | null> {
+  if (!cfg.activa || mensajes.length === 0) return null;
+  const conv = mensajes.map((m) => `${m.autor}: ${m.texto}`).join("\n");
+  const ctx = contexto.length ? `\n\nContexto del cliente:\n- ${contexto.join("\n- ")}` : "";
+  return completar([
+    { role: "system", content: "Eres un agente de soporte chileno, amable y resolutivo. Redacta UNA respuesta breve, cordial y en español para responder al cliente en este ticket. No inventes datos (números de pedido, fechas) que no estén en la conversación; si faltan, pídelos con amabilidad. Sin saludos genéricos largos, directo y humano." },
+    { role: "user", content: conv + ctx },
+  ], cfg, { maxTokens: 1000, topeMs: 55000 });
+}

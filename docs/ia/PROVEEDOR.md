@@ -35,6 +35,9 @@ las funciones no se rompen, solo pierden la parte inteligente. Cero costo por de
   **% de confianza** que cada cliente compara contra **su umbral ajustable**. Fallback:
   clasificación por reglas (palabras clave).
 - **Resumen de conversación** (`resumirConversacionIA`). Fallback: resumen determinista.
+- **Respuestas sugeridas al agente** (`sugerirRespuestaIA`, tarea RESPUESTA): propone
+  una respuesta cordial usando la conversación + contexto; JEV la redacta en ~4s y NO
+  inventa datos (pide el nº de pedido si falta). El agente decide si la usa.
 - **Urgencia/sentimiento**: hoy determinista; misma interfaz lista para el LLM.
 
 ## Modelos probados
