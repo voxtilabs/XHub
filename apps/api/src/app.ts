@@ -57,6 +57,12 @@ export function crearApp(): FastifyInstance {
     reply.header("x-content-type-options", "nosniff");
     reply.header("x-frame-options", "DENY");
     reply.removeHeader("x-powered-by");
+    // HSTS: la política de transporte estricto la emite la APP, no solo el borde.
+    // Detrás del túnel el último salto no es TLS y x-forwarded-proto llega http, así
+    // que se decide por el ENTORNO, nunca por esa cabecera (ley de la casa / #111).
+    if (process.env.XHUB_ENV === "staging" || process.env.XHUB_ENV === "produccion") {
+      reply.header("strict-transport-security", "max-age=63072000; includeSubDomains");
+    }
     return payload;
   });
 
