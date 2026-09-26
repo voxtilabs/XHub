@@ -83,7 +83,7 @@ export interface Identidad { canal: Canal; identificador: string; seq: string; }
 export async function identidadesDe(c: PoolClient, personaId: string): Promise<Identidad[]> {
   const raiz = await resolverRaiz(c, personaId);
   const r = await c.query(
-    "select canal, identificador, seq::text from nucleo.identidades where persona_id=$1 order by seq asc",
+    "select i.canal, i.identificador, i.seq::text as seq from nucleo.identidades i where i.persona_id=$1 order by i.seq asc",
     [raiz.id],
   );
   return r.rows as Identidad[];
