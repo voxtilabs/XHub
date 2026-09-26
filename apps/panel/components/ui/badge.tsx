@@ -6,6 +6,8 @@ const badgeVariants = cva("inline-flex items-center rounded-pill border px-2.5 p
       exito: "border-transparent text-[hsl(var(--exito))]",
       senal: "border-transparent text-[hsl(var(--senal))]",
       accion: "border-transparent text-primary",
+      aviso: "border-transparent text-[hsl(var(--aviso))]",
+      critico: "border-transparent text-[hsl(var(--critico))]",
       neutro: "border-border text-muted-foreground",
     } }, defaultVariants: { rol: "neutro" } });
 export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}

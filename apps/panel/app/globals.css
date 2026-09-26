@@ -9,7 +9,7 @@
   --muted: 213 25% 14%; --muted-foreground: 215 16% 65%;
   --accent: 213 30% 12%; --accent-foreground: 0 0% 100%;
   --border: 210 20% 18%; --input: 210 20% 18%; --ring: 24 100% 55%;
-  --senal: 192 74% 70%; --exito: 158 64% 52%;
+  --senal: 192 74% 70%; --exito: 158 64% 52%; --aviso: 39 92% 55%; --critico: 0 84% 63%;
 }
 :root[data-tema="claro"] {
   --background: 210 40% 96%; --foreground: 222 47% 8%;
@@ -17,7 +17,7 @@
   --primary: 24 100% 52%; --primary-foreground: 0 0% 100%;
   --secondary: 210 40% 92%; --secondary-foreground: 222 47% 8%;
   --muted: 210 30% 90%; --muted-foreground: 215 16% 40%;
-  --border: 214 20% 85%; --input: 214 20% 85%; --senal: 192 50% 36%;
+  --border: 214 20% 85%; --input: 214 20% 85%; --senal: 192 50% 36%; --aviso: 30 90% 45%; --critico: 0 72% 50%;
 }
 * { border-color: hsl(var(--border)); }
 body { background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: Inter, system-ui, sans-serif; }
