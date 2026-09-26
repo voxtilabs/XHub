@@ -46,6 +46,8 @@ services:
       XHUB_ENV: ${XHUB_ENV:-staging}
       DATABASE_URL: postgres://${POSTGRES_USER:-xhub}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-xhub}
       REDIS_URL: redis://redis:6379
+      XHUB_DOMINIO_API: ${XHUB_DOMINIO_API:-}
+      XHUB_CORS_ORIGENES: ${XHUB_CORS_ORIGENES:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     depends_on:
       postgres: { condition: service_healthy }
@@ -70,6 +72,7 @@ services:
     environment:
       XHUB_PROCESO: panel
       XHUB_ENV: ${XHUB_ENV:-staging}
+      XHUB_DOMINIO_PANEL: ${XHUB_DOMINIO_PANEL:-}
     depends_on: [api]
     restart: unless-stopped
 
