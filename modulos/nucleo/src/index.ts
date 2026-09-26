@@ -11,3 +11,4 @@ export * from "./guard-api.js";
 export * from "./reglas.js";
 export * from "./webhooks.js";
 export * from "./superadmin.js";
+export * from "./derechos.js";
