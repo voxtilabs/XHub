@@ -30,12 +30,15 @@ test("no se puede borrar una entrada", async () => {
 test("la verificación detecta una manipulación", async () => {
   // Manipular requiere saltarse el trigger: lo hacemos deshabilitándolo como owner,
   // que es justo lo que un atacante con acceso a la base intentaría.
+  const seq = (await pool().query("select min(seq) s from nucleo.auditoria")).rows[0].s;
+  const orig = (await pool().query("select metadata from nucleo.auditoria where seq=$1", [seq])).rows[0].metadata;
   await pool().query("alter table nucleo.auditoria disable trigger t_auditoria_no_update");
-  await pool().query(
-    "update nucleo.auditoria set metadata='{\"tocado\":true}' where seq=(select min(seq) from nucleo.auditoria)",
-  );
-  await pool().query("alter table nucleo.auditoria enable trigger t_auditoria_no_update");
+  await pool().query("update nucleo.auditoria set metadata='{\"tocado\":true}' where seq=$1", [seq]);
   const v = await verificarCadena();
   expect(v.valida).toBe(false);
   expect(v.rotaEn).not.toBeNull();
+  // restaurar para no dejar la cadena rota entre corridas (append-only no permite borrar)
+  await pool().query("update nucleo.auditoria set metadata=$2 where seq=$1", [seq, orig]);
+  await pool().query("alter table nucleo.auditoria enable trigger t_auditoria_no_update");
+  expect((await verificarCadena()).valida).toBe(true);
 });

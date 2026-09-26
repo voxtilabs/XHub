@@ -1,0 +1,37 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<title>xHub — Ingreso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../src/tokens.css">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(117,216,238,0.10), transparent 60%),
+    var(--fondo);
+    color:var(--texto);font-family:var(--fuente);
+    display:flex;align-items:center;justify-content:center;padding:2rem}
+  .card{width:100%;max-width:400px;background:var(--vidrio);border:1px solid var(--borde);
+    border-radius:var(--radio-xl);padding:2.5rem 2rem;backdrop-filter:blur(12px)}
+  .marca{display:flex;align-items:center;gap:.6rem;margin-bottom:2rem}
+  .punto{width:10px;height:10px;border-radius:50%;background:var(--accion);box-shadow:0 0 12px var(--accion)}
+  .marca b{font-weight:600;letter-spacing:-.02em;font-size:1.4rem}
+  .lbl{color:var(--senal);font-size:.7rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:.4rem}
+  input{width:100%;height:3rem;border-radius:var(--radio-md);border:1px solid var(--borde);
+    background:var(--superficie);color:var(--texto);padding:0 1rem;font-family:var(--fuente);font-size:1rem;margin-bottom:1.2rem}
+  input:focus{outline:none;border-color:var(--accion)}
+  button{width:100%;height:3rem;border:none;border-radius:var(--radio-pill);
+    background:var(--accion);color:var(--texto-accion);font-weight:600;font-family:var(--fuente);font-size:1rem;cursor:pointer}
+  .pie{margin-top:1.5rem;color:var(--texto-2);font-size:.8rem;text-align:center}
+  .pie span{color:var(--senal)}
+</style></head>
+<body>
+  <div class="card">
+    <div class="marca"><span class="punto"></span><b>xHub</b></div>
+    <span class="lbl">Correo</span>
+    <input type="email" placeholder="tu@empresa.cl" autocomplete="username">
+    <span class="lbl">Contraseña</span>
+    <input type="password" placeholder="••••••••" autocomplete="current-password">
+    <button>Ingresar</button>
+    <div class="pie">Panel de control · <span>X5 Soluciones</span></div>
+  </div>
+</body></html>
