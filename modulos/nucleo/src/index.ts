@@ -9,3 +9,4 @@ export * from "./entitlements.js";
 export * from "./apikeys.js";
 export * from "./guard-api.js";
 export * from "./reglas.js";
+export * from "./webhooks.js";
