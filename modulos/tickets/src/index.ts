@@ -144,7 +144,7 @@ export function crearModuloTickets(nucleo: NucleoApi) {
 
 export const definicion: DefinicionModulo = {
   manifiesto: { nombre: "tickets", depende: ["nucleo"], permisos: ["tickets.leer", "tickets.crear", "tickets.responder", "tickets.asignar", "tickets.manage"], eventos: ["ticket.creado", "ticket.estado", "ticket.asignado"] },
-  migraciones: ["0013_tickets.sql", "0014_tickets_pro.sql", "0015_tickets_auto.sql"],
+  migraciones: ["0013_tickets.sql", "0014_tickets_pro.sql", "0015_tickets_auto.sql", "0016_tickets_fusion.sql"],
   rutas: [
     { metodo: "GET", ruta: "/tickets", scope: "tickets.leer" },
     { metodo: "POST", ruta: "/tickets", scope: "tickets.crear" },
@@ -156,3 +156,5 @@ export const definicion: DefinicionModulo = {
 export * from "./reportes.js";
 
 export * from "./automatizacion.js";
+
+export * from "./contexto.js";
