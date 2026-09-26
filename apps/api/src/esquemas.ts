@@ -25,6 +25,10 @@ export const asignar = z.object({ usuarioId: z.string().uuid() }).strict();
 export const crearCliente = z.object({ nombre: z.string().min(2).max(120) }).strict();
 export const fijarCuota = z.object({ limiteMensual: z.number().int().min(0).max(100_000_000) }).strict();
 export const modulo = z.object({ encendido: z.boolean() }).strict();
+export const configTriage = z.object({
+  modo: z.enum(["automatico", "sugerir", "manual"]),
+  umbral: z.number().min(0).max(1),   // porcentaje 0..1, 100% ajustable
+}).strict();
 export const crearLlave = z.object({
   nombre: z.string().min(1).max(80),
   scopes: z.array(z.string().max(40)).max(30).optional(),

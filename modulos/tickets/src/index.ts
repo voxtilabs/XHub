@@ -5,6 +5,7 @@ import { politicaSla, sumarMinutosHabiles } from "./sla.js";
 import { type Agente, filtroVisibilidad, permisosDe } from "./roles.js";
 import { analizarUrgencia } from "./urgencia.js";
 import { resumirConversacionIA } from "@xhub/ia";
+import { clasificar, decidir, configTriage, type MensajeConv } from "./triage.js";
 
 export type EstadoTicket = "nuevo" | "abierto" | "pendiente" | "resuelto" | "cerrado";
 export type Prioridad = "baja" | "media" | "alta" | "urgente";
@@ -141,6 +142,41 @@ export function crearModuloTickets(nucleo: NucleoApi) {
       const r = await c.query(`select t.id, t.numero::text, t.persona_id, t.asunto, t.estado, t.prioridad, t.canal_origen, t.asignado_a, t.resumen, t.sla_incumplido from tickets t where ${cond.join(" and ")} order by t.numero desc limit $${params.length}`, params);
       return { datos: r.rows as (Ticket & { sla_incumplido: boolean })[], puede: permisosDe(actor.rol) };
     },
+
+    /**
+     * TRIAGE: evalúa una conversación (de XContact) y decide si crear un ticket.
+     * La IA clasifica (con fallback determinista); la config del cliente (modo +
+     * umbral) decide la acción. Idempotente por dedupeId (la conversación).
+     * Devuelve la decisión y, si se creó, el ticket. Así NO todo contacto es un ticket.
+     */
+    async triarConversacion(c: PoolClient, args: {
+      canal: string; identidad: string; mensajes: MensajeConv[]; dedupeId: string; asunto?: string; canalOrigen?: string;
+    }): Promise<{ accion: "creado" | "sugerido" | "descartado"; confianza: number; motivo: string; fuente: string; ticket?: Ticket }> {
+      const cid = await clienteDe(c);
+      // idempotencia: ¿ya evaluamos esta conversación?
+      const ya = await c.query("select accion, confianza, motivo, fuente, ticket_id from ticket_triage_log where cliente_id=$1 and dedupe_id=$2", [cid, args.dedupeId]);
+      if (ya.rowCount && ya.rows[0]) {
+        const x = ya.rows[0];
+        return { accion: x.accion, confianza: Number(x.confianza), motivo: x.motivo, fuente: x.fuente };
+      }
+      const ev = await clasificar(args.mensajes);
+      const cfg = await configTriage(c, cid);
+      const accion = decidir(ev, cfg);
+      let ticket: Ticket | undefined;
+      if (accion === "creado") {
+        ticket = await this.crearTicket(c, {
+          canal: args.canal, identidad: args.identidad,
+          asunto: args.asunto ?? args.mensajes[0]?.texto?.slice(0, 80) ?? "Conversación",
+          prioridad: ev.prioridad, canalOrigen: args.canalOrigen ?? args.canal,
+          cuerpo: args.mensajes.map((m) => `${m.autor}: ${m.texto}`).join("\n"),
+        });
+      }
+      await c.query(
+        `insert into ticket_triage_log (cliente_id, dedupe_id, necesita_ticket, confianza, accion, ticket_id, fuente, motivo)
+           values ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [cid, args.dedupeId, ev.necesitaTicket, ev.confianza, accion, ticket?.id ?? null, ev.fuente, ev.motivo]);
+      return { accion, confianza: ev.confianza, motivo: ev.motivo, fuente: ev.fuente, ticket };
+    },
     async listarBandeja(c: PoolClient, filtro: { estado?: EstadoTicket; asignadoA?: string } = {}, cursor?: string, limite = 25) {
       const cid = await clienteDe(c);
       const cond = ["t.cliente_id=$1"]; const params: unknown[] = [cid];
@@ -160,7 +196,7 @@ export function crearModuloTickets(nucleo: NucleoApi) {
 
 export const definicion: DefinicionModulo = {
   manifiesto: { nombre: "tickets", depende: ["nucleo"], permisos: ["tickets.leer", "tickets.crear", "tickets.responder", "tickets.asignar", "tickets.manage"], eventos: ["ticket.creado", "ticket.estado", "ticket.asignado"] },
-  migraciones: ["0013_tickets.sql", "0014_tickets_pro.sql", "0015_tickets_auto.sql", "0016_tickets_fusion.sql", "0017_tickets_sla_pausa.sql"],
+  migraciones: ["0013_tickets.sql", "0014_tickets_pro.sql", "0015_tickets_auto.sql", "0016_tickets_fusion.sql", "0017_tickets_sla_pausa.sql", "0019_tickets_triage.sql"],
   rutas: [
     { metodo: "GET", ruta: "/tickets", scope: "tickets.leer" },
     { metodo: "POST", ruta: "/tickets", scope: "tickets.crear" },
@@ -176,3 +212,5 @@ export * from "./automatizacion.js";
 export * from "./contexto.js";
 
 export * from "./urgencia.js";
+
+export * from "./triage.js";

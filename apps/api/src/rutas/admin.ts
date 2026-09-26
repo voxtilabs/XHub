@@ -6,6 +6,8 @@ import {
   fijarCuota, cuotaDe, listarClientesAdmin,
 } from "@xhub/modulo-nucleo";
 import { consumoDelDia } from "@xhub/cuotas";
+import { fijarConfigTriage, configTriage } from "@xhub/modulo-tickets";
+import { conCliente } from "@xhub/db";
 import * as E from "../esquemas.js";
 
 /** Guard de superadmin: token de administrador de plataforma (cross-cliente). */
@@ -63,6 +65,18 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       const { id } = req.params as { id: string };
       const cuota = await conPlataforma((c) => cuotaDe(c, id));
       return { ...(await consumoDelDia(id)), cuotaMensual: cuota };
+    });
+
+    // Config de triage del cliente (cómo la IA convierte conversaciones en tickets)
+    admin.get("/clientes/:id/triage", async (req) => {
+      const { id } = req.params as { id: string };
+      return conCliente(id, (c) => configTriage(c, id));
+    });
+    admin.put("/clientes/:id/triage", async (req) => {
+      const { id } = req.params as { id: string };
+      const b = E.validar(E.configTriage, req.body);
+      await conCliente(id, (c) => fijarConfigTriage(c, id, b));
+      return { cliente: id, ...b };
     });
   }, { prefix: "/admin" });
 }
