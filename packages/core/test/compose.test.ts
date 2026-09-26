@@ -23,6 +23,13 @@ test("la app apunta a la base por el host interno, no por localhost", () => {
   expect(compose).not.toContain("@localhost:5432/");
 });
 
+test("los dominios van por variable de entorno, no horneados", () => {
+  expect(compose).toContain("XHUB_DOMINIO_API");
+  const env = readFileSync(join(__dirname, "..", "..", "..", ".env.example"), "utf8");
+  expect(env).toMatch(/XHUB_DOMINIO_PANEL=/);
+  expect(env).toMatch(/XHUB_CORS_ORIGENES=/);
+});
+
 test(".env.example no trae Sentry (pospuesto, lo paga X5)", () => {
   const env = readFileSync(join(__dirname, "..", "..", "..", ".env.example"), "utf8");
   expect(env).not.toMatch(/^SENTRY_DSN=/m);
