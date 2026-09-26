@@ -4,6 +4,7 @@ import { exigirScope } from "@xhub/modulo-nucleo";
 import { crearModuloTickets, contextoOmnicanal, reincidencia } from "@xhub/modulo-tickets";
 import { nucleo } from "../nucleo.js";
 import { conContexto } from "../app.js";
+import * as E from "../esquemas.js";
 
 const T = crearModuloTickets(nucleo);
 
@@ -11,8 +12,7 @@ export function registrarRutasTickets(app: FastifyInstance): void {
   // Crear ticket
   app.post("/tickets", async (req) => {
     exigirScope(req.ctx!, "tickets.crear");
-    const b = req.body as { canal: string; identidad: string; asunto: string; prioridad?: string; canalOrigen?: string; cuerpo?: string };
-    if (!b?.canal || !b?.identidad || !b?.asunto) throw new ErrorApi("VALIDACION", "canal, identidad y asunto son obligatorios");
+    const b = E.validar(E.crearTicket, req.body);
     return conContexto(req, (c) => T.crearTicket(c, b as never));
   });
 
@@ -37,7 +37,7 @@ export function registrarRutasTickets(app: FastifyInstance): void {
   app.put("/tickets/:id/estado", async (req) => {
     exigirScope(req.ctx!, "tickets.responder");
     const { id } = req.params as { id: string };
-    const b = req.body as { estado: string };
+    const b = E.validar(E.cambiarEstado, req.body);
     return conContexto(req, (c) => T.cambiarEstado(c, id, b.estado as never));
   });
 
@@ -45,7 +45,7 @@ export function registrarRutasTickets(app: FastifyInstance): void {
   app.put("/tickets/:id/asignar", async (req) => {
     exigirScope(req.ctx!, "tickets.asignar");
     const { id } = req.params as { id: string };
-    const b = req.body as { usuarioId: string };
+    const b = E.validar(E.asignar, req.body);
     await conContexto(req, (c) => T.asignarTicket(c, id, b.usuarioId));
     return { ok: true };
   });

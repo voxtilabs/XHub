@@ -3,11 +3,28 @@
   "version": "0.1.0",
   "type": "module",
   "main": "./src/main.ts",
-  "scripts": { "lint": "echo ok", "typecheck": "tsc --noEmit", "build": "echo ok", "test": "vitest run", "dev": "tsx watch src/main.ts" },
+  "scripts": {
+    "lint": "echo ok",
+    "typecheck": "tsc --noEmit",
+    "build": "echo ok",
+    "test": "vitest run",
+    "dev": "tsx watch src/main.ts"
+  },
   "dependencies": {
     "fastify": "^5.2.0",
-    "@xhub/core": "workspace:*", "@xhub/db": "workspace:*", "@xhub/cuotas": "workspace:*",
-    "@xhub/modulo-nucleo": "workspace:*", "@xhub/modulo-tickets": "workspace:*", "@xhub/sdk-modulo": "workspace:*"
+    "@xhub/core": "workspace:*",
+    "@xhub/db": "workspace:*",
+    "@xhub/cuotas": "workspace:*",
+    "@xhub/modulo-nucleo": "workspace:*",
+    "@xhub/modulo-tickets": "workspace:*",
+    "@xhub/sdk-modulo": "workspace:*",
+    "zod": "^3.24.1"
   },
-  "devDependencies": { "typescript": "^5.6.0", "vitest": "^2.1.0", "@types/node": "^22.0.0", "pg": "^8.13.0", "@types/pg": "^8.11.0" }
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.0.0",
+    "pg": "^8.13.0",
+    "@types/pg": "^8.11.0"
+  }
 }
