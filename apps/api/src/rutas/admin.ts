@@ -24,7 +24,10 @@ async function guardAdmin(req: FastifyRequest): Promise<void> {
   const authz = req.headers["authorization"];
   const token = typeof authz === "string" && authz.startsWith("Bearer ") ? authz.slice(7) : "";
   if (token) { await conPlataforma((c) => resolverAdmin(c, token)); return; }
-  const sesion = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+  // Sin token: resolver por sesión de Better Auth. Cualquier fallo (sin cookie,
+  // sesión inválida) es un 401 limpio, nunca un 500.
+  let sesion: Awaited<ReturnType<typeof auth.api.getSession>> = null;
+  try { sesion = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) }); } catch { sesion = null; }
   if (!sesion?.user) throw new ErrorApi("NO_AUTENTICADO", "Sesión de superadmin requerida");
 }
 

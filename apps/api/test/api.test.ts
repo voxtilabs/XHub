@@ -74,3 +74,15 @@ test("un scope no autorizado por la llave → 403", async () => {
   expect(r.statusCode).toBe(403);
   expect(r.json().error.codigo).toBe("SIN_PERMISO");
 });
+
+test("HSTS: se emite en staging/produccion, NUNCA en desarrollo (#111)", async () => {
+  const prev = process.env.XHUB_ENV;
+  process.env.XHUB_ENV = "staging";
+  const conStg = await app.inject({ method: "GET", url: "/salud" });
+  expect(conStg.headers["strict-transport-security"]).toContain("max-age=");
+  expect(conStg.headers["strict-transport-security"]).toContain("includeSubDomains");
+  process.env.XHUB_ENV = "desarrollo";
+  const conDev = await app.inject({ method: "GET", url: "/salud" });
+  expect(conDev.headers["strict-transport-security"]).toBeUndefined();
+  process.env.XHUB_ENV = prev;
+});
