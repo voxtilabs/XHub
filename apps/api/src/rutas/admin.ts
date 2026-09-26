@@ -5,6 +5,7 @@ import { conPlataforma } from "@xhub/db";
 import {
   resolverAdmin, crearCliente, cambiarEstado, fijarEntitlement, crearLlave,
   fijarCuota, cuotaDe, listarClientesAdmin,
+  fijarLimiteUsuarios, limiteUsuariosDe, contarUsuariosCliente, listarUsuariosCliente,
 } from "@xhub/modulo-nucleo";
 import { consumoDelDia } from "@xhub/cuotas";
 import { fijarConfigTriage, configTriage } from "@xhub/modulo-tickets";
@@ -74,6 +75,11 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
     admin.post("/clientes/:id/usuarios", async (req) => {
       const { id } = req.params as { id: string };
       const b = E.validar(E.crearUsuarioCliente, req.body);
+      // Hacer respetar el tope de usuarios que la plataforma le concede al cliente.
+      const [usados, limite] = await conPlataforma(async (c) =>
+        [await contarUsuariosCliente(c, id), await limiteUsuariosDe(c, id)] as const);
+      if (usados >= limite)
+        throw new ErrorApi("CONFLICTO", `El cliente alcanzó su tope de usuarios (${limite}). Sube el límite para crear más.`, { usados, limite });
       const ctx = await auth.$context;
       const ia = ctx.internalAdapter as unknown as {
         findUserByEmail(e: string): Promise<unknown>;
@@ -86,6 +92,24 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       const uid = creado.user?.id ?? creado.id!;
       await ia.linkAccount({ userId: uid, providerId: "credential", accountId: uid, password: hash });
       return { id: uid, email: b.email, rol: "admin_cliente", clienteId: id };
+    });
+
+    // Usuarios del cliente + su tope (cuántos puede crear su admin)
+    admin.get("/clientes/:id/usuarios", async (req) => {
+      const { id } = req.params as { id: string };
+      return conPlataforma(async (c) => ({
+        limite: await limiteUsuariosDe(c, id),
+        usados: await contarUsuariosCliente(c, id),
+        usuarios: await listarUsuariosCliente(c, id),
+      }));
+    });
+
+    // Fijar el tope de usuarios del cliente (lo decide la plataforma)
+    admin.put("/clientes/:id/limite-usuarios", async (req) => {
+      const { id } = req.params as { id: string };
+      const b = E.validar(E.fijarLimiteUsuarios, req.body);
+      await conPlataforma((c) => fijarLimiteUsuarios(c, id, b.limite));
+      return { cliente: id, limite: b.limite };
     });
 
     // Fijar la cuota mensual del cliente
