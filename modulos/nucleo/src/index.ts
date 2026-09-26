@@ -7,3 +7,4 @@ export * from "./etiquetas.js";
 export * from "./ficha.js";
 export * from "./entitlements.js";
 export * from "./apikeys.js";
+export * from "./guard-api.js";
