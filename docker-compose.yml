@@ -85,6 +85,11 @@ services:
       XHUB_ENV: ${XHUB_ENV:-staging}
       XHUB_DOMINIO_PANEL: ${XHUB_DOMINIO_PANEL:-}
     depends_on: [api]
+    # Candado del panel: define un Basic Auth de Traefik (el htpasswd viaja por env,
+    # NUNCA en el repo). Se ADJUNTA a los dominios del panel desde Dokploy (middlewares).
+    # Mientras no exista el login propio, esto evita que la consola quede pública.
+    labels:
+      - "traefik.http.middlewares.xhub-auth.basicauth.users=${XHUB_BASICAUTH_USERS:-}"
 
   # Túnel a la red de X5 como servicio de infraestructura (ADR 0010). Túnel PARTIDO:
   # solo la red de X5, nunca 0.0.0.0/0. Apagado por defecto (perfil conector).
