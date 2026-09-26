@@ -1,0 +1,11 @@
+# Contexto de build mínimo: node_modules se reinstala dentro de la imagen.
+**/node_modules
+.git
+.github
+**/dist
+**/.next
+**/coverage
+**/*.log
+.env
+.env.*
+!.env.example
