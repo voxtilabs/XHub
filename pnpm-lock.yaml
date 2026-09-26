@@ -62,6 +62,22 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@26.6.3)
 
+  packages/cuotas:
+    dependencies:
+      '@xhub/core':
+        specifier: workspace:*
+        version: link:../core
+      ioredis:
+        specifier: ^5.4.0
+        version: 5.11.1
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@26.6.3)
+
   packages/db:
     dependencies:
       pg:
