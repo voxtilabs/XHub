@@ -65,7 +65,6 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         if: steps.mono.outputs.hay == 'si'
-        with: {version: 10}
       - uses: actions/setup-node@v4
         if: steps.mono.outputs.hay == 'si'
         with: {node-version: 22, cache: pnpm}
@@ -77,8 +76,19 @@ jobs:
       - if: steps.mono.outputs.hay == 'si'
         run: pnpm turbo test --concurrency=1
 
-      - name: La suite escribió en la base
+      - name: ¿Hay capa de datos todavía?
+        id: db
         if: steps.mono.outputs.hay == 'si'
+        run: |
+          if ls packages/db/migrations/* >/dev/null 2>&1 || ls modulos/*/migrations/* >/dev/null 2>&1; then
+            echo "hay=si" >> $GITHUB_OUTPUT
+          else
+            echo "hay=no" >> $GITHUB_OUTPUT
+            echo "Aún no hay migraciones: la verificación de base se activa con la capa de datos (#17)."
+          fi
+
+      - name: La suite escribió en la base
+        if: steps.mono.outputs.hay == 'si' && steps.db.outputs.hay == 'si'
         run: |
           # Si la suite no tocó la base, corrió sin base: verde mentiroso.
           n=$(psql "$DATABASE_URL" -tAc \
