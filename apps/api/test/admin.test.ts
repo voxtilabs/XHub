@@ -60,7 +60,7 @@ test("FLUJO COMPLETO: el superadmin crea un cliente, le enciende módulos, le da
 
 test("el cliente aparece en la lista del admin con sus módulos", async () => {
   const r = await app.inject({ method: "GET", url: "/admin/clientes", headers: H(adminTok) });
-  const retail = r.json().datos.find((c: { nombre: string }) => c.nombre === "Retail Andes SpA" && c.estado === "activo");
+  const retail = r.json().datos.find((c: { nombre: string; estado: string }) => c.nombre === "Retail Andes SpA" && c.estado === "activo");
   expect(retail).toBeDefined();
   expect(retail.estado).toBe("activo");
   expect(retail.modulos).toContain("tickets");
