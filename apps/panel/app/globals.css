@@ -17,7 +17,9 @@
   --primary: 24 100% 52%; --primary-foreground: 0 0% 100%;
   --secondary: 210 40% 92%; --secondary-foreground: 222 47% 8%;
   --muted: 210 30% 90%; --muted-foreground: 215 16% 40%;
-  --border: 214 20% 85%; --input: 214 20% 85%; --senal: 192 50% 36%; --aviso: 30 90% 45%; --critico: 0 72% 50%;
+  --accent: 210 30% 88%; --accent-foreground: 222 47% 8%;
+  --border: 214 20% 85%; --input: 214 20% 85%; --ring: 24 100% 52%;
+  --senal: 192 50% 36%; --exito: 158 64% 38%; --aviso: 30 90% 42%; --critico: 0 72% 48%;
 }
 /* Aurora del login (tomada del footer de x5s.cl): un resplandor cian→naranja que respira. */
 @keyframes aurora-breathe {
