@@ -30,6 +30,10 @@
 
 * { border-color: hsl(var(--border)); min-width: 0; }
 html, body { max-width: 100%; overflow-x: hidden; }
+/* El navegador pinta el fondo del <html> ANTES de montar el body: darle el color del
+   tema evita el destello blanco al navegar entre secciones (el "flashback"). */
+html { background: hsl(var(--background)); color-scheme: dark; }
+html[data-tema="claro"] { color-scheme: light; }
 /* Fondo formal de toda la plataforma: dos resplandores sutiles (señal cian arriba,
    acción naranja abajo) fijos sobre el fondo del tema. Da profundidad de marca sin
    estorbar el contenido; se adapta a día/noche por los tokens. */

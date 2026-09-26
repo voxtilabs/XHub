@@ -15,6 +15,12 @@ const orígenes = (process.env.XHUB_CORS_ORIGENES || "http://localhost:3000")
 
 export const auth = betterAuth({
   database: new Pool({ connectionString: process.env.DATABASE_URL }),
+  user: {
+    additionalFields: {
+      rol: { type: "string", required: false, defaultValue: "plataforma", input: false },
+      clienteId: { type: "string", required: false, input: false },
+    },
+  },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 10,

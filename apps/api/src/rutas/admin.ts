@@ -29,6 +29,9 @@ async function guardAdmin(req: FastifyRequest): Promise<void> {
   let sesion: Awaited<ReturnType<typeof auth.api.getSession>> = null;
   try { sesion = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) }); } catch { sesion = null; }
   if (!sesion?.user) throw new ErrorApi("NO_AUTENTICADO", "Sesión de superadmin requerida");
+  // Solo admin de PLATAFORMA opera /admin/*. Un admin de cliente recibe 403 (§5, #24).
+  if ((sesion.user as { rol?: string }).rol !== "plataforma")
+    throw new ErrorApi("SIN_PERMISO", "Requiere administrador de plataforma");
 }
 
 export function registrarRutasAdmin(app: FastifyInstance): void {
@@ -64,6 +67,25 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       const { id } = req.params as { id: string };
       const b = E.validar(E.crearLlave, req.body);
       return conPlataforma((c) => crearLlave(c, id, b.nombre, b.scopes ?? []));
+    });
+
+    // Crear un ADMIN DE CLIENTE (rol admin_cliente, atado a este cliente). El registro
+    // público está apagado; las cuentas las crea el admin de plataforma desde aquí.
+    admin.post("/clientes/:id/usuarios", async (req) => {
+      const { id } = req.params as { id: string };
+      const b = E.validar(E.crearUsuarioCliente, req.body);
+      const ctx = await auth.$context;
+      const ia = ctx.internalAdapter as unknown as {
+        findUserByEmail(e: string): Promise<unknown>;
+        createUser(d: Record<string, unknown>): Promise<{ id?: string; user?: { id: string } }>;
+        linkAccount(d: Record<string, unknown>): Promise<unknown>;
+      };
+      if (await ia.findUserByEmail(b.email)) throw new ErrorApi("VALIDACION", "Ese email ya tiene cuenta");
+      const hash = await ctx.password.hash(b.password);
+      const creado = await ia.createUser({ email: b.email, name: b.nombre, emailVerified: true, rol: "admin_cliente", clienteId: id });
+      const uid = creado.user?.id ?? creado.id!;
+      await ia.linkAccount({ userId: uid, providerId: "credential", accountId: uid, password: hash });
+      return { id: uid, email: b.email, rol: "admin_cliente", clienteId: id };
     });
 
     // Fijar la cuota mensual del cliente

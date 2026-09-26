@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { signOut, useSession } from "@/lib/auth-client";
+import { AppShell } from "@/components/app-shell";
 
 type Est = "nuevo" | "abierto" | "pendiente" | "resuelto" | "cerrado";
 type Pri = "baja" | "media" | "alta" | "urgente";
@@ -41,7 +41,6 @@ const FILTROS: (Est | "todos")[] = ["todos", "nuevo", "abierto", "pendiente", "r
 const iniciales = (n: string) => n.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase();
 
 export default function Bandeja() {
-  const { data: sesion } = useSession();
   const [tickets, setTickets] = useState<Ticket[]>(SEMILLA);
   const [vista, setVista] = useState<"lista" | "tablero">("lista");
   const [filtro, setFiltro] = useState<Est | "todos">("todos");
@@ -83,17 +82,7 @@ export default function Bandeja() {
 
   return (
     <main className="min-h-screen">
-      <header className="flex flex-wrap items-center gap-3 px-4 sm:px-7 py-4 border-b border-border">
-        <span className="h-2.5 w-2.5 rounded-full bg-primary" style={{ boxShadow: "0 0 10px hsl(var(--primary))" }} />
-        <span className="font-semibold text-lg tracking-tight">xTickets</span>
-        <span className="text-[10px] font-black tracking-[0.14em] uppercase text-[hsl(var(--senal))] border border-border rounded-pill px-2 py-0.5">Consola X5</span>
-        <div className="flex-1" />
-        <div className="flex items-center gap-2 text-xs">
-          <span className="h-2 w-2 rounded-full" style={{ background: "hsl(var(--exito))" }} />
-          <span className="text-muted-foreground max-w-[40vw] truncate">{sesion?.user?.email ?? "…"}</span>
-          <Button variant="ghost" size="sm" onClick={() => { signOut().finally(() => (location.href = "/login")); }}>Salir</Button>
-        </div>
-      </header>
+      <AppShell />
 
       <div className="max-w-6xl mx-auto p-4 sm:p-7">
         <div className="flex items-center justify-between mb-5">
