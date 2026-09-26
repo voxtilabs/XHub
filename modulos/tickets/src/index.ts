@@ -55,7 +55,10 @@ export function crearModuloTickets(nucleo: NucleoApi) {
         await c.query("insert into tickets_mensajes (cliente_id, ticket_id, autor_tipo, cuerpo) values ($1,$2,'persona',$3)", [cid, t.id, args.cuerpo]);
         const an = analizarUrgencia(args.cuerpo);
         await c.query("update tickets set urgencia_detectada=$2 where id=$1", [t.id, an.urgencia]);
-        if (an.urgencia === "alta" && prioridad !== "urgente") await c.query("update tickets set prioridad='urgente' where id=$1", [t.id]);
+        if (an.urgencia === "alta" && prioridad !== "urgente") {
+          await c.query("update tickets set prioridad='urgente' where id=$1", [t.id]);
+          t.prioridad = "urgente";   // reflejar el escalado en el objeto devuelto
+        }
       }
       await nucleo.registrarInteraccion(c, { personaId: persona.id, tipo: "ticket.creado", moduloOrigen: "tickets", objetoTipo: "ticket", objetoId: t.id, resumen: `Ticket #${numero}: ${args.asunto.slice(0, 60)}` });
       return t;
