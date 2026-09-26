@@ -1,4 +1,4 @@
-import type { EstadoLlamada, SentidoLlamada } from "./puerto.js";
+import type { EstadoLlamada, SentidoLlamada, Llamada } from "./puerto.js";
 
 /**
  * mapeo.ts — el único archivo que conoce el portugués de XContact.
@@ -65,4 +65,38 @@ export function telefonoE164(bruto: string | null | undefined): string | null {
 export function desenvolver<T>(cuerpo: unknown): { datos: T[]; total: number } {
   const c = cuerpo as { dados?: T[]; total?: number };
   return { datos: Array.isArray(c?.dados) ? c.dados : [], total: Number(c?.total ?? 0) };
+}
+
+/** Primer campo presente de una lista de candidatos — tolerante al vocabulario de XContact. */
+function primerCampo(o: Record<string, unknown>, claves: string[]): unknown {
+  for (const k of claves) if (o[k] != null && o[k] !== "") return o[k];
+  return undefined;
+}
+
+/**
+ * Registro de llamada de XContact → `Llamada` (vocabulario nuestro).
+ *
+ * OJO — evidencia: la instancia demo devolvió `dados: []`, así que los NOMBRES
+ * exactos de los campos salen del vocabulario del contrato, NO de datos reales.
+ * Hay que confirmarlos contra una instancia con llamadas. Por eso, si falta lo
+ * esencial (id, fecha o estado) se LANZA en vez de inventar un dato — el fallo es
+ * ruidoso y este es el único lugar donde se toca cuando lleguen datos reales.
+ */
+export function mapearLlamada(bruto: Record<string, unknown>): Llamada {
+  const id = primerCampo(bruto, ["id", "uniqueid", "call_id", "ligacao_id"]);
+  const fecha = primerCampo(bruto, ["data", "data_hora", "datahora", "inicio", "data_ini"]);
+  const estado = primerCampo(bruto, ["status", "situacao", "estado"]);
+  if (id == null || fecha == null || estado == null)
+    throw new Error("Registro de llamada de XContact sin id/fecha/estado reconocibles — confirmar el contrato contra datos reales");
+  const dur = primerCampo(bruto, ["duracao", "billsec", "tempo_falado", "tempo", "duracion"]);
+  return {
+    id: String(id),
+    personaTelefono: telefonoE164(primerCampo(bruto, ["numero", "telefone", "fone", "origem", "cliente"]) as string | null | undefined),
+    sentido: traducirSentido(String(primerCampo(bruto, ["sentido", "tipo", "direcao"]) ?? "entrante")),
+    estado: traducirEstadoLlamada(String(estado)),
+    duracionSeg: Number(dur ?? 0) || 0,
+    agente: (primerCampo(bruto, ["agente", "agente_fullname", "operador", "agent"]) as string | null) ?? null,
+    cola: (primerCampo(bruto, ["fila", "nome_fila", "queue"]) as string | null) ?? null,
+    ocurrioEn: traducirFecha(String(fecha)),
+  };
 }

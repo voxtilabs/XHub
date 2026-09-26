@@ -27,3 +27,19 @@ test("desenvolver lee {dados,total}", () => {
   expect(desenvolver({ dados: [1, 2], total: 2 })).toEqual({ datos: [1, 2], total: 2 });
   expect(desenvolver({})).toEqual({ datos: [], total: 0 });
 });
+
+test("mapearLlamada traduce un registro de XContact al vocabulario nuestro", async () => {
+  const { mapearLlamada } = await import("../src/mapeo.js");
+  const ll = mapearLlamada({ id: 5001, numero: "912345678", sentido: "entrante", status: "Atendida", duracao: 132, agente: "Camila R.", fila: "Soporte", data: "2026-09-20 10:15:00" });
+  expect(ll.id).toBe("5001");
+  expect(ll.personaTelefono).toBe("+56912345678");
+  expect(ll.sentido).toBe("entrante");
+  expect(ll.estado).toBe("atendida");
+  expect(ll.duracionSeg).toBe(132);
+  expect(ll.agente).toBe("Camila R.");
+});
+
+test("mapearLlamada LANZA si falta lo esencial (no inventa datos)", async () => {
+  const { mapearLlamada } = await import("../src/mapeo.js");
+  expect(() => mapearLlamada({ numero: "912345678" } as any)).toThrow(/confirmar el contrato/);
+});
