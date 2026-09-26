@@ -15,7 +15,7 @@ una VPS y otra. Procesos:
 | `migrate` | Aplica las migraciones pendientes (orden topológico, idempotente) y sale |
 | `api`     | Sirve la API Fastify en `:3000` (`/salud`, `/listo`, `/v1/*`, `/docs`) |
 | `workers` | Aún sin app propia (los consumidores se despachan a mano por ahora): inerte |
-| `panel`   | Aún no cableado como app Next ejecutable: inerte |
+| `panel`   | App Next (build en la imagen); `next start` en `:3000` — bandeja, kanban, alta de ticket, ficha 360, superadmin |
 
 ## Levantar
 
@@ -58,9 +58,23 @@ xhub_app  super=false   # la app corre sin superusuario → la RLS SÍ se evalú
 - **Sin paso de build frágil**: el runtime ejecuta el `src` con tsx; no hay artefactos
   compilados que difieran entre máquinas.
 
+## Panel — verificado
+
+`XHUB_PROCESO=panel` levanta el Next real (build en la imagen, `next start`):
+
+```
+✓ Ready in ~0.5s
+GET /            → 200
+GET /tickets     → 200   (bandeja + tablero kanban)
+GET /tickets/nuevo → 200 (alta manual)
+GET /superadmin  → 200
+```
+
+Enruta desde `xhub.voxtilabs.cl` / `tickets-xhub.voxtilabs.cl` por el proxy.
+
 ## Pendiente
 
-- `panel` y `workers` quedan inertes hasta cablearlos (el panel necesita declarar
-  `next`/`react` y su `server.js`; los workers, una app que despache el outbox).
+- `workers` queda inerte hasta que exista una app que despache el outbox (hoy los
+  consumidores se llaman a mano).
 - Ensayo de migración cronometrado en VPS limpia como criterio de salida de Fase 8
   (→ `RESULTADOS-DR.md`), y subir el TTL de DNS cuando el borde se estabilice.

@@ -24,8 +24,9 @@ case "${XHUB_PROCESO:-api}" in
     ;;
   panel)
     echo "[xhub] proceso: panel"
-    echo "[xhub] panel todavía no está cableado como app Next ejecutable; inerte" >&2
-    exec sleep infinity
+    cd apps/panel
+    # pnpm enlaza el bin de next dentro del paquete, no en la raíz del workspace.
+    exec node_modules/.bin/next start -p "${PORT:-3000}"
     ;;
   *)
     echo "XHUB_PROCESO desconocido: '${XHUB_PROCESO}'. Válidos: migrate, api, workers, panel." >&2
