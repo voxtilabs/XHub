@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "fastify": "^5.2.0",
+    "@fastify/cors": "^10.0.1",
+    "better-auth": "^1.7.6",
     "@xhub/core": "workspace:*",
     "@xhub/db": "workspace:*",
     "@xhub/cuotas": "workspace:*",

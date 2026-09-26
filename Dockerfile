@@ -8,7 +8,7 @@ RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
 WORKDIR /app
 
 FROM base AS deps
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* turbo.json* ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* turbo.json* tsconfig.base.json ./
 COPY packages ./packages
 COPY modulos ./modulos
 COPY apps ./apps
