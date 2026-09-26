@@ -1,7 +1,10 @@
 "use client";
 // Cliente del API de xHub para el panel. Deriva el API por subdominio en runtime y
 // envía la cookie de sesión (Better Auth) → el guard de superadmin autoriza.
-function apiBase(): string {
+// Mismo origen: el panel proxea /admin y /v1 al API (next.config rewrites) → cookie
+// de primera parte. La doc del API sí vive en el subdominio api- (link externo).
+function apiBase(): string { return ""; }
+function apiDominio(): string {
   if (typeof window === "undefined") return "";
   const o = window.location.origin;
   if (o.includes("://stagexhub")) return o.replace("://stagexhub", "://api-stagexhub");
@@ -22,4 +25,4 @@ export async function apiFetch<T = unknown>(path: string, opts: RequestInit = {}
   }
   return data as T;
 }
-export const apiDocsUrl = () => apiBase() + "/docs";
+export const apiDocsUrl = () => apiDominio() + "/docs";
