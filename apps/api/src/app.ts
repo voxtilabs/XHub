@@ -1,12 +1,18 @@
 import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify";
+import cors from "@fastify/cors";
+import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi, aCuerpo } from "@xhub/core";
 import { conCliente, conPlataforma, baseViva } from "@xhub/db";
 import { rateLimit, consumirCuota } from "@xhub/cuotas";
 import { autenticarApi, cuotaDe, type ContextoApi } from "@xhub/modulo-nucleo";
+import { auth } from "./auth.js";
 import { registrarRutasTickets } from "./rutas/tickets.js";
 import { registrarRutasPersonas } from "./rutas/personas.js";
 import { registrarRutasAdmin } from "./rutas/admin.js";
 import { generarOpenApi } from "./openapi.js";
+
+const orígenesPanel = (process.env.XHUB_CORS_ORIGENES || "http://localhost:3000")
+  .split(",").map((s) => s.trim()).filter(Boolean);
 
 declare module "fastify" { interface FastifyRequest { ctx?: ContextoApi; requestId: string; } }
 
@@ -15,6 +21,33 @@ const nuevoId = () => `req_${(_seq++).toString(36)}_${Date.now().toString(36)}`;
 
 export function crearApp(): FastifyInstance {
   const app = Fastify({ logger: false, genReqId: nuevoId });
+
+  // CORS con credenciales para el panel (cookies cross-subdominio). Orígenes cerrados.
+  app.register(cors, { origin: orígenesPanel, credentials: true, maxAge: 86400 });
+
+  // Login (Better Auth): monta /api/auth/* fuera del guard de la API pública.
+  // Convierte la petición Fastify a Request web y devuelve la Response tal cual
+  // (incluidas las cookies de sesión, que van como Set-Cookie múltiple).
+  app.route({
+    method: ["GET", "POST"],
+    url: "/api/auth/*",
+    async handler(req, reply) {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const pedido = new Request(url.toString(), {
+        method: req.method,
+        headers: fromNodeHeaders(req.headers),
+        ...(req.body ? { body: JSON.stringify(req.body) } : {}),
+      });
+      const resp = await auth.handler(pedido);
+      reply.status(resp.status);
+      for (const [k, v] of resp.headers.entries()) {
+        if (k.toLowerCase() !== "set-cookie") reply.header(k, v);
+      }
+      const cookies = resp.headers.getSetCookie?.() ?? [];
+      if (cookies.length) reply.header("set-cookie", cookies);
+      return reply.send(resp.body ? await resp.text() : null);
+    },
+  });
 
   // request-id en toda respuesta
   app.addHook("onRequest", async (req, reply) => { req.requestId = req.id as string; reply.header("x-request-id", req.requestId); });

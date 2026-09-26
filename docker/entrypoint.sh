@@ -17,6 +17,10 @@ case "${XHUB_PROCESO:-api}" in
     echo "[xhub] proceso: api"
     exec "$TSX" apps/api/src/main.ts
     ;;
+  seed-admin)
+    echo "[xhub] proceso: seed-admin (crea el primer superadmin, idempotente)"
+    exec "$TSX" apps/api/src/seed-admin.ts
+    ;;
   workers)
     echo "[xhub] proceso: workers"
     exec "$TSX" apps/workers/src/main.ts
