@@ -27,6 +27,10 @@ export async function conCliente<T>(
   const c = await pool().connect();
   try {
     await c.query("begin");
+    // Corre como el rol de aplicación NO superusuario: si no, un superusuario
+    // IGNORA la RLS aunque esté forzada, y el aislamiento sería una mentira.
+    // SET LOCAL se revierte al terminar la transacción.
+    await c.query("set local role xhub_app");
     // set_config local: vive solo dentro de esta transacción
     await c.query("select set_config('app.cliente_id', $1, true)", [clienteId]);
     const r = await fn(c);
