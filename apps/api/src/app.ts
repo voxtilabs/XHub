@@ -6,6 +6,7 @@ import { autenticarApi, cuotaDe, type ContextoApi } from "@xhub/modulo-nucleo";
 import { registrarRutasTickets } from "./rutas/tickets.js";
 import { registrarRutasPersonas } from "./rutas/personas.js";
 import { registrarRutasAdmin } from "./rutas/admin.js";
+import { generarOpenApi } from "./openapi.js";
 
 declare module "fastify" { interface FastifyRequest { ctx?: ContextoApi; requestId: string; } }
 
@@ -37,6 +38,14 @@ export function crearApp(): FastifyInstance {
   app.get("/listo", async (_req, reply) => {
     if (await baseViva()) return { listo: true };
     reply.code(503); return { listo: false };
+  });
+
+  // Contrato OpenAPI (público) + página de documentación
+  const spec = generarOpenApi();
+  app.get("/openapi.json", async () => spec);
+  app.get("/docs", async (_req, reply) => {
+    reply.type("text/html").send(
+      `<!doctype html><html><head><meta charset="utf-8"><title>xHub API</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0"><script id="api-reference" data-url="/openapi.json"></script><script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script></body></html>`);
   });
 
   // Guard de la API pública del cliente: autentica por llave, rate limit + cuota.
