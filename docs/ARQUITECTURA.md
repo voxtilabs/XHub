@@ -466,3 +466,10 @@ necesita saber **qué sabe hacer** cada instancia: operaciones presentes, campos
 disponibles, rarezas conocidas. Se deriva del Swagger de cada instancia al darla de
 alta y se guarda con ella. Una operación que la instancia no expone **no se ofrece
 en el producto** para ese cliente, en vez de fallar cuando alguien la usa.
+
+
+---
+
+## Nota de repos (2026-09-26)
+
+**`voxtilabs/xhub-modulos` ya existe** y aloja **xTickets** (ADR 0009). El módulo usa la `NucleoApi` del SDK inyectada, no importa el núcleo directamente. Este repo (`voxtilabs/XHub`) NO contiene módulos de negocio: solo núcleo, espina dorsal, conector, panel y SDK.

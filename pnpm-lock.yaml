@@ -84,34 +84,6 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@26.6.3)
 
-  modulos/tickets:
-    dependencies:
-      '@xhub/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@xhub/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@xhub/modulo-nucleo':
-        specifier: workspace:*
-        version: link:../nucleo
-      '@xhub/sdk-modulo':
-        specifier: workspace:*
-        version: link:../../packages/sdk-modulo
-    devDependencies:
-      '@types/pg':
-        specifier: ^8.11.0
-        version: 8.23.1
-      pg:
-        specifier: ^8.13.0
-        version: 8.23.0
-      typescript:
-        specifier: ^5.6.0
-        version: 5.9.3
-      vitest:
-        specifier: ^2.1.0
-        version: 2.1.9(@types/node@26.6.3)
-
   packages/colas:
     dependencies:
       bullmq:
