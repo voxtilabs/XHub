@@ -10,6 +10,8 @@ import { AppShell } from "@/components/app-shell";
 type Cliente = { id: string; nombre: string; estado: string; modulos: string[] };
 type Consumo = { total: number; cuotaMensual: number; dia: string };
 type Triage = { modo: "automatico" | "sugerir" | "manual"; umbral: number };
+type UsuarioCliente = { id: string; email: string; nombre: string; rol: string; creadoEn: string };
+type Usuarios = { limite: number; usados: number; usuarios: UsuarioCliente[] };
 const ESTADOS = ["en_alta", "activo", "moroso", "solo_lectura", "suspendido"];
 const MODULOS = [{ k: "tickets", n: "xTickets" }, { k: "crm", n: "xCRM" }];
 const MODOS: { k: Triage["modo"]; n: string; d: string }[] = [
@@ -29,6 +31,9 @@ export default function ClienteDetalle() {
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [llave, setLlave] = useState<string | null>(null);
+  const [usuarios, setUsuarios] = useState<Usuarios | null>(null);
+  const [lim, setLim] = useState("");
+  const [nu, setNu] = useState({ email: "", nombre: "", password: "" });
 
   async function cargar(cid: string) {
     try {
@@ -36,7 +41,11 @@ export default function ClienteDetalle() {
       setCli(lista.datos.find((x) => x.id === cid) ?? null);
       const co = await apiFetch<Consumo>(`/admin/clientes/${cid}/consumo`); setConsumo(co); setCuota(String(co.cuotaMensual));
       setTriage(await apiFetch<Triage>(`/admin/clientes/${cid}/triage`));
+      const us = await apiFetch<Usuarios>(`/admin/clientes/${cid}/usuarios`); setUsuarios(us); setLim(String(us.limite));
     } catch (e) { setError((e as Error).message); }
+  }
+  async function recargarUsuarios(cid: string) {
+    try { const us = await apiFetch<Usuarios>(`/admin/clientes/${cid}/usuarios`); setUsuarios(us); setLim(String(us.limite)); } catch { /* noop */ }
   }
   useEffect(() => {
     const cid = new URLSearchParams(window.location.search).get("id") || "";
@@ -54,6 +63,11 @@ export default function ClienteDetalle() {
   const guardarCuota = () => accion(async () => { const n = Number(cuota); await apiFetch(`/admin/clientes/${id}/cuota`, { method: "PUT", body: JSON.stringify({ limiteMensual: n }) }); setConsumo((c) => c && { ...c, cuotaMensual: n }); }, "Cuota fijada");
   const guardarTriage = (t: Triage) => accion(async () => { await apiFetch(`/admin/clientes/${id}/triage`, { method: "PUT", body: JSON.stringify(t) }); setTriage(t); }, "Triage guardado");
   const nuevaLlave = () => accion(async () => { const r = await apiFetch<{ token: string }>(`/admin/clientes/${id}/llaves`, { method: "POST", body: JSON.stringify({ nombre: "Panel " + new Date().toISOString().slice(0, 10) }) }); setLlave(r.token); }, "Llave creada");
+  const guardarLimite = () => accion(async () => { const n = Number(lim); await apiFetch(`/admin/clientes/${id}/limite-usuarios`, { method: "PUT", body: JSON.stringify({ limite: n }) }); setUsuarios((u) => u && { ...u, limite: n }); }, "Tope de usuarios fijado");
+  const crearUsuario = () => accion(async () => {
+    await apiFetch(`/admin/clientes/${id}/usuarios`, { method: "POST", body: JSON.stringify(nu) });
+    setNu({ email: "", nombre: "", password: "" }); await recargarUsuarios(id);
+  }, "Admin del cliente creado");
 
   const pct = consumo && consumo.cuotaMensual > 0 ? Math.min(100, Math.round((consumo.total / consumo.cuotaMensual) * 100)) : 0;
 
@@ -114,6 +128,54 @@ export default function ClienteDetalle() {
             <Input type="number" value={cuota} onChange={(e) => setCuota(e.target.value)} placeholder="Tope mensual" className="sm:flex-1" />
             <Button variant="secondary" onClick={guardarCuota}>Fijar cuota</Button>
           </div>
+        </CardContent></Card>
+
+        {/* Usuarios y tope — la jerarquía del negocio hecha visible */}
+        <Card><CardContent className="pt-5">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-xs font-black uppercase tracking-widest text-muted-foreground">Usuarios y accesos</div>
+            {usuarios && <span className="text-[13px] tabular-nums text-muted-foreground">{usuarios.usados} / {usuarios.limite}</span>}
+          </div>
+          <p className="text-[12px] text-muted-foreground mb-3">La <b className="text-foreground">plataforma</b> fija el tope. El <b className="text-foreground">admin del cliente</b> crea y da permisos a sus usuarios dentro de ese tope.</p>
+
+          {/* Tope (lo fija plataforma) */}
+          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+            <Input type="number" value={lim} onChange={(e) => setLim(e.target.value)} placeholder="Tope de usuarios" className="sm:flex-1" />
+            <Button variant="secondary" onClick={guardarLimite}>Fijar tope</Button>
+          </div>
+
+          {/* Lista de usuarios del cliente */}
+          <div className="flex flex-col gap-1.5 mb-4">
+            {usuarios && usuarios.usuarios.length === 0 && <div className="text-[13px] text-muted-foreground">Aún sin usuarios. Crea el primer administrador del cliente abajo.</div>}
+            {usuarios?.usuarios.map((u) => (
+              <div key={u.id} className="flex items-center gap-2 justify-between rounded-md bg-secondary/50 px-3 py-2">
+                <div className="min-w-0">
+                  <div className="text-[13px] font-medium truncate">{u.nombre || u.email}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{u.email}</div>
+                </div>
+                <Badge rol={u.rol === "admin_cliente" ? "senal" : "neutro"}>{u.rol === "admin_cliente" ? "Admin" : u.rol}</Badge>
+              </div>
+            ))}
+          </div>
+
+          {/* Alta del admin del cliente (respeta el tope) */}
+          {usuarios && usuarios.usados >= usuarios.limite ? (
+            <div className="text-[12px] rounded-md px-3 py-2" style={{ background: "hsl(var(--aviso)/0.1)", color: "hsl(var(--aviso))" }}>
+              Tope alcanzado. Sube el límite para crear más usuarios.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2 border-t border-border pt-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Nuevo administrador del cliente</div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input value={nu.nombre} onChange={(e) => setNu({ ...nu, nombre: e.target.value })} placeholder="Nombre" className="sm:flex-1" />
+                <Input type="email" value={nu.email} onChange={(e) => setNu({ ...nu, email: e.target.value })} placeholder="Email" className="sm:flex-1" />
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input type="password" value={nu.password} onChange={(e) => setNu({ ...nu, password: e.target.value })} placeholder="Contraseña (mín. 10)" className="sm:flex-1" />
+                <Button onClick={crearUsuario} disabled={nu.email.length < 3 || nu.password.length < 10 || nu.nombre.length < 2}>Crear admin</Button>
+              </div>
+            </div>
+          )}
         </CardContent></Card>
 
         {/* Triage IA */}

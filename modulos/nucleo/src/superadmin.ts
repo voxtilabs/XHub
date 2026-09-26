@@ -41,6 +41,36 @@ export async function cuotaDe(c: PoolClient, clienteId: string, porDefecto = 500
   return r.rowCount ? Number(r.rows[0].limite_mensual) : porDefecto;
 }
 
+/** Tope de usuarios que la plataforma le concede al cliente (override del superadmin). */
+export async function fijarLimiteUsuarios(c: PoolClient, clienteId: string, limite: number): Promise<void> {
+  await c.query(
+    `insert into plataforma.limite_usuarios (cliente_id, limite) values ($1,$2)
+       on conflict (cliente_id) do update set limite=excluded.limite, fijado_en=now()`,
+    [clienteId, limite]);
+}
+
+/** Límite efectivo de usuarios: override si existe, o el default del plan. */
+export async function limiteUsuariosDe(c: PoolClient, clienteId: string, porDefecto = 5): Promise<number> {
+  const r = await c.query("select limite from plataforma.limite_usuarios where cliente_id=$1", [clienteId]);
+  return r.rowCount ? Number(r.rows[0].limite) : porDefecto;
+}
+
+export interface UsuarioCliente { id: string; email: string; nombre: string; rol: string; creadoEn: string; }
+
+/** Usuarios (admins/usuarios) asociados a un cliente. Lee la tabla de Better Auth. */
+export async function listarUsuariosCliente(c: PoolClient, clienteId: string): Promise<UsuarioCliente[]> {
+  const r = await c.query(
+    `select id, email, coalesce(name,'') as nombre, coalesce(rol,'usuario') as rol, "createdAt"
+       from "user" where "clienteId"=$1 order by "createdAt"`, [clienteId]);
+  return r.rows.map((x) => ({ id: x.id, email: x.email, nombre: x.nombre, rol: x.rol, creadoEn: x.createdAt }));
+}
+
+/** Cuántos usuarios tiene ya el cliente (para hacer respetar el tope). */
+export async function contarUsuariosCliente(c: PoolClient, clienteId: string): Promise<number> {
+  const r = await c.query(`select count(*)::int as n from "user" where "clienteId"=$1`, [clienteId]);
+  return r.rows[0].n as number;
+}
+
 export interface ClienteAdmin { id: string; nombre: string; estado: string; modulos: string[]; }
 
 /** Lista de clientes para el superadmin, con sus módulos encendidos. */
