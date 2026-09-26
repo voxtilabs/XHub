@@ -95,7 +95,7 @@ export default function Bandeja() {
             <h1 className="text-2xl font-semibold tracking-tight">Bandeja</h1>
             <div className="text-muted-foreground text-sm mt-0.5">3 sin asignar · <span className="text-[hsl(var(--critico))]">1 con SLA vencido</span></div>
           </div>
-          <Button size="sm">+ Nuevo ticket</Button>
+          <Button size="sm" onClick={() => (location.href = "/tickets/nuevo")}>+ Nuevo ticket</Button>
         </div>
 
         {/* barra de herramientas */}
