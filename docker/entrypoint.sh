@@ -19,8 +19,7 @@ case "${XHUB_PROCESO:-api}" in
     ;;
   workers)
     echo "[xhub] proceso: workers"
-    echo "[xhub] workers todavía no tiene app propia (los consumidores se despachan aún a mano); inerte" >&2
-    exec sleep infinity
+    exec "$TSX" apps/workers/src/main.ts
     ;;
   panel)
     echo "[xhub] proceso: panel"

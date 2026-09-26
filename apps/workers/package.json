@@ -1,0 +1,27 @@
+{
+  "name": "@xhub/workers",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/main.ts",
+  "scripts": {
+    "lint": "echo ok",
+    "typecheck": "tsc --noEmit",
+    "build": "echo ok",
+    "test": "vitest run",
+    "dev": "tsx watch src/main.ts"
+  },
+  "dependencies": {
+    "@xhub/core": "workspace:*",
+    "@xhub/db": "workspace:*",
+    "@xhub/modulo-nucleo": "workspace:*",
+    "@xhub/modulo-tickets": "workspace:*",
+    "@xhub/sdk-modulo": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.0.0",
+    "pg": "^8.13.0",
+    "@types/pg": "^8.11.0"
+  }
+}
