@@ -116,9 +116,10 @@ export default function Superadmin() {
             {clientes.map((cl) => (
               <Card key={cl.id}><CardContent className="pt-5 pb-5">
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="font-medium">{cl.nombre}</div>
+                  <a href={`/superadmin/cliente?id=${cl.id}`} className="font-medium hover:text-[hsl(var(--senal))]">{cl.nombre}</a>
                   <Badge rol={estRol(cl.estado)}>{cl.estado.replace("_", " ")}</Badge>
                   <div className="flex-1" />
+                  <a href={`/superadmin/cliente?id=${cl.id}`} className="text-xs text-[hsl(var(--senal))] hover:underline">Gestionar →</a>
                   <Button variant="secondary" size="sm" onClick={() => nuevaLlave(cl)}>+ Llave API</Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-3">
