@@ -50,7 +50,8 @@ export function cargarDe(dir: string): Migracion[] {
       const id = f.replace(/\.sql$/, "");
       const modulo = id.split("_")[1] ?? "sin-modulo";
       const dep = sql.match(/^--\s*depende:\s*(.+)$/m);
-      const depende = dep ? dep[1].split(",").map((s) => s.trim()).filter(Boolean) : [];
+      const depende = (dep ? dep[1].split(",").map((s) => s.trim()).filter(Boolean) : [])
+        .filter((d) => d !== modulo); // un módulo no depende de sí mismo
       return { id, modulo, depende, sql };
     });
 }
