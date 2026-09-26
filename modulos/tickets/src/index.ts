@@ -4,6 +4,7 @@ import type { DefinicionModulo, NucleoApi } from "@xhub/sdk-modulo";
 import { politicaSla, sumarMinutosHabiles } from "./sla.js";
 import { type Agente, filtroVisibilidad, permisosDe } from "./roles.js";
 import { analizarUrgencia } from "./urgencia.js";
+import { resumirConversacionIA } from "@xhub/ia";
 
 export type EstadoTicket = "nuevo" | "abierto" | "pendiente" | "resuelto" | "cerrado";
 export type Prioridad = "baja" | "media" | "alta" | "urgente";
@@ -91,9 +92,11 @@ export function crearModuloTickets(nucleo: NucleoApi) {
       const cid = await clienteDe(c);
       let texto = resumen;
       if (!texto) {
-        const m = await c.query("select cuerpo from tickets_mensajes where cliente_id=$1 and ticket_id=$2 and interno=false order by seq asc", [cid, ticketId]);
+        const m = await c.query("select autor_tipo, cuerpo from tickets_mensajes where cliente_id=$1 and ticket_id=$2 and interno=false order by seq asc", [cid, ticketId]);
         const n = m.rowCount ?? 0;
-        texto = n === 0 ? "Sin mensajes aún." : `${n} mensaje(s). Motivo inicial: ${m.rows[0]?.cuerpo?.slice(0, 120) ?? ""}`;
+        // IA-first (GLM si la llave está configurada), con fallback determinista.
+        const ia = n > 0 ? await resumirConversacionIA(m.rows.map((x) => ({ autor: x.autor_tipo, texto: x.cuerpo }))) : null;
+        texto = ia ?? (n === 0 ? "Sin mensajes aún." : `${n} mensaje(s). Motivo inicial: ${m.rows[0]?.cuerpo?.slice(0, 120) ?? ""}`);
       }
       await c.query("update tickets set resumen=$2, actualizado_en=now() where id=$1 and cliente_id=$3", [ticketId, texto, cid]);
       return texto;
