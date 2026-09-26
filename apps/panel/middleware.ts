@@ -9,7 +9,7 @@ export function middleware(req: NextRequest) {
   const tieneSesion = req.cookies.getAll().some((c) => c.name.includes("session_token"));
   const enLogin = req.nextUrl.pathname === "/login";
   if (!tieneSesion && !enLogin) return NextResponse.redirect(new URL("/login", req.url));
-  if (tieneSesion && enLogin) return NextResponse.redirect(new URL("/tickets", req.url));
+  if (tieneSesion && enLogin) return NextResponse.redirect(new URL("/superadmin", req.url));
   return NextResponse.next();
 }
 
