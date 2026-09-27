@@ -96,4 +96,23 @@ export function registrarRutasCliente(app: FastifyInstance): void {
       return { id, permisos };
     });
   }, { prefix: "/cliente" });
+
+  // Consola de CUALQUIER usuario del cliente (agente o admin): su identidad + permisos.
+  // El panel la usa para GOBERNAR la navegación y el acceso POR PERMISO (no por rol):
+  // apagar "bandeja.ver" a un agente le quita la bandeja en la siguiente carga. (§4, ley 4)
+  app.register(async (yo) => {
+    yo.get("/yo", async (req) => {
+      let sesion: Awaited<ReturnType<typeof auth.api.getSession>> = null;
+      try { sesion = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) }); } catch { sesion = null; }
+      const u = sesion?.user as { id?: string; email?: string; name?: string; rol?: string; clienteId?: string } | undefined;
+      if (!u?.id) throw new ErrorApi("NO_AUTENTICADO", "Sesión requerida");
+      const esAdmin = u.rol === "admin_cliente";
+      // El admin de cliente tiene acceso total: recibe todas las claves del catálogo.
+      const permisos = esAdmin
+        ? CATALOGO_PERMISOS.map((p) => p.clave)
+        : await conPlataforma((c) => permisosDe(c, u.id!));
+      return { id: u.id, email: u.email ?? null, nombre: u.name ?? null, rol: u.rol ?? "usuario", clienteId: u.clienteId ?? null, esAdmin, permisos };
+    });
+  }, { prefix: "/cliente" });
+
 }

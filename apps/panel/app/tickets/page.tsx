@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AppShell } from "@/components/app-shell";
+import { RequierePermiso } from "@/components/requiere-permiso";
 
 type Est = "nuevo" | "abierto" | "pendiente" | "resuelto" | "cerrado";
 type Pri = "baja" | "media" | "alta" | "urgente";
@@ -84,6 +85,7 @@ export default function Bandeja() {
     <main className="min-h-screen">
       <AppShell />
 
+      <RequierePermiso permiso="bandeja.ver">
       <div className="max-w-6xl mx-auto p-4 sm:p-7">
         <div className="flex items-center justify-between mb-5">
           <div>
@@ -213,6 +215,7 @@ export default function Bandeja() {
         </div>
       </div>
 
+      </RequierePermiso>
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-pill border border-border bg-secondary text-sm shadow-2xl">
           <span className="h-2 w-2 rounded-full flex-none" style={{ background: `hsl(var(${toast.ok ? "--exito" : "--critico"}))`, boxShadow: `0 0 8px hsl(var(${toast.ok ? "--exito" : "--critico"}))` }} />
