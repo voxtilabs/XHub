@@ -5,6 +5,7 @@ import { conCliente, conPlataforma } from "@xhub/db";
 import { permisosDe, CATALOGO_PERMISOS } from "@xhub/modulo-nucleo";
 import { crearModuloTickets, contextoOmnicanal, reincidencia } from "@xhub/modulo-tickets";
 import { nucleo } from "../nucleo.js";
+import { enviarCorreo } from "../correo.js";
 import { auth } from "../auth.js";
 
 /**
@@ -97,14 +98,36 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
       return { sugerencia };
     });
 
-    // Responder (mensaje PÚBLICO del agente) — marca el hito de primera respuesta (SLA).
+    // Responder (mensaje PÚBLICO del agente) — marca el hito de primera respuesta (SLA)
+    // y, si la persona tiene email, envía la respuesta por correo con la identidad del
+    // cliente (nombre de marca + correo de soporte) vía el SMTP único de plataforma.
     r.post("/tickets/:id/responder", async (req) => {
       const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
       const { id } = req.params as { id: string };
       const b = req.body as { cuerpo?: string };
-      if (!b?.cuerpo?.trim()) throw new ErrorApi("VALIDACION", "El mensaje no puede ir vacío");
-      await conCliente(ctx.clienteId, (c) => T.responder(c, id, ctx.usuarioId, b.cuerpo!.trim()));
-      return { ok: true };
+      const cuerpo = b?.cuerpo?.trim();
+      if (!cuerpo) throw new ErrorApi("VALIDACION", "El mensaje no puede ir vacío");
+      // 1) Escribir la respuesta y reunir destinatario + identidad de envío (dentro de la tx).
+      const datos = await conCliente(ctx.clienteId, async (c) => {
+        await T.responder(c, id, ctx.usuarioId, cuerpo);
+        const tk = await c.query("select numero::text as numero, persona_id, asunto from tickets where id=$1", [id]);
+        if (tk.rowCount === 0) return null;
+        const t = tk.rows[0];
+        const em = await c.query("select identificador from nucleo.identidades where persona_id=$1 and canal='email' limit 1", [t.persona_id]);
+        const marca = await c.query("select nombre_marca, correo_soporte from plataforma.clientes_marca where cliente_id=$1", [ctx.clienteId]);
+        return {
+          destinatario: (em.rows[0]?.identificador as string | undefined) ?? null,
+          numero: t.numero as string, asunto: t.asunto as string,
+          fromName: (marca.rows[0]?.nombre_marca as string | undefined) || "Soporte",
+          fromEmail: (marca.rows[0]?.correo_soporte as string | undefined) || process.env.XHUB_SMTP_FROM || "no-reply@voxtilabs.cl",
+        };
+      });
+      // 2) Enviar FUERA de la transacción (regla nº7). Degrada con motivo si no se puede.
+      let correo: { enviado: boolean; motivo?: string } = { enviado: false, motivo: "la persona no tiene email" };
+      if (datos?.destinatario) {
+        correo = await enviarCorreo({ to: datos.destinatario, fromName: datos.fromName, fromEmail: datos.fromEmail, subject: `Re: [#${datos.numero}] ${datos.asunto}`, text: cuerpo, replyTo: datos.fromEmail });
+      }
+      return { ok: true, correo };
     });
 
     // Nota INTERNA (no la ve la persona) — la conversación privada del equipo.

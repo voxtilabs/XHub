@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { hexAHslTriplet } from "@/lib/marca";
 
-type M = { nombre_marca: string | null; logo_url: string | null; color_primario: string | null; color_acento: string | null };
+type M = { nombre_marca: string | null; logo_url: string | null; color_primario: string | null; color_acento: string | null; correo_soporte: string | null };
 
 export function EditorMarca({ clienteId }: { clienteId: string }) {
-  const [m, setM] = useState<M>({ nombre_marca: null, logo_url: null, color_primario: null, color_acento: null });
+  const [m, setM] = useState<M>({ nombre_marca: null, logo_url: null, color_primario: null, color_acento: null, correo_soporte: null });
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -29,7 +29,7 @@ export function EditorMarca({ clienteId }: { clienteId: string }) {
     setGuardando(true); setErr(null); setMsg(null);
     try {
       await apiFetch(`/admin/clientes/${clienteId}/marca`, { method: "PUT", body: JSON.stringify({
-        nombreMarca: m.nombre_marca, logoUrl: m.logo_url, colorPrimario: m.color_primario, colorAcento: m.color_acento,
+        nombreMarca: m.nombre_marca, logoUrl: m.logo_url, colorPrimario: m.color_primario, colorAcento: m.color_acento, correoSoporte: m.correo_soporte,
       }) });
       setMsg("Marca guardada · el cliente la verá al recargar");
     } catch (e) { setErr((e as Error).message); } finally { setGuardando(false); }
@@ -40,6 +40,10 @@ export function EditorMarca({ clienteId }: { clienteId: string }) {
       <div className="flex flex-col gap-2.5">
         <label className="block"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Nombre de marca</span>
           <Input value={m.nombre_marca ?? ""} onChange={(e) => set("nombre_marca")(e.target.value || null)} placeholder="p.ej. Retail Andes" className="mt-1" />
+        </label>
+        <label className="block"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Correo de soporte (From)</span>
+          <Input type="email" value={m.correo_soporte ?? ""} onChange={(e) => set("correo_soporte")(e.target.value || null)} placeholder="soporte@cliente.cl" className="mt-1" />
+          <span className="block text-[10px] text-muted-foreground mt-1">Las respuestas por email salen con este remitente (SMTP único de plataforma).</span>
         </label>
         <div className="flex gap-4">
           <label className="block"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Primario</span>

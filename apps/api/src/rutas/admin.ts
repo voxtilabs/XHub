@@ -159,22 +159,24 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
     admin.get("/clientes/:id/marca", async (req) => {
       const { id } = req.params as { id: string };
       return conPlataforma(async (c) => {
-        const r = await c.query("select cliente_id, nombre_marca, logo_url, color_primario, color_acento from plataforma.clientes_marca where cliente_id=$1", [id]);
-        return r.rows[0] ?? { cliente_id: id, nombre_marca: null, logo_url: null, color_primario: null, color_acento: null };
+        const r = await c.query("select cliente_id, nombre_marca, logo_url, color_primario, color_acento, correo_soporte from plataforma.clientes_marca where cliente_id=$1", [id]);
+        return r.rows[0] ?? { cliente_id: id, nombre_marca: null, logo_url: null, color_primario: null, color_acento: null, correo_soporte: null };
       });
     });
     admin.put("/clientes/:id/marca", async (req) => {
       const { id } = req.params as { id: string };
-      const b = req.body as { nombreMarca?: string | null; logoUrl?: string | null; colorPrimario?: string | null; colorAcento?: string | null };
+      const b = req.body as { nombreMarca?: string | null; logoUrl?: string | null; colorPrimario?: string | null; colorAcento?: string | null; correoSoporte?: string | null };
       const hex = (v?: string | null) => { if (v == null || v === "") return null; if (!/^#[0-9a-fA-F]{6}$/.test(v)) throw new ErrorApi("VALIDACION", `Color inválido: ${v} (usa #rrggbb)`); return v.toLowerCase(); };
       if (b.logoUrl && b.logoUrl.length > 200000) throw new ErrorApi("VALIDACION", "El logo es demasiado grande (máx ~150KB). Usa un SVG/PNG chico o una URL.");
+      const correo = b.correoSoporte?.trim() || null;
+      if (correo && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) throw new ErrorApi("VALIDACION", `Correo de soporte inválido: ${correo}`);
       const nombre = b.nombreMarca?.trim() || null, logo = b.logoUrl?.trim() || null, prim = hex(b.colorPrimario), acc = hex(b.colorAcento);
       await conPlataforma((c) => c.query(
-        `insert into plataforma.clientes_marca (cliente_id, nombre_marca, logo_url, color_primario, color_acento, actualizado_en)
-           values ($1,$2,$3,$4,$5, now())
-         on conflict (cliente_id) do update set nombre_marca=$2, logo_url=$3, color_primario=$4, color_acento=$5, actualizado_en=now()`,
-        [id, nombre, logo, prim, acc]));
-      return { cliente_id: id, nombre_marca: nombre, logo_url: logo, color_primario: prim, color_acento: acc };
+        `insert into plataforma.clientes_marca (cliente_id, nombre_marca, logo_url, color_primario, color_acento, correo_soporte, actualizado_en)
+           values ($1,$2,$3,$4,$5,$6, now())
+         on conflict (cliente_id) do update set nombre_marca=$2, logo_url=$3, color_primario=$4, color_acento=$5, correo_soporte=$6, actualizado_en=now()`,
+        [id, nombre, logo, prim, acc, correo]));
+      return { cliente_id: id, nombre_marca: nombre, logo_url: logo, color_primario: prim, color_acento: acc, correo_soporte: correo };
     });
 
     // Explorador de auditoría (#79): listado filtrado + integridad de la cadena.
