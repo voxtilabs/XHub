@@ -44,7 +44,41 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
       });
     });
 
-    // Mover de etapa (kanban).
+    // Detalle de una oportunidad + sus actividades.
+    r.get("/oportunidades/:id", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "crm.ver");
+      const { id } = req.params as { id: string };
+      return conCliente(ctx.clienteId, async (c) => {
+        const o = (await c.query(
+          `select o.id, o.titulo, o.valor::int as valor, o.etapa, o.estado, o.persona_id, o.creado_en,
+                  (select identificador from nucleo.identidades i where i.persona_id=o.persona_id and i.canal='email' limit 1) as persona_email
+             from crm_oportunidades o where o.id=$1`, [id])).rows[0];
+        if (!o) throw new ErrorApi("NO_ENCONTRADO", "Oportunidad no encontrada");
+        const actividades = (await c.query("select id, tipo, cuerpo, hecho, autor, creado_en from crm_actividades where oportunidad_id=$1 order by creado_en desc", [id])).rows;
+        return { ...o, actividades, puede: { gestionar: ctx.esAdmin || ctx.permisos.includes("crm.gestionar") } };
+      });
+    });
+    // Agregar actividad (nota / llamada / reunión / tarea).
+    r.post("/oportunidades/:id/actividades", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "crm.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { tipo?: string; cuerpo?: string };
+      const tipo = ["nota", "llamada", "reunion", "tarea"].includes(b?.tipo ?? "") ? b!.tipo! : "nota";
+      if (!b?.cuerpo?.trim()) throw new ErrorApi("VALIDACION", "La actividad no puede ir vacía");
+      return conCliente(ctx.clienteId, async (c) => (await c.query(
+        "insert into crm_actividades (cliente_id, oportunidad_id, tipo, cuerpo, autor) values ($1,$2,$3,$4,$5) returning id, tipo, cuerpo, hecho, autor, creado_en",
+        [ctx.clienteId, id, tipo, b.cuerpo!.trim(), ctx.usuarioId])).rows[0]);
+    });
+    // Marcar/desmarcar una tarea como hecha.
+    r.put("/oportunidades/:id/actividades/:aid/hecho", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "crm.gestionar");
+      const { aid } = req.params as { aid: string };
+      const b = req.body as { hecho?: boolean };
+      await conCliente(ctx.clienteId, (c) => c.query("update crm_actividades set hecho=$2 where id=$1", [aid, b?.hecho ?? true]));
+      return { ok: true, hecho: b?.hecho ?? true };
+    });
+
+    // Mover de etapa (kanban).    // Mover de etapa (kanban).
     r.put("/oportunidades/:id/etapa", async (req) => {
       const ctx = await guard(req); exigir(ctx, "crm.gestionar");
       const { id } = req.params as { id: string };

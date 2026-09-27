@@ -7,3 +7,8 @@ export const getOportunidades = () => apiFetch<Embudo>("/cliente/oportunidades")
 export const crearOportunidad = (b: { canal: string; identidad: string; titulo: string; valor?: number; etapa?: string }) => apiFetch<Oportunidad>("/cliente/oportunidades", { method: "POST", body: JSON.stringify(b) });
 export const moverEtapa = (id: string, etapa: string) => apiFetch(`/cliente/oportunidades/${id}/etapa`, { method: "PUT", body: JSON.stringify({ etapa }) });
 export const cerrarOportunidad = (id: string, estado: "ganada" | "perdida") => apiFetch(`/cliente/oportunidades/${id}/cerrar`, { method: "PUT", body: JSON.stringify({ estado }) });
+export type Actividad = { id: string; tipo: string; cuerpo: string; hecho: boolean; autor: string | null; creado_en: string };
+export type OportunidadDetalle = Oportunidad & { creado_en: string; actividades: Actividad[]; puede: { gestionar: boolean } };
+export const getOportunidad = (id: string) => apiFetch<OportunidadDetalle>(`/cliente/oportunidades/${id}`);
+export const agregarActividad = (id: string, tipo: string, cuerpo: string) => apiFetch<Actividad>(`/cliente/oportunidades/${id}/actividades`, { method: "POST", body: JSON.stringify({ tipo, cuerpo }) });
+export const marcarHecho = (id: string, aid: string, hecho: boolean) => apiFetch(`/cliente/oportunidades/${id}/actividades/${aid}/hecho`, { method: "PUT", body: JSON.stringify({ hecho }) });
