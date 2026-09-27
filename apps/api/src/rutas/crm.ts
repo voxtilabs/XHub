@@ -95,6 +95,31 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
       });
     });
 
+    // INSIGHTS: forecast ponderado, valor por etapa, ganadas/perdidas, tasa de conversión.
+    r.get("/crm/insights", async (req) => {
+      const ctx = await ctxGuard(req, "crm.ver");
+      return conCliente(ctx.clienteId, async (c) => {
+        const plId = (req.query as { pipeline?: string }).pipeline || await asegurarPipeline(c, ctx.clienteId);
+        const porEtapa = (await c.query(
+          `select e.nombre, e.orden, e.probabilidad, count(o.id)::int n, coalesce(sum(o.valor),0)::int valor
+             from crm_etapas e left join crm_oportunidades o on o.etapa_id=e.id and o.estado='abierta'
+            where e.pipeline_id=$1 group by e.id, e.nombre, e.orden, e.probabilidad order by e.orden asc`, [plId])).rows;
+        const fc = (await c.query("select coalesce(sum(valor * coalesce(probabilidad, (select probabilidad from crm_etapas e where e.id=o.etapa_id), 0) / 100.0),0)::int forecast from crm_oportunidades o where estado='abierta' and pipeline_id=$1", [plId])).rows[0];
+        const g = (await c.query("select count(*)::int n, coalesce(sum(valor),0)::int v from crm_oportunidades where estado='ganada' and pipeline_id=$1", [plId])).rows[0];
+        const p = (await c.query("select count(*)::int n from crm_oportunidades where estado='perdida' and pipeline_id=$1", [plId])).rows[0];
+        const leads = (await c.query("select count(*)::int n from crm_leads where estado='activo'")).rows[0];
+        const cerradas = g.n + p.n;
+        return {
+          forecast: fc.forecast,
+          porEtapa,
+          ganadas: { n: g.n, valor: g.v },
+          perdidas: { n: p.n },
+          tasaConversion: cerradas > 0 ? Math.round((g.n / cerradas) * 100) : 0,
+          leadsActivos: leads.n,
+        };
+      });
+    });
+
     // Detalle + actividades.
     r.get("/oportunidades/:id", async (req) => {
       const ctx = await ctxGuard(req, "crm.ver");

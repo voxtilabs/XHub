@@ -25,3 +25,5 @@ export const getLeads = () => apiFetch<{ datos: Lead[] }>("/cliente/crm/leads");
 export const crearLead = (b: { canal: string; identidad: string; titulo: string; valor?: number; moneda?: string; origen?: string }) => apiFetch<Lead>("/cliente/crm/leads", { method: "POST", body: JSON.stringify(b) });
 export const convertirLead = (id: string) => apiFetch<{ ok: boolean; dealId: string }>(`/cliente/crm/leads/${id}/convertir`, { method: "POST" });
 export const archivarLead = (id: string) => apiFetch(`/cliente/crm/leads/${id}/archivar`, { method: "PUT" });
+export type Insights = { forecast: number; porEtapa: { nombre: string; probabilidad: number; n: number; valor: number }[]; ganadas: { n: number; valor: number }; perdidas: { n: number }; tasaConversion: number; leadsActivos: number };
+export const getInsights = () => apiFetch<Insights>("/cliente/crm/insights");
