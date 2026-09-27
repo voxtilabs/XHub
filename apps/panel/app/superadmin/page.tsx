@@ -15,6 +15,7 @@ type Panorama = {
   ia: { total: number; tokensPrompt: number; tokensSalida: number };
   porCliente: { id: string; abiertos: number; vencidos: number; total: number }[];
 };
+type Plan = { id: string; nombre: string; modulos: string[]; limiteUsuarios: number; cuotaMensual: number };
 const MODULOS: { k: string; nombre: string }[] = [
   { k: "tickets", nombre: "xTickets" },
   { k: "crm", nombre: "xCRM" },
@@ -31,12 +32,15 @@ export default function Superadmin() {
   const [llave, setLlave] = useState<{ cliente: string; token: string } | null>(null);
   const [marcaAbierta, setMarcaAbierta] = useState<string | null>(null);
   const [pan, setPan] = useState<Panorama | null>(null);
+  const [planes, setPlanes] = useState<Plan[]>([]);
+  const [pf, setPf] = useState({ nombre: "", tickets: true, crm: false, limiteUsuarios: 5, cuotaMensual: 100000 });
 
   async function cargar() {
     setCargando(true); setError(null);
     try {
       setClientes((await apiFetch<{ datos: Cliente[] }>("/admin/clientes")).datos);
       apiFetch<Panorama>("/admin/panorama").then(setPan).catch(() => {});
+      apiFetch<{ datos: Plan[] }>("/admin/planes").then((r) => setPlanes(r.datos)).catch(() => {});
     }
     catch (e) { setError((e as Error).message); }
     finally { setCargando(false); }
@@ -55,6 +59,24 @@ export default function Superadmin() {
     setClientes((cs) => cs.map((c) => c.id === cl.id ? { ...c, modulos: encendido ? [...c.modulos, mod] : c.modulos.filter((m) => m !== mod) } : c));
     try { await apiFetch(`/admin/clientes/${cl.id}/modulos/${mod}`, { method: "PUT", body: JSON.stringify({ encendido }) }); }
     catch (e) { setError((e as Error).message); await cargar(); }
+  }
+  async function crearPlan() {
+    if (pf.nombre.trim().length < 2) return;
+    const modulos = [pf.tickets ? "tickets" : null, pf.crm ? "crm" : null].filter(Boolean) as string[];
+    try {
+      await apiFetch("/admin/planes", { method: "POST", body: JSON.stringify({ nombre: pf.nombre.trim(), modulos, limiteUsuarios: Number(pf.limiteUsuarios), cuotaMensual: Number(pf.cuotaMensual) }) });
+      setPf({ nombre: "", tickets: true, crm: false, limiteUsuarios: 5, cuotaMensual: 100000 });
+      const r = await apiFetch<{ datos: Plan[] }>("/admin/planes"); setPlanes(r.datos);
+    } catch (e) { setError((e as Error).message); }
+  }
+  async function borrarPlan(pid: string) {
+    try { await apiFetch(`/admin/planes/${pid}`, { method: "DELETE" }); setPlanes((ps) => ps.filter((p) => p.id !== pid)); }
+    catch (e) { setError((e as Error).message); }
+  }
+  async function aplicarPlan(cl: Cliente, planId: string) {
+    if (!planId) return;
+    try { await apiFetch(`/admin/clientes/${cl.id}/aplicar-plan`, { method: "POST", body: JSON.stringify({ planId }) }); await cargar(); }
+    catch (e) { setError((e as Error).message); }
   }
   async function entrarSoporte(cl: Cliente) {
     const motivo = window.prompt(`Motivo del acceso de soporte a "${cl.nombre}" (queda auditado):`);
@@ -94,6 +116,30 @@ export default function Superadmin() {
             </Card>
           ))}
         </div>
+
+        {/* Planes (plantillas de suscripción) */}
+        <Card className="mb-6"><CardContent className="pt-6">
+          <div className="text-xs font-black tracking-widest uppercase text-muted-foreground mb-3">Planes</div>
+          {planes.length > 0 && (
+            <div className="flex flex-col gap-1.5 mb-4">
+              {planes.map((p) => (
+                <div key={p.id} className="flex items-center gap-2 text-[13px] rounded-md bg-secondary/40 px-3 py-1.5">
+                  <span className="font-medium">{p.nombre}</span>
+                  <span className="text-muted-foreground">· {p.modulos.length ? p.modulos.join(", ") : "sin módulos"} · {p.limiteUsuarios} usuarios · {p.cuotaMensual.toLocaleString("es-CL")} API/mes</span>
+                  <button onClick={() => borrarPlan(p.id)} className="ml-auto text-muted-foreground hover:text-[hsl(var(--critico))] text-xs">eliminar</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-end flex-wrap">
+            <Input value={pf.nombre} onChange={(e) => setPf({ ...pf, nombre: e.target.value })} placeholder="Nombre del plan (ej: Pro)" className="sm:flex-1 min-w-[140px]" />
+            <label className="flex items-center gap-1.5 text-[13px]"><input type="checkbox" checked={pf.tickets} onChange={(e) => setPf({ ...pf, tickets: e.target.checked })} /> xTickets</label>
+            <label className="flex items-center gap-1.5 text-[13px]"><input type="checkbox" checked={pf.crm} onChange={(e) => setPf({ ...pf, crm: e.target.checked })} /> xCRM</label>
+            <Input type="number" value={pf.limiteUsuarios} onChange={(e) => setPf({ ...pf, limiteUsuarios: Number(e.target.value) })} className="w-24" title="Tope usuarios" />
+            <Input type="number" value={pf.cuotaMensual} onChange={(e) => setPf({ ...pf, cuotaMensual: Number(e.target.value) })} className="w-32" title="Cuota API/mes" />
+            <Button variant="secondary" onClick={crearPlan}>+ Plan</Button>
+          </div>
+        </CardContent></Card>
 
         {/* Crear cliente — REAL, pega a POST /admin/clientes */}
         <Card className="mb-6"><CardContent className="pt-6">
@@ -138,6 +184,13 @@ export default function Superadmin() {
                   <Button variant="secondary" size="sm" onClick={() => entrarSoporte(cl)}>Soporte</Button>
                   <Button variant="secondary" size="sm" onClick={() => setMarcaAbierta(marcaAbierta === cl.id ? null : cl.id)}>Marca</Button>
                   <Button variant="secondary" size="sm" onClick={() => nuevaLlave(cl)}>+ Llave API</Button>
+                  {planes.length > 0 && (
+                    <select defaultValue="" onChange={(e) => { const v = e.target.value; e.currentTarget.value = ""; aplicarPlan(cl, v); }}
+                      className="h-8 rounded-md border border-border bg-background px-2 text-[12px]">
+                      <option value="">Aplicar plan…</option>
+                      {planes.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                    </select>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-3">
                   <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mr-1">Módulos:</span>

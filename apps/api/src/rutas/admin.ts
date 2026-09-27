@@ -123,6 +123,43 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       return { cliente: id, limiteMensual: b.limiteMensual };
     });
 
+    // PLANES (plantillas de suscripción): módulos + tope de usuarios + cuota.
+    admin.get("/planes", async () => ({ datos: await conPlataforma(async (c) =>
+      (await c.query("select id, nombre, modulos, limite_usuarios as \"limiteUsuarios\", cuota_mensual::int as \"cuotaMensual\" from plataforma.planes order by nombre asc")).rows) }));
+    admin.post("/planes", async (req) => {
+      const b = req.body as { nombre?: string; modulos?: string[]; limiteUsuarios?: number; cuotaMensual?: number };
+      const nombre = b?.nombre?.trim();
+      if (!nombre) throw new ErrorApi("VALIDACION", "El plan necesita nombre");
+      const modulos = Array.isArray(b.modulos) ? b.modulos.filter((m) => ["tickets", "crm"].includes(m)) : [];
+      return conPlataforma(async (c) => (await c.query(
+        `insert into plataforma.planes (nombre, modulos, limite_usuarios, cuota_mensual) values ($1,$2,$3,$4)
+           on conflict (nombre) do update set modulos=$2, limite_usuarios=$3, cuota_mensual=$4
+         returning id, nombre, modulos, limite_usuarios as "limiteUsuarios", cuota_mensual::int as "cuotaMensual"`,
+        [nombre, modulos, Math.max(1, Number(b.limiteUsuarios) || 5), Math.max(0, Number(b.cuotaMensual) || 100000)])).rows[0]);
+    });
+    admin.delete("/planes/:id", async (req) => {
+      const { id } = req.params as { id: string };
+      await conPlataforma((c) => c.query("update plataforma.clientes set plan_id=null where plan_id=$1", [id]).then(() => c.query("delete from plataforma.planes where id=$1", [id])));
+      return { ok: true };
+    });
+    // Aplicar un plan a un cliente: enciende/apaga módulos, fija tope y cuota. Auditado.
+    admin.post("/clientes/:id/aplicar-plan", async (req) => {
+      const { id } = req.params as { id: string };
+      const b = req.body as { planId?: string };
+      if (!b?.planId) throw new ErrorApi("VALIDACION", "Falta el plan");
+      const res = await conPlataforma(async (c) => {
+        const p = (await c.query("select nombre, modulos, limite_usuarios, cuota_mensual from plataforma.planes where id=$1", [b.planId])).rows[0];
+        if (!p) throw new ErrorApi("NO_ENCONTRADO", "El plan no existe");
+        for (const mod of ["tickets", "crm"]) await fijarEntitlement(c, id, mod, (p.modulos as string[]).includes(mod));
+        await fijarLimiteUsuarios(c, id, p.limite_usuarios);
+        await fijarCuota(c, id, Number(p.cuota_mensual));
+        await c.query("update plataforma.clientes set plan_id=$2 where id=$1", [id, b.planId]);
+        return { plan: p.nombre, modulos: p.modulos, limiteUsuarios: p.limite_usuarios, cuotaMensual: Number(p.cuota_mensual) };
+      });
+      await auditar({ clienteId: id, actorTipo: "plataforma", accion: "plan.aplicado", recurso: "cliente", recursoId: id, resultado: "ok", metadata: { plan: res.plan } });
+      return { ok: true, ...res };
+    });
+
     // PANORAMA: el pulso de TODA la plataforma de un vistazo (vista 360 del superadmin).
     // Agrega por cliente los tickets (abiertos, SLA vencidos, total) recorriendo cada
     // tenant con conCliente (RLS), y el consumo de IA agregado de los últimos 30 días.
