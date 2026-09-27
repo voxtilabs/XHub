@@ -1,0 +1,74 @@
+name: seguridad
+
+# Mejor que lo encuentre una herramienta en cada PR que un tercero en producción (#109).
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"   # lunes 06:00 UTC — escaneo dinámico agendado
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Estático: corre en cada PR y BLOQUEA.
+  estatico:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Secretos (gitleaks) — BLOQUEA si encuentra alguno
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz \
+            | tar -xz gitleaks
+          ./gitleaks detect --source . --no-banner --redact --exit-code 1
+
+      - name: Análisis estático (semgrep) — informe
+        run: |
+          pip install --quiet semgrep
+          semgrep scan --config p/security-audit --config p/typescript \
+            --exclude node_modules --exclude '**/*.test.ts' --sarif -o semgrep.sarif || true
+          echo "Hallazgos semgrep (informe, no bloquea): revisar semgrep.sarif en artefactos."
+
+      - name: Guardar informe estático
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+          if-no-files-found: ignore
+
+  # Dinámico: agendado (NO en cada PR). Escanea staging cuando ya lleva rato arriba,
+  # no justo tras un despliegue (eso mide la app reiniciando y da falsos positivos).
+  dinamico:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Esperar respuesta real de staging antes de escanear
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://api-stagexhub.voxtilabs.cl/salud || true)
+            [ "$code" = "200" ] && { echo "staging responde"; exit 0; }
+            sleep 10
+          done
+          echo "staging no respondió a tiempo"; exit 1
+
+      - name: ZAP baseline contra la superficie pública del API
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: https://api-stagexhub.voxtilabs.cl/openapi.json
+          fail_action: false
+          cmd_options: "-a"
+
+      - name: Archivar informe dinámico
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-baseline
+          path: |
+            report_html.html
+            report_md.md
+          if-no-files-found: ignore
