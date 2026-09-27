@@ -21,11 +21,11 @@ import { auth } from "../auth.js";
  * Autoriza POR PERMISO (ley de la casa nº 6): bandeja.ver para leer, bandeja.gestionar
  * para responder / cambiar estado / crear. El admin de cliente tiene acceso total.
  */
-type CtxT = { clienteId: string; usuarioId: string; rol: string; esAdmin: boolean; permisos: string[] };
+export type CtxT = { clienteId: string; usuarioId: string; rol: string; esAdmin: boolean; permisos: string[] };
 const ESTADOS = new Set(["nuevo", "abierto", "pendiente", "resuelto", "cerrado"]);
 const CANALES = new Set(["telefono", "email", "rut", "xcontact", "webchat", "instagram", "messenger"]);
 
-async function guard(req: FastifyRequest): Promise<CtxT> {
+export async function guard(req: FastifyRequest): Promise<CtxT> {
   let sesion: Awaited<ReturnType<typeof auth.api.getSession>> = null;
   try { sesion = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) }); } catch { sesion = null; }
   const u = sesion?.user as { id?: string; rol?: string; clienteId?: string } | undefined;
@@ -39,7 +39,7 @@ async function guard(req: FastifyRequest): Promise<CtxT> {
   const permisos = esAdmin ? CATALOGO_PERMISOS.map((p) => p.clave) : await conPlataforma((c) => permisosDe(c, u.id!));
   return { clienteId: u.clienteId, usuarioId: u.id, rol: u.rol ?? "usuario", esAdmin, permisos };
 }
-function exigir(ctx: CtxT, permiso: string): void {
+export function exigir(ctx: CtxT, permiso: string): void {
   if (!ctx.esAdmin && !ctx.permisos.includes(permiso)) throw new ErrorApi("SIN_PERMISO", `Requiere el permiso ${permiso}`);
 }
 

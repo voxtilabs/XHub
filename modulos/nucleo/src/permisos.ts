@@ -11,6 +11,8 @@ export const CATALOGO_PERMISOS: PermisoDef[] = [
   { clave: "bandeja.gestionar", nombre: "Gestionar tickets", descripcion: "Asigna, cambia estado y responde tickets", modulo: "tickets" },
   { clave: "ficha360.ver", nombre: "Ver ficha 360", descripcion: "Abre la ficha 360 de una persona (historia omnicanal)", modulo: "nucleo" },
   { clave: "personas.buscar", nombre: "Buscar personas", descripcion: "Busca personas por nombre, teléfono o email", modulo: "nucleo" },
+  { clave: "crm.ver", nombre: "Ver oportunidades", descripcion: "Entra a xCRM y ve el embudo de oportunidades", modulo: "crm" },
+  { clave: "crm.gestionar", nombre: "Gestionar oportunidades", descripcion: "Crea, mueve de etapa y cierra oportunidades", modulo: "crm" },
 ];
 const CLAVES = new Set(CATALOGO_PERMISOS.map((p) => p.clave));
 export const esPermisoValido = (p: string): boolean => CLAVES.has(p);

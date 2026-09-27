@@ -12,6 +12,7 @@ import { registrarRutasAdmin } from "./rutas/admin.js";
 import { registrarRutasCliente } from "./rutas/cliente.js";
 import { registrarConsolaTickets } from "./rutas/consola.js";
 import { registrarCorreoEntrante } from "./rutas/correo-entrante.js";
+import { registrarConsolaCrm } from "./rutas/crm.js";
 import { generarOpenApi } from "./openapi.js";
 
 const orígenesPanel = (process.env.XHUB_CORS_ORIGENES || "http://localhost:3000")
@@ -119,6 +120,7 @@ export function crearApp(): FastifyInstance {
   registrarRutasCliente(app);
   registrarConsolaTickets(app);
   registrarCorreoEntrante(app);
+  registrarConsolaCrm(app);
 
   return app;
 }
