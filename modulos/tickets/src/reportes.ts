@@ -16,7 +16,7 @@ export async function metricas(c: PoolClient, actor: Agente): Promise<MetricasTi
       count(*) filter (where estado in ('nuevo','abierto','pendiente'))::int as abiertos,
       count(*) filter (where asignado_a is null and estado in ('nuevo','abierto','pendiente'))::int as sin_asignar,
       count(*) filter (where sla_incumplido)::int as sla_incumplidos,
-      count(*) filter (where estado='resuelto' and resuelto_en::date = (now() at time zone 'America/Santiago')::date)::int as resueltos_hoy,
+      count(*) filter (where estado='resuelto' and (resuelto_en at time zone 'America/Santiago')::date = (now() at time zone 'America/Santiago')::date)::int as resueltos_hoy,
       round(avg(satisfaccion) filter (where satisfaccion is not null), 2) as csat,
       percentile_cont(0.5) within group (order by extract(epoch from (primera_respuesta_en - creado_en))/60)
         filter (where primera_respuesta_en is not null) as pr_mediana
