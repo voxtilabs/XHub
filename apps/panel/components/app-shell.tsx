@@ -100,11 +100,7 @@ export function AppShell() {
           {marca?.logo_url ? (
             <img src={marca.logo_url} alt={marca.nombre_marca || "logo"} className="h-8 w-auto max-w-[130px] object-contain" />
           ) : (
-            <span className="relative h-8 w-8 rounded-[9px] grid place-items-center text-[13px] font-black text-white shadow-sm"
-              style={{ background: "linear-gradient(135deg, hsl(var(--senal)), hsl(var(--primary)))" }}>
-              {marca?.nombre_marca ? marca.nombre_marca.slice(0, 2).toUpperCase() : "x5"}
-              <span className="absolute inset-0 rounded-[9px] ring-1 ring-white/15" />
-            </span>
+            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: "hsl(var(--primary))", boxShadow: "0 0 12px hsl(var(--primary))" }} />
           )}
           <span className="leading-none">
             <span className="block font-semibold tracking-tight text-[15px]">{marca?.nombre_marca || "xHub"}</span>
