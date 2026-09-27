@@ -22,6 +22,7 @@ const RUTAS: Ruta[] = [
   { href: "/tickets", label: "Bandeja", permiso: "bandeja.ver" },
   { href: "/tickets/metricas", label: "Métricas", permiso: "bandeja.ver" },
   { href: "/oportunidades", label: "Oportunidades", permiso: "crm.ver" },
+  { href: "/organizaciones", label: "Empresas", permiso: "crm.ver" },
   { href: "/persona", label: "Personas", permiso: "ficha360.ver" },
 ];
 

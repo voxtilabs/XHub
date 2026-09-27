@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AppShell } from "@/components/app-shell";
 import { RequierePermiso } from "@/components/requiere-permiso";
-import { getOportunidades, crearOportunidad, moverEtapa, cerrarOportunidad, type Embudo, type Etapa, type Oportunidad } from "@/lib/crm";
+import { getOportunidades, crearOportunidad, moverEtapa, cerrarOportunidad, getOrganizaciones, type Embudo, type Etapa, type Oportunidad, type Organizacion } from "@/lib/crm";
 
 const CANALES = ["email", "telefono", "webchat", "instagram", "messenger"];
 const MONEDAS = ["CLP", "UF", "USD"];
@@ -26,7 +26,8 @@ function Contenido() {
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [nuevo, setNuevo] = useState(false);
-  const [f, setF] = useState({ canal: "email", identidad: "", titulo: "", valor: 0, moneda: "CLP", etapaId: "", cierreEsperado: "" });
+  const [f, setF] = useState({ canal: "email", identidad: "", titulo: "", valor: 0, moneda: "CLP", etapaId: "", cierreEsperado: "", orgId: "" });
+  const [orgs, setOrgs] = useState<Organizacion[]>([]);
   const [drag, setDrag] = useState<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -36,6 +37,7 @@ function Contenido() {
     try { setData(await getOportunidades()); } catch (e) { setError((e as Error).message); } finally { setCargando(false); }
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => { getOrganizaciones().then((r) => setOrgs(r.datos)).catch(() => {}); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 2500); return () => clearTimeout(t); }, [toast]);
 
   const etapas: Etapa[] = data?.etapas ?? [];
@@ -45,8 +47,8 @@ function Contenido() {
   async function crear() {
     if (f.identidad.trim().length < 3 || f.titulo.trim().length < 2) return;
     try {
-      await crearOportunidad({ canal: f.canal, identidad: f.identidad.trim(), titulo: f.titulo.trim(), valor: Number(f.valor), moneda: f.moneda, etapaId: f.etapaId || etapas[0]?.id, cierreEsperado: f.cierreEsperado || undefined });
-      setF({ canal: "email", identidad: "", titulo: "", valor: 0, moneda: "CLP", etapaId: "", cierreEsperado: "" }); setNuevo(false); await cargar();
+      await crearOportunidad({ canal: f.canal, identidad: f.identidad.trim(), titulo: f.titulo.trim(), valor: Number(f.valor), moneda: f.moneda, etapaId: f.etapaId || etapas[0]?.id, cierreEsperado: f.cierreEsperado || undefined, orgId: f.orgId || undefined });
+      setF({ canal: "email", identidad: "", titulo: "", valor: 0, moneda: "CLP", etapaId: "", cierreEsperado: "", orgId: "" }); setNuevo(false); await cargar();
     } catch (e) { setError((e as Error).message); }
   }
   async function mover(id: string, etapaId: string) {
@@ -86,6 +88,8 @@ function Contenido() {
           <label className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Etapa</span>
             <select value={f.etapaId} onChange={(e) => setF({ ...f, etapaId: e.target.value })} className="mt-1 h-10 rounded-md border border-border bg-background px-2 text-sm">{etapas.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}</select></label>
           <label className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cierre esperado</span><Input type="date" value={f.cierreEsperado} onChange={(e) => setF({ ...f, cierreEsperado: e.target.value })} className="mt-1 w-40" /></label>
+          <label className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Empresa</span>
+            <select value={f.orgId} onChange={(e) => setF({ ...f, orgId: e.target.value })} className="mt-1 h-10 rounded-md border border-border bg-background px-2 text-sm max-w-[160px]"><option value="">—</option>{orgs.map((g) => <option key={g.id} value={g.id}>{g.nombre}</option>)}</select></label>
           <Button onClick={crear}>Crear</Button>
         </CardContent></Card>
       )}
@@ -114,6 +118,7 @@ function Contenido() {
                       className={"rounded-[0.55rem] border border-border bg-secondary/50 p-2.5 " + (puede ? "cursor-grab active:cursor-grabbing hover:-translate-y-px hover:shadow-lg transition " : "") + (drag === o.id ? "opacity-40 " : "")}>
                       <Link href={`/oportunidades/${o.id}`} className="block font-medium text-[12.5px] leading-snug hover:text-[hsl(var(--senal))]">{o.titulo}</Link>
                       <div className="text-[11px] text-[hsl(var(--senal))] font-semibold tabular-nums mt-0.5">{money(o.valor, o.moneda)}</div>
+                      {o.org_nombre && <div className="text-[10.5px] text-muted-foreground truncate mt-0.5">🏢 {o.org_nombre}</div>}
                       {o.persona_email && <div className="text-[10.5px] text-muted-foreground truncate mt-0.5">{o.persona_email}</div>}
                       {o.cierre_esperado && <div className="text-[10px] text-muted-foreground mt-0.5">cierre {o.cierre_esperado}</div>}
                       {puede && (
