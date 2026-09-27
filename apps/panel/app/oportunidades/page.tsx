@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AppShell } from "@/components/app-shell";
 import { RequierePermiso } from "@/components/requiere-permiso";
-import { getOportunidades, crearOportunidad, moverEtapa, cerrarOportunidad, getOrganizaciones, type Embudo, type Etapa, type Oportunidad, type Organizacion } from "@/lib/crm";
+import { getOportunidades, crearOportunidad, moverEtapa, cerrarOportunidad, getOrganizaciones, getPipelines, crearPipeline, agregarEtapa, borrarEtapa, type Embudo, type Etapa, type Oportunidad, type Organizacion, type Pipeline } from "@/lib/crm";
 
 const CANALES = ["email", "telefono", "webchat", "instagram", "messenger"];
 const MONEDAS = ["CLP", "UF", "USD"];
@@ -28,16 +28,20 @@ function Contenido() {
   const [nuevo, setNuevo] = useState(false);
   const [f, setF] = useState({ canal: "email", identidad: "", titulo: "", valor: 0, moneda: "CLP", etapaId: "", cierreEsperado: "", orgId: "" });
   const [orgs, setOrgs] = useState<Organizacion[]>([]);
+  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [pipeSel, setPipeSel] = useState<string>("");
+  const [config, setConfig] = useState(false);
   const [drag, setDrag] = useState<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     setCargando(true); setError(null);
-    try { setData(await getOportunidades()); } catch (e) { setError((e as Error).message); } finally { setCargando(false); }
-  }, []);
+    try { const d = await getOportunidades(pipeSel || undefined); setData(d); if (!pipeSel) setPipeSel(d.pipelineId); } catch (e) { setError((e as Error).message); } finally { setCargando(false); }
+  }, [pipeSel]);
   useEffect(() => { cargar(); }, [cargar]);
   useEffect(() => { getOrganizaciones().then((r) => setOrgs(r.datos)).catch(() => {}); }, []);
+  useEffect(() => { getPipelines().then((r) => setPipelines(r.datos)).catch(() => {}); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 2500); return () => clearTimeout(t); }, [toast]);
 
   const etapas: Etapa[] = data?.etapas ?? [];
@@ -56,6 +60,16 @@ function Contenido() {
     setData((d) => d && { ...d, datos: d.datos.map((x) => x.id === id ? { ...x, etapa_id: etapaId } : x) });
     try { await moverEtapa(id, etapaId); } catch (e) { setError((e as Error).message); cargar(); }
   }
+  async function nuevoPipeline() {
+    const n = window.prompt("Nombre del nuevo pipeline:"); if (!n?.trim()) return;
+    try { const p = await crearPipeline(n.trim()); setPipelines((await getPipelines()).datos); setPipeSel(p.id); } catch (e) { setError((e as Error).message); }
+  }
+  async function nuevaEtapa() {
+    if (!data) return; const n = window.prompt("Nombre de la etapa:"); if (!n?.trim()) return;
+    const prob = Math.max(0, Math.min(100, Number(window.prompt("Probabilidad % (0-100):", "50")) || 50));
+    try { await agregarEtapa(data.pipelineId, n.trim(), prob); await cargar(); setPipelines((await getPipelines()).datos); } catch (e) { setError((e as Error).message); }
+  }
+  async function quitarEtapa(eid: string) { try { await borrarEtapa(eid); await cargar(); } catch (e) { setError((e as Error).message); } }
   async function cerrar(o: Oportunidad, estado: "ganada" | "perdida") {
     let motivo: string | undefined;
     if (estado === "perdida") { motivo = window.prompt("Motivo de pérdida (opcional):") ?? undefined; }
@@ -71,10 +85,33 @@ function Contenido() {
             {cargando ? "cargando…" : data && <>{data.resumen.abiertas} abiertas · <span className="text-[hsl(var(--senal))]">{money(data.resumen.valorAbierto, "CLP")}</span> en el embudo · {data.resumen.ganadas} ganadas ({money(data.resumen.valorGanado, "CLP")})</>}
           </div>
         </div>
-        {puede && <Button size="sm" onClick={() => setNuevo((v) => !v)}>{nuevo ? "Cerrar" : "+ Nueva oportunidad"}</Button>}
+        <div className="flex items-center gap-2 flex-wrap">
+          {pipelines.length > 0 && (
+            <select value={pipeSel} onChange={(e) => setPipeSel(e.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-[13px]">
+              {pipelines.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+            </select>
+          )}
+          {puede && <Button size="sm" variant="secondary" onClick={nuevoPipeline}>+ Pipeline</Button>}
+          {puede && <Button size="sm" variant="secondary" onClick={() => setConfig((v) => !v)}>Configurar</Button>}
+          {puede && <Button size="sm" onClick={() => setNuevo((v) => !v)}>{nuevo ? "Cerrar" : "+ Nueva oportunidad"}</Button>}
+        </div>
       </div>
 
       {error && <div className="mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}>▲ {error}</div>}
+
+      {config && puede && data && (
+        <Card className="mb-4"><CardContent className="pt-4">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Etapas del pipeline</span>
+            <Button size="sm" variant="secondary" onClick={nuevaEtapa}>+ Etapa</Button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {data.etapas.map((e) => (
+              <span key={e.id} className="inline-flex items-center gap-1.5 rounded-pill bg-secondary px-2.5 py-1 text-[12px]">{e.nombre} <span className="text-[10px] text-muted-foreground">{e.probabilidad}%</span><button onClick={() => quitarEtapa(e.id)} className="text-muted-foreground hover:text-[hsl(var(--critico))]" aria-label={`borrar ${e.nombre}`}>×</button></span>
+            ))}
+          </div>
+        </CardContent></Card>
+      )}
 
       {nuevo && puede && (
         <Card className="mb-5"><CardContent className="pt-5 flex flex-col sm:flex-row gap-2 sm:items-end flex-wrap">

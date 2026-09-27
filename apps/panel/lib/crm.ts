@@ -34,3 +34,6 @@ export const crearProducto = (b: { nombre: string; codigo?: string; precio?: num
 export const getDealProductos = (id: string) => apiFetch<{ datos: DealProducto[] }>(`/cliente/oportunidades/${id}/productos`);
 export const addDealProducto = (id: string, b: { productoId?: string; nombre?: string; cantidad?: number; precio?: number }) => apiFetch<DealProducto>(`/cliente/oportunidades/${id}/productos`, { method: "POST", body: JSON.stringify(b) });
 export const quitarDealProducto = (id: string, lid: string) => apiFetch(`/cliente/oportunidades/${id}/productos/${lid}`, { method: "DELETE" });
+export const crearPipeline = (nombre: string) => apiFetch<Pipeline>("/cliente/crm/pipelines", { method: "POST", body: JSON.stringify({ nombre }) });
+export const agregarEtapa = (pipelineId: string, nombre: string, probabilidad: number) => apiFetch<Etapa>(`/cliente/crm/pipelines/${pipelineId}/etapas`, { method: "POST", body: JSON.stringify({ nombre, probabilidad }) });
+export const borrarEtapa = (id: string) => apiFetch(`/cliente/crm/etapas/${id}`, { method: "DELETE" });

@@ -48,6 +48,50 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
       });
     });
 
+    // Crear pipeline (con las 6 etapas por defecto) y gestionar etapas.
+    r.post("/crm/pipelines", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const b = req.body as { nombre?: string };
+      if (!b?.nombre?.trim()) throw new ErrorApi("VALIDACION", "El pipeline necesita nombre");
+      return conCliente(ctx.clienteId, async (c) => {
+        const orden = (await c.query("select coalesce(max(orden),-1)+1 n from crm_pipelines")).rows[0].n;
+        const pl = (await c.query("insert into crm_pipelines (cliente_id, nombre, orden) values ($1,$2,$3) returning id, nombre, orden", [ctx.clienteId, b.nombre!.trim(), orden])).rows[0];
+        let o = 0;
+        for (const [nombre, prob] of ETAPAS_DEFAULT) { await c.query("insert into crm_etapas (cliente_id, pipeline_id, nombre, orden, probabilidad) values ($1,$2,$3,$4,$5)", [ctx.clienteId, pl.id, nombre, o, prob]); o++; }
+        return pl;
+      });
+    });
+    r.post("/crm/pipelines/:id/etapas", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { nombre?: string; probabilidad?: number };
+      if (!b?.nombre?.trim()) throw new ErrorApi("VALIDACION", "La etapa necesita nombre");
+      return conCliente(ctx.clienteId, async (c) => {
+        const orden = (await c.query("select coalesce(max(orden),-1)+1 n from crm_etapas where pipeline_id=$1", [id])).rows[0].n;
+        return (await c.query("insert into crm_etapas (cliente_id, pipeline_id, nombre, orden, probabilidad) values ($1,$2,$3,$4,$5) returning id, nombre, orden, probabilidad", [ctx.clienteId, id, b.nombre!.trim(), orden, Math.max(0, Math.min(100, Number(b.probabilidad) || 100))])).rows[0];
+      });
+    });
+    r.put("/crm/etapas/:id", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { nombre?: string; probabilidad?: number };
+      return conCliente(ctx.clienteId, async (c) => {
+        const r2 = await c.query("update crm_etapas set nombre=coalesce($2,nombre), probabilidad=coalesce($3,probabilidad) where id=$1 returning id, nombre, probabilidad", [id, b.nombre?.trim() || null, b.probabilidad != null ? Math.max(0, Math.min(100, Number(b.probabilidad))) : null]);
+        if (r2.rowCount === 0) throw new ErrorApi("NO_ENCONTRADO", "Etapa no encontrada");
+        return r2.rows[0];
+      });
+    });
+    r.delete("/crm/etapas/:id", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const { id } = req.params as { id: string };
+      return conCliente(ctx.clienteId, async (c) => {
+        const usada = (await c.query("select 1 from crm_oportunidades where etapa_id=$1 limit 1", [id])).rowCount;
+        if (usada) throw new ErrorApi("CONFLICTO", "La etapa tiene oportunidades; muévelas antes de borrarla");
+        await c.query("delete from crm_etapas where id=$1", [id]);
+        return { ok: true };
+      });
+    });
+
     // Organizaciones (empresas).
     r.get("/crm/organizaciones", async (req) => {
       const ctx = await ctxGuard(req, "crm.ver");
