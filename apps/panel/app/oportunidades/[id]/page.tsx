@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AppShell } from "@/components/app-shell";
 import { RequierePermiso } from "@/components/requiere-permiso";
-import { getOportunidad, agregarActividad, marcarHecho, getProductos, getDealProductos, addDealProducto, quitarDealProducto, type OportunidadDetalle, type Producto, type DealProducto } from "@/lib/crm";
+import { getOportunidad, agregarActividad, marcarHecho, getProductos, getDealProductos, addDealProducto, quitarDealProducto, guardarEtiquetasDeal, type OportunidadDetalle, type Producto, type DealProducto } from "@/lib/crm";
 
 const TIPOS = [["nota", "📝 Nota"], ["llamada", "📞 Llamada"], ["reunion", "🤝 Reunión"], ["tarea", "✅ Tarea"]] as const;
 const icono: Record<string, string> = { nota: "📝", llamada: "📞", reunion: "🤝", tarea: "✅" };
@@ -35,6 +35,7 @@ function Contenido() {
   const [catalogo, setCatalogo] = useState<Producto[]>([]);
   const [items, setItems] = useState<DealProducto[]>([]);
   const [pf, setPf] = useState({ productoId: "", nombre: "", cantidad: 1, precio: 0 });
+  const [nuevaEtq, setNuevaEtq] = useState("");
 
   const cargar = useCallback(async () => {
     setError(null);
@@ -58,6 +59,7 @@ function Contenido() {
     catch (e) { setError((e as Error).message); }
   }
   async function quitarItem(lid: string) { try { await quitarDealProducto(id, lid); await cargarProd(); await cargar(); } catch (e) { setError((e as Error).message); } }
+  async function fijarEtiquetas(lista: string[]) { try { const r = await guardarEtiquetasDeal(id, lista); setO((prev) => prev && { ...prev, etiquetas: r.etiquetas }); } catch (e) { setError((e as Error).message); } }
   async function toggle(aid: string, hecho: boolean) {
     setO((prev) => prev && { ...prev, actividades: prev.actividades.map((a) => a.id === aid ? { ...a, hecho } : a) });
     try { await marcarHecho(id, aid, hecho); } catch (e) { setError((e as Error).message); cargar(); }
@@ -77,6 +79,14 @@ function Contenido() {
           </div>
           <h1 className="text-2xl font-semibold tracking-tight mt-1.5">{o.titulo}</h1>
           <div className="text-[13px] text-muted-foreground mt-1">{clp(o.valor)}{o.persona_email ? ` · ${o.persona_email}` : ""} · creada {fecha(o.creado_en)}</div>
+          {puede && (
+            <div className="flex items-center gap-1.5 flex-wrap mt-2">
+              {(o.etiquetas ?? []).map((e) => (
+                <span key={e} className="inline-flex items-center gap-1 rounded-pill bg-secondary px-2 py-0.5 text-[11.5px]">{e}<button onClick={() => fijarEtiquetas((o.etiquetas ?? []).filter((x) => x !== e))} className="text-muted-foreground hover:text-[hsl(var(--critico))]">×</button></span>
+              ))}
+              <input value={nuevaEtq} onChange={(e) => setNuevaEtq(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && nuevaEtq.trim()) { fijarEtiquetas([...(o.etiquetas ?? []), nuevaEtq.trim()]); setNuevaEtq(""); } }} placeholder="+ etiqueta" className="h-7 w-28 rounded-pill border border-border bg-background px-2.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+          )}
         </div>
       </div>
 

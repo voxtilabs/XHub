@@ -128,7 +128,7 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
         const plId = q.pipeline || await asegurarPipeline(c, ctx.clienteId);
         const etapas = (await c.query("select id, nombre, orden, probabilidad from crm_etapas where pipeline_id=$1 order by orden asc", [plId])).rows;
         const ops = (await c.query(
-          `select o.id, o.titulo, o.valor::int as valor, o.moneda, o.etapa_id, o.estado, o.persona_id, o.probabilidad, o.cierre_esperado, o.creado_en, o.org_id,
+          `select o.id, o.titulo, o.valor::int as valor, o.moneda, o.etapa_id, o.estado, o.persona_id, o.probabilidad, o.cierre_esperado, o.creado_en, o.org_id, o.etiquetas,
                   (select nombre from crm_organizaciones og where og.id=o.org_id) as org_nombre,
                   (select identificador from nucleo.identidades i where i.persona_id=o.persona_id and i.canal='email' limit 1) as persona_email
              from crm_oportunidades o where o.pipeline_id=$1 and o.estado <> 'perdida' order by o.creado_en desc limit 300`, [plId])).rows;
@@ -170,7 +170,7 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
       const { id } = req.params as { id: string };
       return conCliente(ctx.clienteId, async (c) => {
         const o = (await c.query(
-          `select o.id, o.titulo, o.valor::int as valor, o.moneda, o.etapa_id, o.estado, o.persona_id, o.probabilidad, o.cierre_esperado, o.motivo_perdida, o.creado_en, o.org_id,
+          `select o.id, o.titulo, o.valor::int as valor, o.moneda, o.etapa_id, o.estado, o.persona_id, o.probabilidad, o.cierre_esperado, o.motivo_perdida, o.creado_en, o.org_id, o.etiquetas,
                   (select nombre from crm_organizaciones og where og.id=o.org_id) as org_nombre,
                   (select nombre from crm_etapas e where e.id=o.etapa_id) as etapa,
                   (select identificador from nucleo.identidades i where i.persona_id=o.persona_id and i.canal='email' limit 1) as persona_email
@@ -209,6 +209,17 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
         "update crm_oportunidades set etapa_id=$2, probabilidad=coalesce((select probabilidad from crm_etapas where id=$2), probabilidad), actualizado_en=now() where id=$1 and estado='abierta' returning id", [id, b.etapaId]));
       if (r2.rowCount === 0) throw new ErrorApi("NO_ENCONTRADO", "Oportunidad no encontrada o cerrada");
       return { ok: true };
+    });
+
+    // Etiquetas (labels) del deal.
+    r.put("/oportunidades/:id/etiquetas", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { etiquetas?: string[] };
+      const etq = Array.isArray(b?.etiquetas) ? b.etiquetas.map((x) => String(x).trim()).filter(Boolean).slice(0, 20) : [];
+      const r2 = await conCliente(ctx.clienteId, (c) => c.query("update crm_oportunidades set etiquetas=$2, actualizado_en=now() where id=$1 returning id", [id, etq]));
+      if (r2.rowCount === 0) throw new ErrorApi("NO_ENCONTRADO", "Oportunidad no encontrada");
+      return { ok: true, etiquetas: etq };
     });
 
     // Cerrar (ganada / perdida) + motivo de pérdida (Pipedrive lost_reason).

@@ -31,6 +31,7 @@ function Contenido() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [pipeSel, setPipeSel] = useState<string>("");
   const [config, setConfig] = useState(false);
+  const [filtroEtq, setFiltroEtq] = useState<string | null>(null);
   const [drag, setDrag] = useState<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -46,6 +47,8 @@ function Contenido() {
 
   const etapas: Etapa[] = data?.etapas ?? [];
   const ops = (data?.datos ?? []).filter((o) => o.estado === "abierta");
+  const todasEtq = Array.from(new Set(ops.flatMap((o) => o.etiquetas ?? [])));
+  const opsVis = filtroEtq ? ops.filter((o) => (o.etiquetas ?? []).includes(filtroEtq)) : ops;
   const puede = data?.puede.gestionar ?? false;
 
   async function crear() {
@@ -131,10 +134,18 @@ function Contenido() {
         </CardContent></Card>
       )}
 
+      {todasEtq.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap mb-3 items-center">
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mr-1">Etiquetas</span>
+          {todasEtq.map((e) => (
+            <button key={e} onClick={() => setFiltroEtq(filtroEtq === e ? null : e)} className={"px-2.5 h-7 rounded-pill text-[12px] border " + (filtroEtq === e ? "bg-[hsl(var(--senal)/0.15)] border-[hsl(var(--senal)/0.5)] text-foreground" : "border-border text-muted-foreground hover:text-foreground")}>{e}</button>
+          ))}
+        </div>
+      )}
       <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
         <div className="flex gap-3 items-start w-max">
           {etapas.map((etapa) => {
-            const items = ops.filter((o) => o.etapa_id === etapa.id);
+            const items = opsVis.filter((o) => o.etapa_id === etapa.id);
             const valor = items.reduce((a, o) => a + o.valor, 0);
             const activo = drag !== null && sobre === etapa.id;
             return (
@@ -157,6 +168,7 @@ function Contenido() {
                       <div className="text-[11px] text-[hsl(var(--senal))] font-semibold tabular-nums mt-0.5">{money(o.valor, o.moneda)}</div>
                       {o.org_nombre && <div className="text-[10.5px] text-muted-foreground truncate mt-0.5">🏢 {o.org_nombre}</div>}
                       {o.persona_email && <div className="text-[10.5px] text-muted-foreground truncate mt-0.5">{o.persona_email}</div>}
+                      {(o.etiquetas ?? []).length > 0 && <div className="flex gap-1 flex-wrap mt-1">{(o.etiquetas ?? []).map((e) => <span key={e} className="rounded-pill bg-secondary px-1.5 text-[9.5px]">{e}</span>)}</div>}
                       {o.cierre_esperado && <div className="text-[10px] text-muted-foreground mt-0.5">cierre {o.cierre_esperado}</div>}
                       {puede && (
                         <div className="flex gap-1.5 mt-2">

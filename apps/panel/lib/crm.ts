@@ -3,7 +3,7 @@ import { apiFetch } from "@/lib/api";
 
 export type Etapa = { id: string; nombre: string; orden: number; probabilidad: number };
 export type Pipeline = { id: string; nombre: string; orden: number; etapas: Etapa[] };
-export type Oportunidad = { id: string; titulo: string; valor: number; moneda: string; etapa_id: string | null; estado: "abierta" | "ganada" | "perdida"; persona_id: string; persona_email: string | null; probabilidad: number | null; cierre_esperado: string | null; creado_en: string; org_id?: string | null; org_nombre?: string | null };
+export type Oportunidad = { id: string; titulo: string; valor: number; moneda: string; etapa_id: string | null; estado: "abierta" | "ganada" | "perdida"; persona_id: string; persona_email: string | null; probabilidad: number | null; cierre_esperado: string | null; creado_en: string; org_id?: string | null; org_nombre?: string | null; etiquetas?: string[] };
 export type Embudo = { datos: Oportunidad[]; etapas: Etapa[]; pipelineId: string; resumen: { abiertas: number; valorAbierto: number; ganadas: number; valorGanado: number }; puede: { gestionar: boolean } };
 export type Actividad = { id: string; tipo: string; cuerpo: string; hecho: boolean; autor: string | null; creado_en: string };
 export type OportunidadDetalle = Oportunidad & { etapa: string | null; motivo_perdida: string | null; actividades: Actividad[]; puede: { gestionar: boolean } };
@@ -37,3 +37,5 @@ export const quitarDealProducto = (id: string, lid: string) => apiFetch(`/client
 export const crearPipeline = (nombre: string) => apiFetch<Pipeline>("/cliente/crm/pipelines", { method: "POST", body: JSON.stringify({ nombre }) });
 export const agregarEtapa = (pipelineId: string, nombre: string, probabilidad: number) => apiFetch<Etapa>(`/cliente/crm/pipelines/${pipelineId}/etapas`, { method: "POST", body: JSON.stringify({ nombre, probabilidad }) });
 export const borrarEtapa = (id: string) => apiFetch(`/cliente/crm/etapas/${id}`, { method: "DELETE" });
+
+export const guardarEtiquetasDeal = (id: string, etiquetas: string[]) => apiFetch<{ ok: boolean; etiquetas: string[] }>(`/cliente/oportunidades/${id}/etiquetas`, { method: "PUT", body: JSON.stringify({ etiquetas }) });
