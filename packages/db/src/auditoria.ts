@@ -52,3 +52,26 @@ export async function verificarCadena(): Promise<Verificacion> {
   }
   return { valida: true, entradas: rows.length, rotaEn: null };
 }
+
+export interface FiltroAudit { clienteId?: string; actor?: string; recurso?: string; desde?: string; hasta?: string; limite?: number; }
+export interface EntradaAuditoria {
+  seq: number; clienteId: string | null; actorTipo: string; actorId: string | null;
+  accion: string; recurso: string | null; recursoId: string | null; resultado: string; creadoEn: string;
+}
+
+/** Explorador de auditoría (#79): lista filtrada por cliente/actor/recurso/fecha, más nueva primero. */
+export async function listarAuditoria(f: FiltroAudit = {}): Promise<EntradaAuditoria[]> {
+  const cond: string[] = []; const p: unknown[] = [];
+  if (f.clienteId) { p.push(f.clienteId); cond.push(`cliente_id = $${p.length}`); }
+  if (f.actor) { p.push(`%${f.actor}%`); cond.push(`(actor_id ilike $${p.length} or actor_tipo ilike $${p.length})`); }
+  if (f.recurso) { p.push(`%${f.recurso}%`); cond.push(`(recurso ilike $${p.length} or accion ilike $${p.length})`); }
+  if (f.desde) { p.push(f.desde); cond.push(`creado_en >= $${p.length}`); }
+  if (f.hasta) { p.push(f.hasta); cond.push(`creado_en <= $${p.length}`); }
+  p.push(Math.min(Math.max(f.limite ?? 100, 1), 500));
+  const where = cond.length ? "where " + cond.join(" and ") : "";
+  const { rows } = await pool().query(
+    `select seq, cliente_id as "clienteId", actor_tipo as "actorTipo", actor_id as "actorId",
+            accion, recurso, recurso_id as "recursoId", resultado, creado_en as "creadoEn"
+       from nucleo.auditoria ${where} order by seq desc limit $${p.length}`, p);
+  return rows as EntradaAuditoria[];
+}

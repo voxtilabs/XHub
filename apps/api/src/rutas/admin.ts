@@ -1,7 +1,8 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import { createHmac } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi } from "@xhub/core";
-import { conPlataforma } from "@xhub/db";
+import { conPlataforma, listarAuditoria, verificarCadena, type FiltroAudit } from "@xhub/db";
 import {
   resolverAdmin, crearCliente, cambiarEstado, fijarEntitlement, crearLlave,
   fijarCuota, cuotaDe, listarClientesAdmin,
@@ -151,6 +152,39 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       const b = E.validar(E.configTriage, req.body);
       await conCliente(id, (c) => fijarConfigTriage(c, id, b));
       return { cliente: id, ...b };
+    });
+
+    // Explorador de auditoría (#79): listado filtrado + integridad de la cadena.
+    // Una fecha ilegible es 400 (no un filtro que se ignora en silencio).
+    const filtrosAudit = (q: Record<string, string | undefined>): FiltroAudit => {
+      const fecha = (v: string | undefined, campo: string) => {
+        if (!v) return undefined;
+        const d = new Date(v);
+        if (Number.isNaN(d.getTime())) throw new ErrorApi("VALIDACION", `Fecha inválida en ${campo}: "${v}"`);
+        return d.toISOString();
+      };
+      return {
+        clienteId: q.cliente || undefined, actor: q.actor || undefined, recurso: q.recurso || undefined,
+        desde: fecha(q.desde, "desde"), hasta: fecha(q.hasta, "hasta"),
+        limite: q.limite ? Number(q.limite) : undefined,
+      };
+    };
+    admin.get("/auditoria", async (req) => {
+      const entradas = await listarAuditoria(filtrosAudit(req.query as Record<string, string>));
+      const cadena = await verificarCadena();
+      return { entradas, cadena };
+    });
+    // Exportación FIRMADA: HMAC-SHA256 con el secreto; firma null si no hay secreto
+    // configurado (se ve, no se finge). La evidencia se puede verificar fuera de xHub.
+    admin.get("/auditoria/exportar", async (req) => {
+      const f = filtrosAudit(req.query as Record<string, string>);
+      const entradas = await listarAuditoria({ ...f, limite: 500 });
+      const cadena = await verificarCadena();
+      const generadoEn = new Date().toISOString();
+      const cuerpo = JSON.stringify({ generadoEn, cadena, entradas });
+      const secreto = process.env.XHUB_AUDIT_SECRET || process.env.BETTER_AUTH_SECRET || "";
+      const firma = secreto ? createHmac("sha256", secreto).update(cuerpo).digest("hex") : null;
+      return { generadoEn, cadena, firma, entradas };
     });
   }, { prefix: "/admin" });
 }
