@@ -20,3 +20,8 @@ export const marcarHecho = (id: string, aid: string, hecho: boolean) => apiFetch
 export type Organizacion = { id: string; nombre: string; sitio_web: string | null; rubro: string | null; telefono: string | null; deals?: number; valor_abierto?: number };
 export const getOrganizaciones = () => apiFetch<{ datos: Organizacion[] }>("/cliente/crm/organizaciones");
 export const crearOrganizacion = (b: { nombre: string; sitioWeb?: string; rubro?: string; telefono?: string }) => apiFetch<Organizacion>("/cliente/crm/organizaciones", { method: "POST", body: JSON.stringify(b) });
+export type Lead = { id: string; titulo: string; valor: number; moneda: string; origen: string | null; estado: string; persona_email: string | null; creado_en: string };
+export const getLeads = () => apiFetch<{ datos: Lead[] }>("/cliente/crm/leads");
+export const crearLead = (b: { canal: string; identidad: string; titulo: string; valor?: number; moneda?: string; origen?: string }) => apiFetch<Lead>("/cliente/crm/leads", { method: "POST", body: JSON.stringify(b) });
+export const convertirLead = (id: string) => apiFetch<{ ok: boolean; dealId: string }>(`/cliente/crm/leads/${id}/convertir`, { method: "POST" });
+export const archivarLead = (id: string) => apiFetch(`/cliente/crm/leads/${id}/archivar`, { method: "PUT" });

@@ -174,5 +174,46 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
       await conCliente(ctx.clienteId, (c) => c.query("update crm_actividades set hecho=$2 where id=$1", [aid, b?.hecho ?? true]));
       return { ok: true, hecho: b?.hecho ?? true };
     });
+
+    // LEADS (bandeja de prospectos). Se crean por canal+identidad y se CONVIERTEN a deal.
+    r.get("/crm/leads", async (req) => {
+      const ctx = await ctxGuard(req, "crm.ver");
+      return conCliente(ctx.clienteId, async (c) => ({ datos: (await c.query(
+        `select l.id, l.titulo, l.valor::int as valor, l.moneda, l.origen, l.estado, l.creado_en,
+                (select identificador from nucleo.identidades i where i.persona_id=l.persona_id and i.canal='email' limit 1) as persona_email
+           from crm_leads l where l.estado='activo' order by l.creado_en desc limit 200`)).rows }));
+    });
+    r.post("/crm/leads", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const b = req.body as { canal?: string; identidad?: string; titulo?: string; valor?: number; moneda?: string; origen?: string };
+      if (!b?.canal || !b?.identidad || !b?.titulo?.trim()) throw new ErrorApi("VALIDACION", "Faltan canal, identidad o título");
+      return conCliente(ctx.clienteId, async (c) => {
+        const persona = await nucleo.asegurarPersona(c, b.canal!, b.identidad!);
+        const l = (await c.query("insert into crm_leads (cliente_id, persona_id, titulo, valor, moneda, origen) values ($1,$2,$3,$4,$5,$6) returning id, titulo, valor::int as valor, moneda, origen, estado, creado_en",
+          [ctx.clienteId, persona.id, b.titulo!.trim(), Math.max(0, Number(b.valor) || 0), b.moneda || "CLP", b.origen?.trim() || null])).rows[0];
+        await nucleo.registrarInteraccion(c, { personaId: persona.id, tipo: "lead.creado", moduloOrigen: "crm", objetoTipo: "lead", objetoId: l.id, resumen: `Lead: ${l.titulo}` });
+        return l;
+      });
+    });
+    r.post("/crm/leads/:id/convertir", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const { id } = req.params as { id: string };
+      return conCliente(ctx.clienteId, async (c) => {
+        const l = (await c.query("select persona_id, titulo, valor, moneda from crm_leads where id=$1 and estado='activo'", [id])).rows[0];
+        if (!l) throw new ErrorApi("NO_ENCONTRADO", "Lead no encontrado o ya convertido");
+        const plId = await asegurarPipeline(c, ctx.clienteId);
+        const etapaId = (await c.query("select id from crm_etapas where pipeline_id=$1 order by orden asc limit 1", [plId])).rows[0]?.id;
+        const o = (await c.query("insert into crm_oportunidades (cliente_id, persona_id, titulo, valor, moneda, pipeline_id, etapa_id) values ($1,$2,$3,$4,$5,$6,$7) returning id, titulo", [ctx.clienteId, l.persona_id, l.titulo, l.valor, l.moneda, plId, etapaId])).rows[0];
+        await c.query("update crm_leads set estado='convertido', deal_id=$2 where id=$1", [id, o.id]);
+        await nucleo.registrarInteraccion(c, { personaId: l.persona_id, tipo: "lead.convertido", moduloOrigen: "crm", objetoTipo: "oportunidad", objetoId: o.id, resumen: `Lead convertido a deal: ${o.titulo}` });
+        return { ok: true, dealId: o.id };
+      });
+    });
+    r.put("/crm/leads/:id/archivar", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const { id } = req.params as { id: string };
+      await conCliente(ctx.clienteId, (c) => c.query("update crm_leads set estado='archivado' where id=$1 and estado='activo'", [id]));
+      return { ok: true };
+    });
   }, { prefix: "/cliente" });
 }
