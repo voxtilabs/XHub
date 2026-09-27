@@ -15,6 +15,7 @@ import { apiDocsUrl } from "@/lib/api";
 type Ruta = { href: string; label: string; soloPlataforma?: boolean; soloCliente?: boolean };
 const RUTAS: Ruta[] = [
   { href: "/superadmin", label: "Clientes", soloPlataforma: true },
+  { href: "/ia", label: "IA", soloPlataforma: true },
   { href: "/equipo", label: "Mi equipo", soloCliente: true },
   { href: "/tickets", label: "Bandeja" },
   { href: "/persona", label: "Personas" },

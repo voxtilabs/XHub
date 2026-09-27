@@ -36,6 +36,9 @@ importers:
       '@xhub/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@xhub/ia':
+        specifier: workspace:*
+        version: link:../../packages/ia
       '@xhub/modulo-nucleo':
         specifier: workspace:*
         version: link:../../modulos/nucleo
@@ -134,6 +137,9 @@ importers:
       '@xhub/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@xhub/ia':
+        specifier: workspace:*
+        version: link:../../packages/ia
       '@xhub/modulo-nucleo':
         specifier: workspace:*
         version: link:../../modulos/nucleo

@@ -13,3 +13,4 @@ export * from "./webhooks.js";
 export * from "./superadmin.js";
 export * from "./derechos.js";
 export * from "./permisos.js";
+export * from "./observabilidad.js";

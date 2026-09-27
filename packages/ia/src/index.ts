@@ -10,6 +10,27 @@ export interface ConfigIA {
   base: string;    // endpoint OpenAI-compatible
   modelo: string;
   clave: string;
+  tarea: string;   // etiqueta de la tarea (RESUMEN/DECISION/RESPUESTA/…) para medir consumo
+}
+
+/**
+ * Observabilidad de IA: registro de UNA llamada. `completar` lo emite a un observador
+ * global (lo cablea la capa API, que sí puede escribir en base y conocer el cliente).
+ * @xhub/ia no importa base ni sabe de clientes: solo mide y avisa.
+ */
+export interface UsoIA {
+  tarea: string; proveedor: string; modelo: string;
+  tokensPrompt: number; tokensSalida: number; ms: number; ok: boolean;
+}
+type ObservadorIA = (u: UsoIA) => void;
+let _observador: ObservadorIA | null = null;
+/** Fija (o quita, con null) el observador de consumo de IA. */
+export function fijarObservadorIA(fn: ObservadorIA | null): void { _observador = fn; }
+function proveedorDe(base: string): string {
+  if (base.includes("nvidia")) return "nvidia";
+  if (base.includes("openrouter")) return "openrouter";
+  if (base.includes("openai.com")) return "openai";
+  try { return new URL(base).hostname; } catch { return "otro"; }
 }
 
 /**
@@ -28,6 +49,7 @@ export function leerConfigIA(tarea?: string, env = process.env): ConfigIA {
     base: env[`${p}API_BASE`] ?? env[`${g}API_BASE`] ?? "https://integrate.api.nvidia.com/v1",
     modelo: env[`${p}MODELO`] ?? env[`${g}MODELO`] ?? "z-ai/glm-5.3-flash",
     clave,
+    tarea: (tarea ?? "general").toLowerCase(),
   };
 }
 
@@ -45,6 +67,12 @@ export async function completar(
   if (!cfg.activa) return null;
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), opciones.topeMs ?? 30000);
+  const inicio = Date.now();
+  const emitir = (ok: boolean, tp = 0, ts = 0) => {
+    if (!_observador) return;
+    try { _observador({ tarea: cfg.tarea, proveedor: proveedorDe(cfg.base), modelo: cfg.modelo, tokensPrompt: tp, tokensSalida: ts, ms: Date.now() - inicio, ok }); }
+    catch { /* la observabilidad nunca rompe la llamada */ }
+  };
   try {
     const r = await fetch(`${cfg.base}/chat/completions`, {
       method: "POST",
@@ -55,11 +83,13 @@ export async function completar(
       }),
       signal: ctrl.signal,
     });
-    if (!r.ok) return null;
-    const d = await r.json() as { choices?: { message?: { content?: string | null } }[] };
+    if (!r.ok) { emitir(false); return null; }
+    const d = await r.json() as { choices?: { message?: { content?: string | null } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+    emitir(true, d.usage?.prompt_tokens ?? 0, d.usage?.completion_tokens ?? 0);
     const c = d.choices?.[0]?.message?.content;
     return c && c.trim() ? c.trim() : null;
   } catch {
+    emitir(false);
     return null; // cualquier fallo → el llamador usa su fallback
   } finally {
     clearTimeout(t);

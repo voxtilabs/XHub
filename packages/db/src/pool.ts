@@ -1,6 +1,15 @@
 import { Pool, type PoolClient } from "pg";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 let _pool: Pool | null = null;
+
+/**
+ * Contexto de cliente por petición. conCliente lo fija durante la ejecución de fn,
+ * así cualquier código dentro (p.ej. una llamada a la IA) puede saber a qué cliente
+ * atribuir sin pasar el clienteId por toda la cadena de firmas. Propaga por async/await.
+ */
+const alsCliente = new AsyncLocalStorage<string>();
+export function clienteActual(): string | null { return alsCliente.getStore() ?? null; }
 
 export function pool(): Pool {
   if (!_pool) {
@@ -33,7 +42,7 @@ export async function conCliente<T>(
     await c.query("set local role xhub_app");
     // set_config local: vive solo dentro de esta transacción
     await c.query("select set_config('app.cliente_id', $1, true)", [clienteId]);
-    const r = await fn(c);
+    const r = await alsCliente.run(clienteId, () => fn(c));
     await c.query("commit");
     return r;
   } catch (e) {
