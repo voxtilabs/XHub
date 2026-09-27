@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
+import { useYo } from "@/lib/permisos";
 import { apiDocsUrl } from "@/lib/api";
 
 /**
@@ -12,13 +13,13 @@ import { apiDocsUrl } from "@/lib/api";
  * usa <Link> para navegar sin recargar la página (sin el flash blanco de antes).
  */
 
-type Ruta = { href: string; label: string; soloPlataforma?: boolean; soloAdminCliente?: boolean };
+type Ruta = { href: string; label: string; soloPlataforma?: boolean; soloAdminCliente?: boolean; permiso?: string };
 const RUTAS: Ruta[] = [
   { href: "/superadmin", label: "Clientes", soloPlataforma: true },
   { href: "/ia", label: "IA", soloPlataforma: true },
   { href: "/equipo", label: "Mi equipo", soloAdminCliente: true },
-  { href: "/tickets", label: "Bandeja" },
-  { href: "/persona", label: "Personas" },
+  { href: "/tickets", label: "Bandeja", permiso: "bandeja.ver" },
+  { href: "/persona", label: "Personas", permiso: "ficha360.ver" },
 ];
 
 function BotonTema() {
@@ -50,6 +51,7 @@ export function AppShell() {
   const path = usePathname();
   const router = useRouter();
   const { data: sesion, isPending } = useSession();
+  const { puede, cargando: cargandoYo } = useYo();
   const usuario = sesion?.user as { email?: string; name?: string; rol?: string } | undefined;
   const esPlataforma = !usuario || usuario.rol === "plataforma";
   const esAdminCliente = usuario?.rol === "admin_cliente";
@@ -57,14 +59,21 @@ export function AppShell() {
   // /equipo, agente (usuario) → /tickets. El middleware solo ve que EXISTA la cookie;
   // aquí, ya validada contra el backend, echamos a /login si es inválida, y sacamos a
   // cada rol de las zonas que no le tocan (le darían 403).
-  const casa = esPlataforma ? "/superadmin" : esAdminCliente ? "/equipo" : "/tickets";
+  const casaAgente = puede("bandeja.ver") ? "/tickets" : (puede("ficha360.ver") || puede("personas.buscar")) ? "/persona" : "/tickets";
+  const casa = esPlataforma ? "/superadmin" : esAdminCliente ? "/equipo" : casaAgente;
   useEffect(() => {
     if (isPending) return;
     if (!sesion?.user) { router.replace("/login"); return; }
+    if (!esPlataforma && !esAdminCliente && cargandoYo) return; // esperar permisos del agente
     if (!esPlataforma && (path.startsWith("/superadmin") || path.startsWith("/ia"))) router.replace(casa);
     if (!esAdminCliente && path.startsWith("/equipo")) router.replace(casa);
-  }, [isPending, sesion, esPlataforma, esAdminCliente, casa, path, router]);
-  const rutas = RUTAS.filter((r) => (!r.soloPlataforma || esPlataforma) && (!r.soloAdminCliente || esAdminCliente));
+  }, [isPending, sesion, esPlataforma, esAdminCliente, casa, cargandoYo, path, router]);
+  const rutas = RUTAS.filter((r) => {
+    if (r.soloPlataforma) return esPlataforma;
+    if (r.soloAdminCliente) return esAdminCliente;
+    if (r.permiso) return !esPlataforma && puede(r.permiso);
+    return true;
+  });
   const inic = (usuario?.name || usuario?.email || "X5").split(/[ @.]/).map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
   const activa = (href: string) => path === href || path.startsWith(href + "/");
 
