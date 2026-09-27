@@ -21,7 +21,7 @@ export async function buscarPersonas(c: PoolClient, termino: string, limite = 20
        from nucleo.persona_busqueda b
        join nucleo.personas p on p.cliente_id=b.cliente_id and p.id=b.persona_id
       where b.cliente_id=$1 and p.fusionada_en is null
-        and b.vector @@ plainto_tsquery('spanish', unaccent($2))
+        and (b.vector @@ plainto_tsquery('spanish', unaccent($2)) or b.texto ilike '%' || $2 || '%')
       limit $3`,
     [cid, termino, limite]);
   return r.rows.map((x) => ({ personaId: x.persona_id, texto: x.texto }));
