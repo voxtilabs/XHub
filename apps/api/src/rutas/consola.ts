@@ -236,6 +236,44 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
       return { ok: true, etiquetas: etq };
     });
 
+    // CSAT: registrar la satisfacción (1..5). El módulo solo la fija en resueltos/cerrados.
+    r.put("/tickets/:id/csat", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { estrellas?: number };
+      if (!b?.estrellas || b.estrellas < 1 || b.estrellas > 5) throw new ErrorApi("VALIDACION", "La calificación es de 1 a 5");
+      await conCliente(ctx.clienteId, (c) => T.calificar(c, id, b.estrellas!));
+      return { ok: true, satisfaccion: b.estrellas };
+    });
+
+    // Categorías del cliente (lista gestionable) + fijar la categoría de un ticket.
+    r.get("/categorias", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "bandeja.ver");
+      return conCliente(ctx.clienteId, async (c) => {
+        const m = await c.query("select id, nombre from ticket_categorias order by nombre asc");
+        return { datos: m.rows };
+      });
+    });
+    r.post("/categorias", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
+      const b = req.body as { nombre?: string };
+      if (!b?.nombre?.trim()) throw new ErrorApi("VALIDACION", "La categoría necesita nombre");
+      return conCliente(ctx.clienteId, async (c) => {
+        const r2 = await c.query("insert into ticket_categorias (cliente_id, nombre) values ($1,$2) on conflict (cliente_id, nombre) do update set nombre=excluded.nombre returning id, nombre",
+          [ctx.clienteId, b.nombre!.trim()]);
+        return r2.rows[0];
+      });
+    });
+    r.put("/tickets/:id/categoria", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { categoria?: string | null };
+      const cat = b?.categoria?.trim() || null;
+      const r2 = await conCliente(ctx.clienteId, (c) => c.query("update tickets set categoria=$2, actualizado_en=now() where id=$1 returning id", [id, cat]));
+      if (r2.rowCount === 0) throw new ErrorApi("NO_ENCONTRADO", "Ticket no encontrado");
+      return { ok: true, categoria: cat };
+    });
+
     // Métricas del cliente (SQL directo, sin actor): tablero honesto y real.
     r.get("/metricas", async (req) => {
       const ctx = await guard(req); exigir(ctx, "bandeja.ver");

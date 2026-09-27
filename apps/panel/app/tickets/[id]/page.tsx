@@ -9,7 +9,7 @@ import { AppShell } from "@/components/app-shell";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import {
   getTicket, getMensajes, getContexto, getSugerencia, responder, notaInterna, cambiarEstado,
-  getAgentes, asignar, cambiarPrioridad, getMacros, guardarEtiquetas, TRANS, type Detalle, type Mensaje, type Contexto, type Estado, type Prioridad, type Agente, type Macro,
+  getAgentes, asignar, cambiarPrioridad, getMacros, guardarEtiquetas, getCategorias, cambiarCategoria, calificarCsat, TRANS, type Detalle, type Mensaje, type Contexto, type Estado, type Prioridad, type Agente, type Macro, type Categoria,
 } from "@/lib/tickets";
 
 type Rol = "exito" | "aviso" | "critico" | "senal" | "neutro";
@@ -43,6 +43,7 @@ function Contenido() {
   const [macros, setMacros] = useState<Macro[]>([]);
   const [verMacros, setVerMacros] = useState(false);
   const [nuevaEtq, setNuevaEtq] = useState("");
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
 
   const cargar = useCallback(async () => {
     setError(null);
@@ -54,6 +55,7 @@ function Contenido() {
   useEffect(() => { cargar(); }, [cargar]);
   useEffect(() => { getAgentes().then((r) => setAgentes(r.datos)).catch(() => {}); }, []);
   useEffect(() => { getMacros().then((r) => setMacros(r.datos)).catch(() => {}); }, []);
+  useEffect(() => { getCategorias().then((r) => setCategorias(r.datos)).catch(() => {}); }, []);
   useEffect(() => { if (!toast) return; const x = setTimeout(() => setToast(null), 2600); return () => clearTimeout(x); }, [toast]);
 
   const puede = t?.puede.gestionar ?? false;
@@ -92,6 +94,16 @@ function Contenido() {
   async function fijarEtiquetas(lista: string[]) {
     setError(null);
     try { const r = await guardarEtiquetas(id, lista); setT((prev) => prev && { ...prev, etiquetas: r.etiquetas }); }
+    catch (err) { setError((err as Error).message); }
+  }
+  async function fijarCategoria(cat: string) {
+    setError(null);
+    try { await cambiarCategoria(id, cat || null); setT((prev) => prev && { ...prev, categoria: cat || null }); }
+    catch (err) { setError((err as Error).message); }
+  }
+  async function calificar(n: number) {
+    setError(null);
+    try { await calificarCsat(id, n); setT((prev) => prev && { ...prev, satisfaccion: n }); setToast(`CSAT: ${n}★`); }
     catch (err) { setError((err as Error).message); }
   }
 
@@ -139,6 +151,13 @@ function Contenido() {
 
       {puede && (
         <div className="flex items-center gap-1.5 flex-wrap mb-4">
+          <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mr-1">Categoría</span>
+          <select value={t.categoria ?? ""} onChange={(e) => fijarCategoria(e.target.value)} className="h-7 rounded-md border border-border bg-background px-2 text-[12px] max-w-[160px]">
+            <option value="">— sin categoría —</option>
+            {categorias.map((c) => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
+            {t.categoria && !categorias.some((c) => c.nombre === t.categoria) && <option value={t.categoria}>{t.categoria}</option>}
+          </select>
+          <span className="w-px h-6 bg-border mx-1" />
           <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mr-1">Etiquetas</span>
           {(t.etiquetas ?? []).map((e) => (
             <span key={e} className="inline-flex items-center gap-1 rounded-pill bg-secondary px-2 py-0.5 text-[11.5px]">
@@ -229,6 +248,16 @@ function Contenido() {
                 {ctx.reincidencia.esRecurrente && <Badge rol="aviso">Cliente recurrente</Badge>}
               </div>
             ) : <div className="text-[12.5px] text-muted-foreground">—</div>}
+          </CardContent></Card>
+          <Card><CardContent className="pt-5">
+            <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Satisfacción (CSAT)</div>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} disabled={!puede} onClick={() => calificar(n)} aria-label={`${n} estrellas`}
+                  className={"text-xl leading-none " + ((t.satisfaccion ?? 0) >= n ? "text-[hsl(var(--aviso))]" : "text-muted-foreground/40") + (puede ? " hover:text-[hsl(var(--aviso))]" : "")}>★</button>
+              ))}
+              <span className="text-[11px] text-muted-foreground ml-2">{t.satisfaccion ? `${t.satisfaccion}/5` : (t.estado === "resuelto" || t.estado === "cerrado" ? "sin calificar" : "al resolver")}</span>
+            </div>
           </CardContent></Card>
           <Card><CardContent className="pt-5">
             <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Historia omnicanal</div>

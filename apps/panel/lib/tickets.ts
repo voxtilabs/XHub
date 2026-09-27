@@ -35,3 +35,9 @@ export const getMacros = () => apiFetch<{ datos: Macro[] }>("/cliente/macros");
 export const crearMacro = (titulo: string, cuerpo: string) => apiFetch<Macro>("/cliente/macros", { method: "POST", body: JSON.stringify({ titulo, cuerpo }) });
 export const borrarMacro = (mid: string) => apiFetch(`/cliente/macros/${mid}`, { method: "DELETE" });
 export const guardarEtiquetas = (id: string, etiquetas: string[]) => apiFetch<{ ok: boolean; etiquetas: string[] }>(`/cliente/tickets/${id}/etiquetas`, { method: "PUT", body: JSON.stringify({ etiquetas }) });
+
+export type Categoria = { id: string; nombre: string };
+export const getCategorias = () => apiFetch<{ datos: Categoria[] }>("/cliente/categorias");
+export const crearCategoria = (nombre: string) => apiFetch<Categoria>("/cliente/categorias", { method: "POST", body: JSON.stringify({ nombre }) });
+export const cambiarCategoria = (id: string, categoria: string | null) => apiFetch<{ ok: boolean }>(`/cliente/tickets/${id}/categoria`, { method: "PUT", body: JSON.stringify({ categoria }) });
+export const calificarCsat = (id: string, estrellas: number) => apiFetch<{ ok: boolean }>(`/cliente/tickets/${id}/csat`, { method: "PUT", body: JSON.stringify({ estrellas }) });
