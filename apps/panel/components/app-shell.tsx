@@ -12,11 +12,11 @@ import { apiDocsUrl } from "@/lib/api";
  * usa <Link> para navegar sin recargar la página (sin el flash blanco de antes).
  */
 
-type Ruta = { href: string; label: string; soloPlataforma?: boolean; soloCliente?: boolean };
+type Ruta = { href: string; label: string; soloPlataforma?: boolean; soloAdminCliente?: boolean };
 const RUTAS: Ruta[] = [
   { href: "/superadmin", label: "Clientes", soloPlataforma: true },
   { href: "/ia", label: "IA", soloPlataforma: true },
-  { href: "/equipo", label: "Mi equipo", soloCliente: true },
+  { href: "/equipo", label: "Mi equipo", soloAdminCliente: true },
   { href: "/tickets", label: "Bandeja" },
   { href: "/persona", label: "Personas" },
 ];
@@ -52,17 +52,19 @@ export function AppShell() {
   const { data: sesion, isPending } = useSession();
   const usuario = sesion?.user as { email?: string; name?: string; rol?: string } | undefined;
   const esPlataforma = !usuario || usuario.rol === "plataforma";
-  // Defensa en profundidad: el middleware solo ve que EXISTA la cookie; aquí, ya
-  // validada contra el backend, si la sesión es inválida echamos a /login (cierra el
-  // "entro con cookie basura"). Y enrutamos por rol: el admin de cliente no cae en
-  // /superadmin (le daría 403) ni la plataforma en /equipo.
+  const esAdminCliente = usuario?.rol === "admin_cliente";
+  // Tres poblaciones, cada una a su casa: plataforma → /superadmin, admin de cliente →
+  // /equipo, agente (usuario) → /tickets. El middleware solo ve que EXISTA la cookie;
+  // aquí, ya validada contra el backend, echamos a /login si es inválida, y sacamos a
+  // cada rol de las zonas que no le tocan (le darían 403).
+  const casa = esPlataforma ? "/superadmin" : esAdminCliente ? "/equipo" : "/tickets";
   useEffect(() => {
     if (isPending) return;
     if (!sesion?.user) { router.replace("/login"); return; }
-    if (!esPlataforma && path.startsWith("/superadmin")) router.replace("/equipo");
-    if (esPlataforma && path.startsWith("/equipo")) router.replace("/superadmin");
-  }, [isPending, sesion, esPlataforma, path, router]);
-  const rutas = RUTAS.filter((r) => (!r.soloPlataforma || esPlataforma) && (!r.soloCliente || !esPlataforma));
+    if (!esPlataforma && (path.startsWith("/superadmin") || path.startsWith("/ia"))) router.replace(casa);
+    if (!esAdminCliente && path.startsWith("/equipo")) router.replace(casa);
+  }, [isPending, sesion, esPlataforma, esAdminCliente, casa, path, router]);
+  const rutas = RUTAS.filter((r) => (!r.soloPlataforma || esPlataforma) && (!r.soloAdminCliente || esAdminCliente));
   const inic = (usuario?.name || usuario?.email || "X5").split(/[ @.]/).map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
   const activa = (href: string) => path === href || path.startsWith(href + "/");
 
