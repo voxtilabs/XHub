@@ -27,3 +27,10 @@ export const convertirLead = (id: string) => apiFetch<{ ok: boolean; dealId: str
 export const archivarLead = (id: string) => apiFetch(`/cliente/crm/leads/${id}/archivar`, { method: "PUT" });
 export type Insights = { forecast: number; porEtapa: { nombre: string; probabilidad: number; n: number; valor: number }[]; ganadas: { n: number; valor: number }; perdidas: { n: number }; tasaConversion: number; leadsActivos: number };
 export const getInsights = () => apiFetch<Insights>("/cliente/crm/insights");
+export type Producto = { id: string; nombre: string; codigo: string | null; precio: number; moneda: string };
+export type DealProducto = { id: string; producto_id: string | null; nombre: string; cantidad: number; precio: number };
+export const getProductos = () => apiFetch<{ datos: Producto[] }>("/cliente/crm/productos");
+export const crearProducto = (b: { nombre: string; codigo?: string; precio?: number; moneda?: string }) => apiFetch<Producto>("/cliente/crm/productos", { method: "POST", body: JSON.stringify(b) });
+export const getDealProductos = (id: string) => apiFetch<{ datos: DealProducto[] }>(`/cliente/oportunidades/${id}/productos`);
+export const addDealProducto = (id: string, b: { productoId?: string; nombre?: string; cantidad?: number; precio?: number }) => apiFetch<DealProducto>(`/cliente/oportunidades/${id}/productos`, { method: "POST", body: JSON.stringify(b) });
+export const quitarDealProducto = (id: string, lid: string) => apiFetch(`/cliente/oportunidades/${id}/productos/${lid}`, { method: "DELETE" });

@@ -200,6 +200,49 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
       return { ok: true, hecho: b?.hecho ?? true };
     });
 
+    // PRODUCTOS (catálogo del cliente).
+    r.get("/crm/productos", async (req) => {
+      const ctx = await ctxGuard(req, "crm.ver");
+      return conCliente(ctx.clienteId, async (c) => ({ datos: (await c.query("select id, nombre, codigo, precio::int as precio, moneda from crm_productos order by nombre asc")).rows }));
+    });
+    r.post("/crm/productos", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const b = req.body as { nombre?: string; codigo?: string; precio?: number; moneda?: string };
+      if (!b?.nombre?.trim()) throw new ErrorApi("VALIDACION", "El producto necesita nombre");
+      return conCliente(ctx.clienteId, async (c) => (await c.query("insert into crm_productos (cliente_id, nombre, codigo, precio, moneda) values ($1,$2,$3,$4,$5) returning id, nombre, codigo, precio::int as precio, moneda",
+        [ctx.clienteId, b.nombre!.trim(), b.codigo?.trim() || null, Math.max(0, Number(b.precio) || 0), b.moneda || "CLP"])).rows[0]);
+    });
+
+    // Line items del deal + recálculo del valor del deal.
+    async function recalcularDeal(c: import("pg").PoolClient, oportunidadId: string) {
+      await c.query("update crm_oportunidades set valor=coalesce((select sum(cantidad*precio) from crm_deal_productos where oportunidad_id=$1),valor), actualizado_en=now() where id=$1 and exists (select 1 from crm_deal_productos where oportunidad_id=$1)", [oportunidadId]);
+    }
+    r.get("/oportunidades/:id/productos", async (req) => {
+      const ctx = await ctxGuard(req, "crm.ver");
+      const { id } = req.params as { id: string };
+      return conCliente(ctx.clienteId, async (c) => ({ datos: (await c.query("select id, producto_id, nombre, cantidad, precio::int as precio from crm_deal_productos where oportunidad_id=$1 order by creado_en asc", [id])).rows }));
+    });
+    r.post("/oportunidades/:id/productos", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { productoId?: string; nombre?: string; cantidad?: number; precio?: number };
+      return conCliente(ctx.clienteId, async (c) => {
+        let nombre = b.nombre?.trim(), precio = Number(b.precio) || 0;
+        if (b.productoId) { const p = (await c.query("select nombre, precio from crm_productos where id=$1", [b.productoId])).rows[0]; if (p) { nombre = nombre || p.nombre; precio = precio || Number(p.precio); } }
+        if (!nombre) throw new ErrorApi("VALIDACION", "Falta el producto");
+        const li = (await c.query("insert into crm_deal_productos (cliente_id, oportunidad_id, producto_id, nombre, cantidad, precio) values ($1,$2,$3,$4,$5,$6) returning id, producto_id, nombre, cantidad, precio::int as precio",
+          [ctx.clienteId, id, b.productoId || null, nombre, Math.max(1, Number(b.cantidad) || 1), precio])).rows[0];
+        await recalcularDeal(c, id);
+        return li;
+      });
+    });
+    r.delete("/oportunidades/:id/productos/:lid", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const { id, lid } = req.params as { id: string; lid: string };
+      await conCliente(ctx.clienteId, async (c) => { await c.query("delete from crm_deal_productos where id=$1", [lid]); await recalcularDeal(c, id); });
+      return { ok: true };
+    });
+
     // LEADS (bandeja de prospectos). Se crean por canal+identidad y se CONVIERTEN a deal.
     r.get("/crm/leads", async (req) => {
       const ctx = await ctxGuard(req, "crm.ver");
