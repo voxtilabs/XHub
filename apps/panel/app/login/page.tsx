@@ -16,7 +16,7 @@ export default function Login() {
     setCargando(true); setError(null);
     const r = await signIn.email({ email, password: clave });
     if (r.error) { setError(r.error.message || "No pudimos iniciar sesión"); setCargando(false); }
-    else location.href = "/superadmin";
+    else location.href = window.location.host.startsWith("tickets-") ? "/tickets" : "/superadmin";
   }
 
   return (
