@@ -56,6 +56,12 @@ export default function Superadmin() {
     try { await apiFetch(`/admin/clientes/${cl.id}/modulos/${mod}`, { method: "PUT", body: JSON.stringify({ encendido }) }); }
     catch (e) { setError((e as Error).message); await cargar(); }
   }
+  async function entrarSoporte(cl: Cliente) {
+    const motivo = window.prompt(`Motivo del acceso de soporte a "${cl.nombre}" (queda auditado):`);
+    if (!motivo || motivo.trim().length < 4) return;
+    try { await apiFetch("/admin/soporte", { method: "POST", body: JSON.stringify({ clienteId: cl.id, motivo: motivo.trim() }) }); window.location.href = "/tickets"; }
+    catch (e) { setError((e as Error).message); }
+  }
   async function nuevaLlave(cl: Cliente) {
     setError(null);
     try {
@@ -129,6 +135,7 @@ export default function Superadmin() {
                   <Badge rol={estRol(cl.estado)}>{cl.estado.replace("_", " ")}</Badge>
                   <div className="flex-1" />
                   <a href={`/superadmin/cliente?id=${cl.id}`} className="text-xs text-[hsl(var(--senal))] hover:underline">Gestionar →</a>
+                  <Button variant="secondary" size="sm" onClick={() => entrarSoporte(cl)}>Soporte</Button>
                   <Button variant="secondary" size="sm" onClick={() => setMarcaAbierta(marcaAbierta === cl.id ? null : cl.id)}>Marca</Button>
                   <Button variant="secondary" size="sm" onClick={() => nuevaLlave(cl)}>+ Llave API</Button>
                 </div>

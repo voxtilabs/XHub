@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
 import { useYo } from "@/lib/permisos";
 import { useMarca } from "@/lib/marca";
-import { apiDocsUrl } from "@/lib/api";
+import { apiDocsUrl, apiFetch } from "@/lib/api";
 
 /**
  * AppShell — la barra superior ÚNICA de xHub. Antes cada página dibujaba su propio
@@ -53,7 +53,8 @@ export function AppShell() {
   const path = usePathname();
   const router = useRouter();
   const { data: sesion, isPending } = useSession();
-  const { puede, cargando: cargandoYo } = useYo();
+  const { yo, puede, cargando: cargandoYo } = useYo();
+  async function salirSoporte() { try { await apiFetch("/admin/soporte", { method: "DELETE" }); } catch { /* igual salimos */ } window.location.href = "/superadmin"; }
   const marca = useMarca();
   const usuario = sesion?.user as { email?: string; name?: string; rol?: string } | undefined;
   const esPlataforma = !usuario || usuario.rol === "plataforma";
@@ -82,6 +83,13 @@ export function AppShell() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-[hsl(var(--background)/0.72)] backdrop-blur-xl">
+      {yo?.esSoporte && (
+        <div className="flex items-center gap-2 px-4 sm:px-6 py-1.5 text-[12.5px] font-medium" style={{ background: "hsl(var(--critico))", color: "white" }}>
+          <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+          <span>Modo soporte — estás actuando dentro de un cliente{yo.motivoSoporte ? ` · ${yo.motivoSoporte}` : ""}</span>
+          <button onClick={salirSoporte} className="ml-auto rounded-pill bg-white/20 hover:bg-white/30 px-3 py-0.5 font-semibold transition">Salir de soporte</button>
+        </div>
+      )}
       <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
         {/* Marca: cuadro con degradé señal→acción (identidad X5) + wordmark */}
         <Link href={esPlataforma ? "/superadmin" : "/tickets"} className="flex items-center gap-2.5 shrink-0 group">

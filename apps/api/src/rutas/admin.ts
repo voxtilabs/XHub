@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { createHmac } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi } from "@xhub/core";
-import { conPlataforma, listarAuditoria, verificarCadena, type FiltroAudit } from "@xhub/db";
+import { conPlataforma, listarAuditoria, verificarCadena, auditar, type FiltroAudit } from "@xhub/db";
 import {
   resolverAdmin, crearCliente, cambiarEstado, fijarEntitlement, crearLlave,
   fijarCuota, cuotaDe, listarClientesAdmin,
@@ -13,6 +13,7 @@ import { consumoDelDia } from "@xhub/cuotas";
 import { fijarConfigTriage, configTriage } from "@xhub/modulo-tickets";
 import { conCliente } from "@xhub/db";
 import { auth } from "../auth.js";
+import { firmarSoporte, leerCookieSoporte, cookieSoporte, cookieSoporteVacia } from "../soporte.js";
 import * as E from "../esquemas.js";
 
 /**
@@ -206,6 +207,31 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
          on conflict (cliente_id) do update set nombre_marca=$2, logo_url=$3, color_primario=$4, color_acento=$5, correo_soporte=$6, actualizado_en=now()`,
         [id, nombre, logo, prim, acc, correo]));
       return { cliente_id: id, nombre_marca: nombre, logo_url: logo, color_primario: prim, color_acento: acc, correo_soporte: correo };
+    });
+
+    // MODO SOPORTE: el superadmin entra al xHub de un cliente con MOTIVO obligatorio.
+    // Cookie firmada, ventana de 30 min, auditado (inicio y fin) como actuando_por.
+    admin.post("/soporte", async (req, reply) => {
+      const b = req.body as { clienteId?: string; motivo?: string };
+      if (!b?.clienteId) throw new ErrorApi("VALIDACION", "Falta el cliente");
+      if (!b?.motivo || b.motivo.trim().length < 4) throw new ErrorApi("VALIDACION", "El motivo es obligatorio (mín. 4 caracteres)");
+      const existe = await conPlataforma(async (c) => (await c.query("select 1 from plataforma.clientes where id=$1", [b.clienteId])).rowCount);
+      if (!existe) throw new ErrorApi("NO_ENCONTRADO", "El cliente no existe");
+      const sesion = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+      const actor = sesion?.user as { id?: string; email?: string } | undefined;
+      const dur = 30 * 60;
+      const token = firmarSoporte({ c: b.clienteId, a: actor?.id ?? "", m: b.motivo.trim(), e: Date.now() + dur * 1000 });
+      reply.header("set-cookie", cookieSoporte(token, dur));
+      await auditar({ clienteId: b.clienteId, actorTipo: "plataforma", actorId: actor?.email ?? actor?.id, accion: "soporte.iniciado", recurso: "cliente", recursoId: b.clienteId, resultado: "ok", metadata: { motivo: b.motivo.trim() } });
+      return { ok: true, clienteId: b.clienteId, motivo: b.motivo.trim(), expiraSeg: dur };
+    });
+    admin.delete("/soporte", async (req, reply) => {
+      const s2 = leerCookieSoporte(req.headers.cookie);
+      reply.header("set-cookie", cookieSoporteVacia());
+      const sesion = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+      const actor = sesion?.user as { id?: string; email?: string } | undefined;
+      if (s2) await auditar({ clienteId: s2.c, actorTipo: "plataforma", actorId: actor?.email ?? actor?.id, accion: "soporte.finalizado", recurso: "cliente", recursoId: s2.c, resultado: "ok" });
+      return { ok: true };
     });
 
     // Explorador de auditoría (#79): listado filtrado + integridad de la cadena.

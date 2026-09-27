@@ -6,6 +6,7 @@ import { permisosDe, CATALOGO_PERMISOS, listarUsuariosCliente } from "@xhub/modu
 import { crearModuloTickets, contextoOmnicanal, reincidencia } from "@xhub/modulo-tickets";
 import { nucleo } from "../nucleo.js";
 import { enviarCorreo } from "../correo.js";
+import { leerCookieSoporte } from "../soporte.js";
 import { auth } from "../auth.js";
 
 /**
@@ -29,6 +30,10 @@ async function guard(req: FastifyRequest): Promise<CtxT> {
   try { sesion = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) }); } catch { sesion = null; }
   const u = sesion?.user as { id?: string; rol?: string; clienteId?: string } | undefined;
   if (!u?.id) throw new ErrorApi("NO_AUTENTICADO", "Sesión requerida");
+  const sop = leerCookieSoporte(req.headers.cookie);
+  if (u.rol === "plataforma" && sop && sop.a === u.id) {
+    return { clienteId: sop.c, usuarioId: u.id, rol: "plataforma", esAdmin: true, permisos: CATALOGO_PERMISOS.map((p) => p.clave) };
+  }
   if (!u.clienteId) throw new ErrorApi("SIN_PERMISO", "Tu usuario no está asociado a un cliente");
   const esAdmin = u.rol === "admin_cliente";
   const permisos = esAdmin ? CATALOGO_PERMISOS.map((p) => p.clave) : await conPlataforma((c) => permisosDe(c, u.id!));
