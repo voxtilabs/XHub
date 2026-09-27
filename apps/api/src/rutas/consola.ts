@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi } from "@xhub/core";
 import { conCliente, conPlataforma } from "@xhub/db";
-import { permisosDe, CATALOGO_PERMISOS, listarUsuariosCliente } from "@xhub/modulo-nucleo";
+import { permisosDe, CATALOGO_PERMISOS, listarUsuariosCliente, buscarPersonas, fichaDePersona } from "@xhub/modulo-nucleo";
 import { crearModuloTickets, contextoOmnicanal, reincidencia } from "@xhub/modulo-tickets";
 import { nucleo } from "../nucleo.js";
 import { enviarCorreo } from "../correo.js";
@@ -277,6 +277,26 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
       const r2 = await conCliente(ctx.clienteId, (c) => c.query("update tickets set categoria=$2, actualizado_en=now() where id=$1 returning id", [id, cat]));
       if (r2.rowCount === 0) throw new ErrorApi("NO_ENCONTRADO", "Ticket no encontrado");
       return { ok: true, categoria: cat };
+    });
+
+    // Buscar personas (para la ficha 360).
+    r.get("/personas", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "personas.buscar");
+      const q = req.query as { q?: string };
+      return conCliente(ctx.clienteId, async (c) => ({ datos: await buscarPersonas(c, q.q ?? "") }));
+    });
+
+    // Ficha 360 de la persona: identidades + historia (tickets Y oportunidades, del núcleo)
+    // + sus tickets y oportunidades. Es donde converge todo el producto.
+    r.get("/personas/:id", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "ficha360.ver");
+      const { id } = req.params as { id: string };
+      return conCliente(ctx.clienteId, async (c) => {
+        const ficha = await fichaDePersona(c, id);
+        const tickets = (await c.query("select id, numero::text as numero, asunto, estado, prioridad from tickets where persona_id=$1 order by numero desc limit 50", [id])).rows;
+        const oportunidades = (await c.query("select id, titulo, valor::int as valor, etapa, estado from crm_oportunidades where persona_id=$1 order by creado_en desc limit 50", [id])).rows;
+        return { ...ficha, tickets, oportunidades };
+      });
     });
 
     // Métricas del cliente (SQL directo, sin actor): tablero honesto y real.
