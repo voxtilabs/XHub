@@ -21,6 +21,7 @@ import { auth } from "../auth.js";
  */
 type CtxT = { clienteId: string; usuarioId: string; rol: string; esAdmin: boolean; permisos: string[] };
 const ESTADOS = new Set(["nuevo", "abierto", "pendiente", "resuelto", "cerrado"]);
+const CANALES = new Set(["telefono", "email", "rut", "xcontact", "webchat", "instagram", "messenger"]);
 
 async function guard(req: FastifyRequest): Promise<CtxT> {
   let sesion: Awaited<ReturnType<typeof auth.api.getSession>> = null;
@@ -130,6 +131,7 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
       const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
       const b = req.body as { canal?: string; identidad?: string; asunto?: string; prioridad?: string; cuerpo?: string; categoria?: string };
       if (!b?.canal || !b?.identidad || !b?.asunto?.trim()) throw new ErrorApi("VALIDACION", "Faltan canal, identidad o asunto");
+      if (!CANALES.has(b.canal)) throw new ErrorApi("VALIDACION", `Canal inválido: ${b.canal}. Usa uno de: ${[...CANALES].join(", ")}`);
       return conCliente(ctx.clienteId, (c) => T.crearTicket(c, {
         canal: b.canal!, identidad: b.identidad!, asunto: b.asunto!.trim(),
         prioridad: b.prioridad as never, cuerpo: b.cuerpo, categoria: b.categoria,

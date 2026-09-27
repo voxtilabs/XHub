@@ -9,7 +9,7 @@ import { AppShell } from "@/components/app-shell";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import { crearTicket, type Prioridad } from "@/lib/tickets";
 
-const CANALES = ["email", "whatsapp", "webchat", "llamada", "instagram"];
+const CANALES = ["email", "telefono", "webchat", "instagram", "messenger"];
 const PRIS: Prioridad[] = ["baja", "media", "alta", "urgente"];
 
 export default function NuevoTicket() {
