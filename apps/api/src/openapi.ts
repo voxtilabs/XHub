@@ -57,6 +57,17 @@ export function generarOpenApi(): object {
   r.registerPath({ method: "get", path: "/v1/personas", summary: "Buscar personas", description: "Alcance requerido: `nucleo.leer`. Búsqueda en español (unaccent).", security: seg,
     request: { query: z.object({ q: z.string() }) }, responses: { 200: { description: "Resultados" } } });
 
+  r.registerPath({ method: "put", path: "/v1/tickets/{id}/asignar", summary: "Asignar ticket a un usuario", description: "Alcance requerido: `tickets.asignar`.", security: seg,
+    request: { params: z.object({ id: z.string() }), body: { content: json(E.asignar, { usuarioId: "b2c1e0a4-1111-2222-3333-444455556666" }) } },
+    responses: { 200: { description: "ok", content: json(z.object({ ok: z.boolean() })) }, 403: respError, 404: respError } });
+
+  // Derechos del titular (Ley 21.719)
+  r.registerPath({ method: "get", path: "/v1/personas/{id}/exportar", summary: "Exportar datos de la persona (acceso / portabilidad)", description: "Alcance requerido: `nucleo.leer`. Devuelve TODO lo que xHub guarda de la persona (identidades, interacciones, tickets). Derecho de acceso y portabilidad — Ley 21.719.", security: seg,
+    request: { params: z.object({ id: z.string() }) }, responses: { 200: { description: "Export completo (JSON)" }, 401: respError, 403: respError, 404: respError } });
+  r.registerPath({ method: "post", path: "/v1/personas/{id}/suprimir", summary: "Suprimir datos de la persona (derecho de supresión)", description: "Alcance requerido: `nucleo.administrar`. Redacta/borra los datos de la persona con **motivo obligatorio**. Derecho de supresión — Ley 21.719. Irreversible y auditado.", security: seg,
+    request: { params: z.object({ id: z.string() }), body: { content: json(E.suprimirTitular, { motivo: "Solicitud del titular (correo del 12/09)" }) } },
+    responses: { 200: { description: "Suprimida", content: json(z.object({ suprimida: z.boolean(), personaId: z.string(), ticketsRedactados: z.number() })) }, 401: respError, 403: respError, 404: respError } });
+
   const gen = new OpenApiGeneratorV31(r.definitions);
   return gen.generateDocument({
     openapi: "3.1.0",
@@ -73,6 +84,18 @@ export function generarOpenApi(): object {
         "- `tickets.crear` — crear tickets.",
         "- `tickets.responder` — cambiar estado y respuesta sugerida.",
         "- `tickets.asignar` — asignar tickets.",
+        "- `nucleo.administrar` — supresión de datos del titular (Ley 21.719).",
+        "",
+        "",
+        "## La llave privada",
+        "Cada cliente tiene su(s) **llave(s) de API** `xhub_…`. Las crea el **superadmin** desde el panel (Clientes → cliente → `+ Llave API`), donde se define su **conjunto de alcances** (nunca puede exceder los módulos encendidos del cliente). La llave se muestra **una sola vez**; en la base solo vive su `sha256`. El cliente se deduce **de la llave**, jamás de un header, así cruzar clientes es imposible.",
+        "En esta página podés pulsar **Authorize** y pegar tu llave (`xhub_…`) para probar los endpoints en vivo.",
+        "",
+        "## Cuota y límites",
+        "Respuesta trae `x-cuota-restante` / `x-cuota-limite` (cuota mensual del plan) y `x-ratelimit-remaining` (ráfaga por minuto). Al agotarse: `429` con `error.codigo` estable.",
+        "",
+        "## Derechos del titular (Ley 21.719)",
+        "`GET /v1/personas/{id}/exportar` (acceso/portabilidad) y `POST /v1/personas/{id}/suprimir` (supresión, con motivo) cubren los derechos del titular. La supresión es irreversible y queda auditada.",
         "",
         "## Copy-paste — una ESCRITURA (crear ticket)",
         "```sh",
