@@ -9,6 +9,12 @@ import { AppShell } from "@/components/app-shell";
 import { EditorMarca } from "@/components/editor-marca";
 
 type Cliente = { id: string; nombre: string; estado: string; modulos: string[] };
+type Panorama = {
+  clientes: { total: number; activos: number; conTickets: number };
+  tickets: { abiertos: number; vencidos: number; total: number };
+  ia: { total: number; tokensPrompt: number; tokensSalida: number };
+  porCliente: { id: string; abiertos: number; vencidos: number; total: number }[];
+};
 const MODULOS: { k: string; nombre: string }[] = [
   { k: "tickets", nombre: "xTickets" },
   { k: "crm", nombre: "xCRM" },
@@ -24,10 +30,14 @@ export default function Superadmin() {
   const [creando, setCreando] = useState(false);
   const [llave, setLlave] = useState<{ cliente: string; token: string } | null>(null);
   const [marcaAbierta, setMarcaAbierta] = useState<string | null>(null);
+  const [pan, setPan] = useState<Panorama | null>(null);
 
   async function cargar() {
     setCargando(true); setError(null);
-    try { setClientes((await apiFetch<{ datos: Cliente[] }>("/admin/clientes")).datos); }
+    try {
+      setClientes((await apiFetch<{ datos: Cliente[] }>("/admin/clientes")).datos);
+      apiFetch<Panorama>("/admin/panorama").then(setPan).catch(() => {});
+    }
     catch (e) { setError((e as Error).message); }
     finally { setCargando(false); }
   }
@@ -61,12 +71,19 @@ export default function Superadmin() {
       <AppShell />
 
       <div className="max-w-5xl mx-auto p-4 sm:p-8">
-        <div className="flex gap-4 mb-8 flex-wrap">
-          {([["Clientes", clientes.length], ["Activos", activos], ["Módulos xTickets", clientes.filter((c) => c.modulos.includes("tickets")).length]] as const).map(([l, n]) => (
-            <Card key={l} className="flex-1 min-w-[160px]">
+        <div className="flex gap-3 mb-8 flex-wrap">
+          {([
+            ["Clientes", pan ? pan.clientes.total : clientes.length, "--senal"],
+            ["Activos", pan ? pan.clientes.activos : activos, "--exito"],
+            ["Tickets abiertos", pan ? pan.tickets.abiertos : null, "--aviso"],
+            ["SLA vencidos", pan ? pan.tickets.vencidos : null, (pan && pan.tickets.vencidos > 0) ? "--critico" : "--muted-foreground"],
+            ["IA · 30 días", pan ? pan.ia.total : null, "--senal"],
+          ] as const).map(([l, n, col]) => (
+            <Card key={l} className="flex-1 min-w-[150px]">
               <CardContent className="pt-6">
-                <div className="text-xs font-black tracking-widest uppercase text-[hsl(var(--senal))]">{l}</div>
-                <div className="text-4xl font-semibold tracking-tight mt-1 tabular-nums">{cargando ? "·" : n}</div>
+                <div className="text-[11px] font-black tracking-widest uppercase text-muted-foreground">{l}</div>
+                <div className="text-4xl font-semibold tracking-tight mt-1 tabular-nums" style={{ color: `hsl(var(${col}))` }}>{n == null ? (cargando ? "·" : "·") : n}</div>
+                {l === "IA · 30 días" && pan && <div className="text-[10.5px] text-muted-foreground mt-1">{(pan.ia.tokensPrompt + pan.ia.tokensSalida).toLocaleString("es-CL")} tokens</div>}
               </CardContent>
             </Card>
           ))}
@@ -127,6 +144,13 @@ export default function Superadmin() {
                     );
                   })}
                 </div>
+                {(() => { const t = pan?.porCliente.find((x) => x.id === cl.id); return t ? (
+                  <div className="mt-2 text-[12px] text-muted-foreground">
+                    <span className="tabular-nums font-medium text-foreground">{t.abiertos}</span> abiertos ·{" "}
+                    <span className="tabular-nums font-medium" style={{ color: t.vencidos > 0 ? "hsl(var(--critico))" : undefined }}>{t.vencidos}</span> SLA vencidos ·{" "}
+                    <span className="tabular-nums">{t.total}</span> tickets
+                  </div>
+                ) : null; })()}
                 {marcaAbierta === cl.id && <EditorMarca clienteId={cl.id} />}
               </CardContent></Card>
             ))}

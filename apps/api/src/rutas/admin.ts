@@ -122,6 +122,35 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       return { cliente: id, limiteMensual: b.limiteMensual };
     });
 
+    // PANORAMA: el pulso de TODA la plataforma de un vistazo (vista 360 del superadmin).
+    // Agrega por cliente los tickets (abiertos, SLA vencidos, total) recorriendo cada
+    // tenant con conCliente (RLS), y el consumo de IA agregado de los últimos 30 días.
+    admin.get("/panorama", async () => {
+      const clientes = await conPlataforma((c) => listarClientesAdmin(c));
+      const porCliente = [];
+      let abiertos = 0, vencidos = 0, ticketsTotal = 0;
+      for (const cl of clientes) {
+        const t = await conCliente(cl.id, async (c) => ({
+          abiertos: (await c.query("select count(*)::int n from tickets where estado not in ('resuelto','cerrado')")).rows[0].n as number,
+          vencidos: (await c.query("select count(*)::int n from tickets where sla_incumplido=true and estado not in ('resuelto','cerrado')")).rows[0].n as number,
+          total: (await c.query("select count(*)::int n from tickets")).rows[0].n as number,
+        }));
+        abiertos += t.abiertos; vencidos += t.vencidos; ticketsTotal += t.total;
+        porCliente.push({ id: cl.id, nombre: cl.nombre, estado: cl.estado, modulos: cl.modulos, ...t });
+      }
+      const ia = await conPlataforma((c) => resumenUsoIA(c, { dias: 30 }));
+      return {
+        clientes: {
+          total: clientes.length,
+          activos: clientes.filter((c) => c.estado === "activo").length,
+          conTickets: clientes.filter((c) => c.modulos.includes("tickets")).length,
+        },
+        tickets: { abiertos, vencidos, total: ticketsTotal },
+        ia,
+        porCliente,
+      };
+    });
+
     // Actividad y consumo de IA de TODA la plataforma (qué hizo, cuánto costó)
     admin.get("/ia", async (req) => {
       const q = req.query as { dias?: string };
