@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
 import { useYo } from "@/lib/permisos";
+import { useMarca } from "@/lib/marca";
 import { apiDocsUrl } from "@/lib/api";
 
 /**
@@ -52,6 +53,7 @@ export function AppShell() {
   const router = useRouter();
   const { data: sesion, isPending } = useSession();
   const { puede, cargando: cargandoYo } = useYo();
+  const marca = useMarca();
   const usuario = sesion?.user as { email?: string; name?: string; rol?: string } | undefined;
   const esPlataforma = !usuario || usuario.rol === "plataforma";
   const esAdminCliente = usuario?.rol === "admin_cliente";
@@ -82,14 +84,18 @@ export function AppShell() {
       <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
         {/* Marca: cuadro con degradé señal→acción (identidad X5) + wordmark */}
         <Link href={esPlataforma ? "/superadmin" : "/tickets"} className="flex items-center gap-2.5 shrink-0 group">
-          <span className="relative h-8 w-8 rounded-[9px] grid place-items-center text-[13px] font-black text-white shadow-sm"
-            style={{ background: "linear-gradient(135deg, hsl(var(--senal)), hsl(var(--primary)))" }}>
-            x5
-            <span className="absolute inset-0 rounded-[9px] ring-1 ring-white/15" />
-          </span>
+          {marca?.logo_url ? (
+            <img src={marca.logo_url} alt={marca.nombre_marca || "logo"} className="h-8 w-auto max-w-[130px] object-contain" />
+          ) : (
+            <span className="relative h-8 w-8 rounded-[9px] grid place-items-center text-[13px] font-black text-white shadow-sm"
+              style={{ background: "linear-gradient(135deg, hsl(var(--senal)), hsl(var(--primary)))" }}>
+              {marca?.nombre_marca ? marca.nombre_marca.slice(0, 2).toUpperCase() : "x5"}
+              <span className="absolute inset-0 rounded-[9px] ring-1 ring-white/15" />
+            </span>
+          )}
           <span className="leading-none">
-            <span className="block font-semibold tracking-tight text-[15px]">xHub</span>
-            <span className="block text-[10px] uppercase tracking-[0.14em] text-muted-foreground">X5 Soluciones</span>
+            <span className="block font-semibold tracking-tight text-[15px]">{marca?.nombre_marca || "xHub"}</span>
+            <span className="block text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{marca?.nombre_marca ? "xHub" : "X5 Soluciones"}</span>
           </span>
         </Link>
 

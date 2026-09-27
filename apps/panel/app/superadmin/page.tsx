@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
 import { AppShell } from "@/components/app-shell";
+import { EditorMarca } from "@/components/editor-marca";
 
 type Cliente = { id: string; nombre: string; estado: string; modulos: string[] };
 const MODULOS: { k: string; nombre: string }[] = [
@@ -22,6 +23,7 @@ export default function Superadmin() {
   const [nombre, setNombre] = useState("");
   const [creando, setCreando] = useState(false);
   const [llave, setLlave] = useState<{ cliente: string; token: string } | null>(null);
+  const [marcaAbierta, setMarcaAbierta] = useState<string | null>(null);
 
   async function cargar() {
     setCargando(true); setError(null);
@@ -110,6 +112,7 @@ export default function Superadmin() {
                   <Badge rol={estRol(cl.estado)}>{cl.estado.replace("_", " ")}</Badge>
                   <div className="flex-1" />
                   <a href={`/superadmin/cliente?id=${cl.id}`} className="text-xs text-[hsl(var(--senal))] hover:underline">Gestionar →</a>
+                  <Button variant="secondary" size="sm" onClick={() => setMarcaAbierta(marcaAbierta === cl.id ? null : cl.id)}>Marca</Button>
                   <Button variant="secondary" size="sm" onClick={() => nuevaLlave(cl)}>+ Llave API</Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-3">
@@ -124,6 +127,7 @@ export default function Superadmin() {
                     );
                   })}
                 </div>
+                {marcaAbierta === cl.id && <EditorMarca clienteId={cl.id} />}
               </CardContent></Card>
             ))}
           </div>

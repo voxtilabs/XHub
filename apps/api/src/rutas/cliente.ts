@@ -113,6 +113,19 @@ export function registrarRutasCliente(app: FastifyInstance): void {
         : await conPlataforma((c) => permisosDe(c, u.id!));
       return { id: u.id, email: u.email ?? null, nombre: u.name ?? null, rol: u.rol ?? "usuario", clienteId: u.clienteId ?? null, esAdmin, permisos };
     });
+
+    // Marca blanca del cliente logueado: el panel se pinta con ella (o defaults si no hay).
+    yo.get("/marca", async (req) => {
+      let sesion: Awaited<ReturnType<typeof auth.api.getSession>> = null;
+      try { sesion = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) }); } catch { sesion = null; }
+      const cid = (sesion?.user as { clienteId?: string } | undefined)?.clienteId;
+      const vacia = { nombre_marca: null, logo_url: null, color_primario: null, color_acento: null };
+      if (!cid) return vacia;
+      return conPlataforma(async (c) => {
+        const r = await c.query("select nombre_marca, logo_url, color_primario, color_acento from plataforma.clientes_marca where cliente_id=$1", [cid]);
+        return r.rows[0] ?? vacia;
+      });
+    });
   }, { prefix: "/cliente" });
 
 }
