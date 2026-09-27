@@ -1,5 +1,10 @@
 import { despacharLote, cerrarPool } from "@xhub/db";
+import { fijarObservadorIA } from "@xhub/ia";
+import { crearSinkUsoIA } from "@xhub/modulo-nucleo";
 import { construirRegistro } from "./registro.js";
+
+// El triage con IA corre aquí (consumidores del outbox): registra su consumo.
+fijarObservadorIA(crearSinkUsoIA());
 
 /**
  * Proceso workers: despacha el outbox en bucle. Cuando no hay pendientes, espera más;

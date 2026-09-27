@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@xhub/core": "workspace:*",
+    "@xhub/ia": "workspace:*",
     "@xhub/db": "workspace:*",
     "@xhub/modulo-nucleo": "workspace:*",
     "@xhub/modulo-tickets": "workspace:*",

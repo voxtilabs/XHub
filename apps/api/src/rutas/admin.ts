@@ -6,6 +6,7 @@ import {
   resolverAdmin, crearCliente, cambiarEstado, fijarEntitlement, crearLlave,
   fijarCuota, cuotaDe, listarClientesAdmin,
   fijarLimiteUsuarios, limiteUsuariosDe, contarUsuariosCliente, listarUsuariosCliente,
+  resumenUsoIA,
 } from "@xhub/modulo-nucleo";
 import { consumoDelDia } from "@xhub/cuotas";
 import { fijarConfigTriage, configTriage } from "@xhub/modulo-tickets";
@@ -118,6 +119,19 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       const b = E.validar(E.fijarCuota, req.body);
       await conPlataforma((c) => fijarCuota(c, id, b.limiteMensual));
       return { cliente: id, limiteMensual: b.limiteMensual };
+    });
+
+    // Actividad y consumo de IA de TODA la plataforma (qué hizo, cuánto costó)
+    admin.get("/ia", async (req) => {
+      const q = req.query as { dias?: string };
+      return conPlataforma((c) => resumenUsoIA(c, { dias: q.dias ? Number(q.dias) : 30 }));
+    });
+
+    // Actividad y consumo de IA de un cliente
+    admin.get("/clientes/:id/ia", async (req) => {
+      const { id } = req.params as { id: string };
+      const q = req.query as { dias?: string };
+      return conPlataforma((c) => resumenUsoIA(c, { clienteId: id, dias: q.dias ? Number(q.dias) : 30 }));
     });
 
     // Consumo del cliente (hoy) + cuota efectiva

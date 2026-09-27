@@ -12,6 +12,11 @@ type Consumo = { total: number; cuotaMensual: number; dia: string };
 type Triage = { modo: "automatico" | "sugerir" | "manual"; umbral: number };
 type UsuarioCliente = { id: string; email: string; nombre: string; rol: string; creadoEn: string };
 type Usuarios = { limite: number; usados: number; usuarios: UsuarioCliente[] };
+type ResumenIA = {
+  total: number; ok: number; fallidos: number; tokensPrompt: number; tokensSalida: number; msPromedio: number;
+  porTarea: { tarea: string; llamadas: number; tokens: number }[];
+  recientes: { tarea: string; proveedor: string; modelo: string; tokens: number; ms: number; ok: boolean; creadoEn: string }[];
+};
 const ESTADOS = ["en_alta", "activo", "moroso", "solo_lectura", "suspendido"];
 const MODULOS = [{ k: "tickets", n: "xTickets" }, { k: "crm", n: "xCRM" }];
 const MODOS: { k: Triage["modo"]; n: string; d: string }[] = [
@@ -34,6 +39,7 @@ export default function ClienteDetalle() {
   const [usuarios, setUsuarios] = useState<Usuarios | null>(null);
   const [lim, setLim] = useState("");
   const [nu, setNu] = useState({ email: "", nombre: "", password: "" });
+  const [ia, setIa] = useState<ResumenIA | null>(null);
 
   async function cargar(cid: string) {
     try {
@@ -42,6 +48,7 @@ export default function ClienteDetalle() {
       const co = await apiFetch<Consumo>(`/admin/clientes/${cid}/consumo`); setConsumo(co); setCuota(String(co.cuotaMensual));
       setTriage(await apiFetch<Triage>(`/admin/clientes/${cid}/triage`));
       const us = await apiFetch<Usuarios>(`/admin/clientes/${cid}/usuarios`); setUsuarios(us); setLim(String(us.limite));
+      setIa(await apiFetch<ResumenIA>(`/admin/clientes/${cid}/ia?dias=30`));
     } catch (e) { setError((e as Error).message); }
   }
   async function recargarUsuarios(cid: string) {
@@ -197,6 +204,31 @@ export default function ClienteDetalle() {
                 className="w-full accent-[hsl(var(--primary))]" />
               <p className="text-[11px] text-muted-foreground mt-1">Solo se crea/sugiere si la confianza ≥ {Math.round(triage.umbral * 100)}%.</p>
             </div>
+          )}
+        </CardContent></Card>
+
+        {/* Consumo de IA del cliente (qué hizo, cuánto) */}
+        <Card><CardContent className="pt-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs font-black uppercase tracking-widest text-muted-foreground">IA · actividad (30 días)</div>
+            {ia && ia.total > 0 && <span className="text-[13px] tabular-nums text-muted-foreground">{(ia.tokensPrompt + ia.tokensSalida).toLocaleString("es-CL")} tokens</span>}
+          </div>
+          {!ia || ia.total === 0 ? (
+            <p className="text-[13px] text-muted-foreground">Sin actividad de IA todavía para este cliente.</p>
+          ) : (
+            <>
+              <div className="flex gap-4 flex-wrap mb-3">
+                <div><div className="text-2xl font-semibold tabular-nums">{ia.total.toLocaleString("es-CL")}</div><div className="text-[11px] text-muted-foreground uppercase tracking-wider">Llamadas</div></div>
+                <div><div className="text-2xl font-semibold tabular-nums" style={{ color: "hsl(var(--exito))" }}>{ia.ok}</div><div className="text-[11px] text-muted-foreground uppercase tracking-wider">OK</div></div>
+                <div><div className="text-2xl font-semibold tabular-nums" style={{ color: ia.fallidos ? "hsl(var(--critico))" : undefined }}>{ia.fallidos}</div><div className="text-[11px] text-muted-foreground uppercase tracking-wider">Fallidas</div></div>
+                <div><div className="text-2xl font-semibold tabular-nums">{ia.msPromedio.toLocaleString("es-CL")}<span className="text-sm text-muted-foreground ml-0.5">ms</span></div><div className="text-[11px] text-muted-foreground uppercase tracking-wider">Latencia</div></div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {ia.porTarea.map((t) => (
+                  <span key={t.tarea} className="text-[12px] rounded-pill bg-secondary px-2.5 py-1 capitalize">{t.tarea} · <span className="tabular-nums text-muted-foreground">{t.llamadas}</span></span>
+                ))}
+              </div>
+            </>
           )}
         </CardContent></Card>
 
