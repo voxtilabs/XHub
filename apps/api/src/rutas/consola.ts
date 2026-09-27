@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi } from "@xhub/core";
 import { conCliente, conPlataforma } from "@xhub/db";
-import { permisosDe, CATALOGO_PERMISOS } from "@xhub/modulo-nucleo";
+import { permisosDe, CATALOGO_PERMISOS, listarUsuariosCliente } from "@xhub/modulo-nucleo";
 import { crearModuloTickets, contextoOmnicanal, reincidencia } from "@xhub/modulo-tickets";
 import { nucleo } from "../nucleo.js";
 import { enviarCorreo } from "../correo.js";
@@ -48,6 +48,12 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
       const estado = q.estado && ESTADOS.has(q.estado) ? (q.estado as never) : undefined;
       return conCliente(ctx.clienteId, async (c) => {
         const res = await T.listarBandeja(c, { estado }, q.cursor, 50);
+        const ids = res.datos.map((t) => t.id);
+        if (ids.length) {
+          const asg = await c.query("select id, asignado_usuario from tickets where id = any($1)", [ids]);
+          const mapa = new Map(asg.rows.map((x) => [x.id, x.asignado_usuario]));
+          for (const t of res.datos as Array<{ id: string; asignado_usuario?: string | null }>) t.asignado_usuario = mapa.get(t.id) ?? null;
+        }
         const cnt = await c.query("select estado, count(*)::int n from tickets group by estado");
         const porEstado: Record<string, number> = {}; for (const x of cnt.rows) porEstado[x.estado] = x.n;
         const sinAsignar = (await c.query("select count(*)::int n from tickets where asignado_a is null and estado not in ('resuelto','cerrado')")).rows[0].n;
@@ -63,7 +69,7 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
       return conCliente(ctx.clienteId, async (c) => {
         const t = await c.query(
           `select id, numero::text, persona_id, asunto, estado, prioridad, canal_origen, asignado_a, resumen,
-                  categoria, etiquetas, urgencia_detectada, sla_primera_resp_vence, sla_resolucion_vence,
+                  categoria, etiquetas, urgencia_detectada, asignado_usuario, sla_primera_resp_vence, sla_resolucion_vence,
                   primera_respuesta_en, resuelto_en, satisfaccion, sla_incumplido, creado_en, actualizado_en
              from tickets where id=$1`, [id]);
         if (t.rowCount === 0) throw new ErrorApi("NO_ENCONTRADO", "Ticket no encontrado");
@@ -159,6 +165,39 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
         canal: b.canal!, identidad: b.identidad!, asunto: b.asunto!.trim(),
         prioridad: b.prioridad as never, cuerpo: b.cuerpo, categoria: b.categoria,
       }));
+    });
+
+    // Agentes asignables del cliente (para el dropdown de asignación).
+    r.get("/agentes", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "bandeja.ver");
+      const datos = await conPlataforma((c) => listarUsuariosCliente(c, ctx.clienteId));
+      return { datos };
+    });
+
+    // Asignar el ticket a un usuario del panel (o desasignar con null). Valida que el
+    // usuario pertenezca al cliente. Usa la columna de texto (Better Auth), no el uuid.
+    r.put("/tickets/:id/asignar", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { usuario?: string | null };
+      const usuario = b?.usuario || null;
+      if (usuario) {
+        const ok = await conPlataforma(async (c) => (await listarUsuariosCliente(c, ctx.clienteId)).some((u) => u.id === usuario));
+        if (!ok) throw new ErrorApi("VALIDACION", "Ese usuario no pertenece a tu equipo");
+      }
+      await conCliente(ctx.clienteId, (c) => c.query("update tickets set asignado_usuario=$2, actualizado_en=now() where id=$1", [id, usuario]));
+      return { ok: true, asignado_usuario: usuario };
+    });
+
+    // Cambiar prioridad.
+    r.put("/tickets/:id/prioridad", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { prioridad?: string };
+      if (!b?.prioridad || !["baja", "media", "alta", "urgente"].includes(b.prioridad)) throw new ErrorApi("VALIDACION", "Prioridad inválida");
+      const r2 = await conCliente(ctx.clienteId, (c) => c.query("update tickets set prioridad=$2, actualizado_en=now() where id=$1 returning id", [id, b.prioridad]));
+      if (r2.rowCount === 0) throw new ErrorApi("NO_ENCONTRADO", "Ticket no encontrado");
+      return { ok: true, prioridad: b.prioridad };
     });
 
     // Métricas del cliente (SQL directo, sin actor): tablero honesto y real.

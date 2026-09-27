@@ -9,7 +9,7 @@ import { AppShell } from "@/components/app-shell";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import {
   getTicket, getMensajes, getContexto, getSugerencia, responder, notaInterna, cambiarEstado,
-  TRANS, type Detalle, type Mensaje, type Contexto, type Estado, type Prioridad,
+  getAgentes, asignar, cambiarPrioridad, TRANS, type Detalle, type Mensaje, type Contexto, type Estado, type Prioridad, type Agente,
 } from "@/lib/tickets";
 
 type Rol = "exito" | "aviso" | "critico" | "senal" | "neutro";
@@ -39,6 +39,7 @@ function Contenido() {
   const [enviando, setEnviando] = useState(false);
   const [sugiriendo, setSugiriendo] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [agentes, setAgentes] = useState<Agente[]>([]);
 
   const cargar = useCallback(async () => {
     setError(null);
@@ -48,6 +49,7 @@ function Contenido() {
     } catch (e) { setError((e as Error).message); } finally { setCargando(false); }
   }, [id]);
   useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => { getAgentes().then((r) => setAgentes(r.datos)).catch(() => {}); }, []);
   useEffect(() => { if (!toast) return; const x = setTimeout(() => setToast(null), 2600); return () => clearTimeout(x); }, [toast]);
 
   const puede = t?.puede.gestionar ?? false;
@@ -73,6 +75,16 @@ function Contenido() {
     try { await cambiarEstado(id, e); setT((prev) => prev && { ...prev, estado: e }); const m = await getMensajes(id); setMsgs(m.datos); setToast(`Estado → ${e}`); }
     catch (err) { setError((err as Error).message); }
   }
+  async function asignarA(u: string) {
+    setError(null);
+    try { await asignar(id, u || null); setT((prev) => prev && { ...prev, asignado_usuario: u || null }); setToast(u ? "Ticket asignado" : "Ticket sin asignar"); }
+    catch (err) { setError((err as Error).message); }
+  }
+  async function ponerPrioridad(p: Prioridad) {
+    setError(null);
+    try { await cambiarPrioridad(id, p); setT((prev) => prev && { ...prev, prioridad: p }); setToast(`Prioridad → ${p}`); }
+    catch (err) { setError((err as Error).message); }
+  }
 
   if (cargando) return <div className="max-w-5xl mx-auto p-10 text-sm text-muted-foreground font-mono">Cargando ticket…</div>;
   if (!t) return <div className="max-w-5xl mx-auto p-8"><div className="p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", color: "hsl(var(--critico))" }}>▲ {error ?? "No se pudo cargar el ticket"}</div><Link href="/tickets" className="text-[hsl(var(--senal))] text-sm underline mt-3 inline-block">← Volver a la bandeja</Link></div>;
@@ -91,12 +103,22 @@ function Contenido() {
           </div>
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight mt-1.5">{t.asunto}</h1>
           <div className="text-[12.5px] text-muted-foreground mt-1">
-            {t.canal_origen ?? "sin canal"}{t.categoria ? ` · ${t.categoria}` : ""} · creado {fecha(t.creado_en)}
+            {t.canal_origen ?? "sin canal"}{t.categoria ? ` · ${t.categoria}` : ""} · creado {fecha(t.creado_en)} · {t.asignado_usuario ? (agentes.find((a) => a.id === t.asignado_usuario)?.nombre || agentes.find((a) => a.id === t.asignado_usuario)?.email || "asignado") : "sin asignar"}
             {(t.etiquetas ?? []).map((e) => <span key={e} className="ml-1.5 rounded-pill bg-secondary px-1.5 py-0.5 text-[10.5px]">{e}</span>)}
           </div>
         </div>
         {puede && (
-          <div className="flex gap-1.5 flex-wrap">
+          <div className="flex gap-1.5 flex-wrap items-center">
+            <select value={t.asignado_usuario ?? ""} onChange={(e) => asignarA(e.target.value)} title="Asignar a"
+              className="h-9 rounded-md border border-border bg-background px-2 text-[13px] max-w-[160px]">
+              <option value="">Sin asignar</option>
+              {agentes.map((a) => <option key={a.id} value={a.id}>{a.nombre || a.email}</option>)}
+            </select>
+            <select value={t.prioridad} onChange={(e) => ponerPrioridad(e.target.value as Prioridad)} title="Prioridad"
+              className="h-9 rounded-md border border-border bg-background px-2 text-[13px] capitalize">
+              {(["baja", "media", "alta", "urgente"] as Prioridad[]).map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <span className="w-px h-6 bg-border mx-0.5" />
             {TRANS[t.estado].map((e) => (
               <Button key={e} size="sm" variant="secondary" onClick={() => transicionar(e)} className="capitalize">{e}</Button>
             ))}

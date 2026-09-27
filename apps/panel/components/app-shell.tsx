@@ -20,6 +20,7 @@ const RUTAS: Ruta[] = [
   { href: "/ia", label: "IA", soloPlataforma: true },
   { href: "/equipo", label: "Mi equipo", soloAdminCliente: true },
   { href: "/tickets", label: "Bandeja", permiso: "bandeja.ver" },
+  { href: "/tickets/metricas", label: "Métricas", permiso: "bandeja.ver" },
   { href: "/persona", label: "Personas", permiso: "ficha360.ver" },
 ];
 

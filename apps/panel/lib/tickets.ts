@@ -3,9 +3,9 @@ import { apiFetch } from "@/lib/api";
 
 export type Estado = "nuevo" | "abierto" | "pendiente" | "resuelto" | "cerrado";
 export type Prioridad = "baja" | "media" | "alta" | "urgente";
-export type TicketRow = { id: string; numero: string; persona_id: string; asunto: string; estado: Estado; prioridad: Prioridad; canal_origen: string | null; asignado_a: string | null; resumen: string | null; sla_incumplido?: boolean };
+export type TicketRow = { id: string; numero: string; persona_id: string; asunto: string; estado: Estado; prioridad: Prioridad; canal_origen: string | null; asignado_a: string | null; asignado_usuario?: string | null; resumen: string | null; sla_incumplido?: boolean };
 export type Bandeja = { datos: TicketRow[]; siguiente: string | null; porEstado: Record<string, number>; sinAsignar: number; vencidos: number; puede: { gestionar: boolean } };
-export type Detalle = TicketRow & { categoria: string | null; etiquetas: string[]; urgencia_detectada: string | null; sla_primera_resp_vence: string | null; sla_resolucion_vence: string | null; primera_respuesta_en: string | null; resuelto_en: string | null; satisfaccion: number | null; sla_incumplido: boolean; creado_en: string; actualizado_en: string; puede: { gestionar: boolean } };
+export type Detalle = TicketRow & { categoria: string | null; etiquetas: string[]; asignado_usuario: string | null; urgencia_detectada: string | null; sla_primera_resp_vence: string | null; sla_resolucion_vence: string | null; primera_respuesta_en: string | null; resuelto_en: string | null; satisfaccion: number | null; sla_incumplido: boolean; creado_en: string; actualizado_en: string; puede: { gestionar: boolean } };
 export type Mensaje = { seq: number; autor_tipo: "persona" | "agente" | "sistema"; autor_id: string | null; cuerpo: string; interno: boolean; creado_en: string };
 export type Contexto = { omnicanal: { tipo: string; modulo: string; ocurrioEn: string; resumen: string | null }[]; reincidencia: { totalTickets: number; ultimos30: number; esRecurrente: boolean; mismoCanal: Record<string, number> } };
 
@@ -24,3 +24,8 @@ export const notaInterna = (id: string, cuerpo: string) => apiFetch(`/cliente/ti
 export const cambiarEstado = (id: string, estado: Estado) => apiFetch<TicketRow>(`/cliente/tickets/${id}/estado`, { method: "PUT", body: JSON.stringify({ estado }) });
 export const crearTicket = (b: { canal: string; identidad: string; asunto: string; prioridad?: Prioridad; cuerpo?: string; categoria?: string }) => apiFetch<TicketRow>(`/cliente/tickets`, { method: "POST", body: JSON.stringify(b) });
 export const getMetricas = () => apiFetch<{ porEstado: Record<string, number>; porPrioridad: Record<string, number>; abiertos: number; vencidos: number; csat: { prom: number; n: number } }>(`/cliente/metricas`);
+
+export type Agente = { id: string; email: string; nombre: string | null; rol: string };
+export const getAgentes = () => apiFetch<{ datos: Agente[] }>("/cliente/agentes");
+export const asignar = (id: string, usuario: string | null) => apiFetch<{ ok: boolean; asignado_usuario: string | null }>(`/cliente/tickets/${id}/asignar`, { method: "PUT", body: JSON.stringify({ usuario }) });
+export const cambiarPrioridad = (id: string, prioridad: Prioridad) => apiFetch<{ ok: boolean }>(`/cliente/tickets/${id}/prioridad`, { method: "PUT", body: JSON.stringify({ prioridad }) });

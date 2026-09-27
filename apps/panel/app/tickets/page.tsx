@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AppShell } from "@/components/app-shell";
 import { RequierePermiso } from "@/components/requiere-permiso";
-import { getBandeja, cambiarEstado, TRANS, ESTADOS, type Bandeja, type TicketRow, type Estado, type Prioridad } from "@/lib/tickets";
+import { useYo } from "@/lib/permisos";
+import { getBandeja, cambiarEstado, getAgentes, TRANS, ESTADOS, type Bandeja, type TicketRow, type Estado, type Prioridad } from "@/lib/tickets";
 
 type Rol = "exito" | "aviso" | "critico" | "senal" | "neutro";
 const priT: Record<Prioridad, Rol> = { baja: "senal", media: "senal", alta: "aviso", urgente: "critico" };
@@ -35,19 +36,25 @@ function Contenido() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [sobre, setSobre] = useState<Estado | null>(null);
   const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [agentes, setAgentes] = useState<Record<string, string>>({});
+  const [vistaRapida, setVistaRapida] = useState<"todos" | "mios" | "sin">("todos");
+  const { yo } = useYo();
 
   const cargar = useCallback(async () => {
     setCargando(true); setError(null);
     try { setData(await getBandeja()); } catch (e) { setError((e as Error).message); } finally { setCargando(false); }
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => { getAgentes().then((r) => setAgentes(Object.fromEntries(r.datos.map((a) => [a.id, a.nombre || a.email])))).catch(() => {}); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 2800); return () => clearTimeout(t); }, [toast]);
 
   const tickets = data?.datos ?? [];
   const puedeGestionar = data?.puede.gestionar ?? false;
   const match = (t: TicketRow) => { const q = busca.trim().toLowerCase(); return !q || `#${t.numero} ${t.asunto} ${t.resumen ?? ""}`.toLowerCase().includes(q); };
   const cnt = (f: Estado | "todos") => f === "todos" ? tickets.filter(match).length : (data?.porEstado[f] ?? 0);
-  const rows = tickets.filter((t) => (filtro === "todos" || t.estado === filtro) && match(t));
+  const nombreAgente = (t: TicketRow) => t.asignado_usuario ? (agentes[t.asignado_usuario] ?? "Asignado") : null;
+  const pasaRapida = (t: TicketRow) => vistaRapida === "todos" || (vistaRapida === "mios" ? t.asignado_usuario === yo?.id : !t.asignado_usuario);
+  const rows = tickets.filter((t) => (filtro === "todos" || t.estado === filtro) && pasaRapida(t) && match(t));
 
   async function mover(id: string, hacia: Estado) {
     const t = tickets.find((x) => x.id === id);
@@ -89,7 +96,14 @@ function Contenido() {
 
       {vista === "lista" ? (
         <>
-          <div className="flex gap-2 mb-4 flex-wrap">
+          <div className="flex gap-2 mb-4 flex-wrap items-center">
+            {([["mios", "Míos"], ["sin", "Sin asignar"]] as const).map(([v, l]) => (
+              <button key={v} onClick={() => setVistaRapida(vistaRapida === v ? "todos" : v)}
+                className={"inline-flex items-center gap-1.5 px-3 h-8 rounded-pill text-[13px] font-medium border " + (vistaRapida === v ? "bg-[hsl(var(--senal)/0.15)] border-[hsl(var(--senal)/0.5)] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
+                {l}
+              </button>
+            ))}
+            <span className="w-px h-6 bg-border mx-1" />
             {FILTROS.map((x) => (
               <button key={x} onClick={() => setFiltro(x)}
                 className={"inline-flex items-center gap-1.5 px-3 h-8 rounded-pill text-[13px] font-medium border capitalize " + (filtro === x ? "bg-secondary border-border text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
@@ -102,7 +116,7 @@ function Contenido() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border">
-                  <th className="p-3 font-black">#</th><th className="p-3 font-black">Asunto</th><th className="p-3 font-black">Prioridad</th><th className="p-3 font-black">Estado</th><th className="p-3 font-black">Canal</th><th className="p-3 font-black">SLA</th>
+                  <th className="p-3 font-black">#</th><th className="p-3 font-black">Asunto</th><th className="p-3 font-black">Prioridad</th><th className="p-3 font-black">Estado</th><th className="p-3 font-black">Agente</th><th className="p-3 font-black">Canal</th><th className="p-3 font-black">SLA</th>
                 </tr></thead>
                 <tbody>
                   {rows.map((t) => (
@@ -111,12 +125,13 @@ function Contenido() {
                       <td className="p-3"><Link href={`/tickets/${t.id}`} className="block"><div className="font-medium">{t.asunto}</div>{t.resumen && <div className="text-xs text-muted-foreground truncate max-w-[380px]">{t.resumen}</div>}</Link></td>
                       <td className="p-3"><Badge rol={priT[t.prioridad]}>{t.prioridad}</Badge></td>
                       <td className="p-3"><Badge rol={estT[t.estado]}>{t.estado}</Badge></td>
+                      <td className="p-3 text-[13px]">{nombreAgente(t) ?? <span className="text-[hsl(var(--critico))] text-xs font-semibold">Sin asignar</span>}</td>
                       <td className="p-3 text-muted-foreground">{t.canal_origen ?? "—"}</td>
                       <td className="p-3">{t.sla_incumplido ? <Badge rol="critico">vencido</Badge> : <span className="text-muted-foreground text-xs">en plazo</span>}</td>
                     </tr>
                   ))}
-                  {!cargando && rows.length === 0 && <tr><td colSpan={6} className="p-10 text-center text-muted-foreground text-sm">No hay tickets{busca ? " que coincidan" : " todavía"}. {puedeGestionar && !busca && <Link href="/tickets/nuevo" className="text-[hsl(var(--senal))] underline">Crea el primero</Link>}</td></tr>}
-                  {cargando && <tr><td colSpan={6} className="p-10 text-center text-muted-foreground text-xs font-mono">Cargando…</td></tr>}
+                  {!cargando && rows.length === 0 && <tr><td colSpan={7} className="p-10 text-center text-muted-foreground text-sm">No hay tickets{busca ? " que coincidan" : " todavía"}. {puedeGestionar && !busca && <Link href="/tickets/nuevo" className="text-[hsl(var(--senal))] underline">Crea el primero</Link>}</td></tr>}
+                  {cargando && <tr><td colSpan={7} className="p-10 text-center text-muted-foreground text-xs font-mono">Cargando…</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -152,7 +167,7 @@ function Contenido() {
                           <Badge rol={priT[t.prioridad]} className="ml-auto text-[9.5px] px-1.5 py-0">{t.prioridad}</Badge>
                         </div>
                         <Link href={`/tickets/${t.id}`} className="block font-medium text-[12.5px] leading-snug mb-1">{t.asunto}</Link>
-                        <div className="text-[10.5px] text-muted-foreground">{t.canal_origen ?? "—"}{t.sla_incumplido && <span className="text-[hsl(var(--critico))] font-semibold"> · SLA vencido</span>}</div>
+                        <div className="text-[10.5px] text-muted-foreground">{nombreAgente(t) ?? "sin asignar"} · {t.canal_origen ?? "—"}{t.sla_incumplido && <span className="text-[hsl(var(--critico))] font-semibold"> · SLA vencido</span>}</div>
                       </div>
                     ))}
                     {items.length === 0 && <div className="text-[11px] text-muted-foreground/70 font-mono text-center py-2">vacío</div>}
