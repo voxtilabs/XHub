@@ -146,7 +146,7 @@ export function AppShell() {
       </div>
 
       {/* Nav móvil */}
-      <nav className="md:hidden flex items-center gap-1 px-3 pb-2 -mt-1 overflow-x-auto">
+      <nav className="md:hidden flex items-center gap-0.5 px-2 pb-2 -mt-1 overflow-x-auto no-scrollbar">
         {rutas.map((r) => (
           <Link key={r.href + r.label} href={r.href}
             className={`px-3 h-8 grid place-items-center rounded-md text-sm whitespace-nowrap transition ${

@@ -114,7 +114,26 @@ function Contenido() {
               </button>
             ))}
           </div>
-          <Card>
+          {/* Móvil: lista de tarjetas (la tabla de 7 columnas es ilegible en 390px) */}
+          <div className="sm:hidden flex flex-col gap-2">
+            {rows.map((t) => (
+              <Link key={t.id} href={`/tickets/${t.id}`} className="block rounded-lg border border-border bg-card p-3 active:bg-secondary/50">
+                <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                  <span className="font-mono text-[11px] text-muted-foreground">#{t.numero}</span>
+                  <Badge rol={priT[t.prioridad]} className="text-[9.5px] px-1.5 py-0">{t.prioridad}</Badge>
+                  <Badge rol={estT[t.estado]} className="text-[9.5px] px-1.5 py-0">{t.estado}</Badge>
+                  {t.sla_incumplido && <Badge rol="critico" className="text-[9.5px] px-1.5 py-0">SLA vencido</Badge>}
+                </div>
+                <div className="font-medium text-[14px] leading-snug">{t.asunto}</div>
+                <div className="text-[11.5px] text-muted-foreground mt-1 truncate">{nombreAgente(t) ?? "Sin asignar"} · {t.canal_origen ?? "—"}</div>
+              </Link>
+            ))}
+            {!cargando && rows.length === 0 && <div className="p-8 text-center text-muted-foreground text-sm">No hay tickets{busca ? " que coincidan" : " todavía"}.</div>}
+            {cargando && <div className="p-8 text-center text-muted-foreground text-xs font-mono">Cargando…</div>}
+          </div>
+
+          {/* Desktop: tabla */}
+          <Card className="hidden sm:block">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border">
