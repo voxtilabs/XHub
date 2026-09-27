@@ -29,3 +29,9 @@ export type Agente = { id: string; email: string; nombre: string | null; rol: st
 export const getAgentes = () => apiFetch<{ datos: Agente[] }>("/cliente/agentes");
 export const asignar = (id: string, usuario: string | null) => apiFetch<{ ok: boolean; asignado_usuario: string | null }>(`/cliente/tickets/${id}/asignar`, { method: "PUT", body: JSON.stringify({ usuario }) });
 export const cambiarPrioridad = (id: string, prioridad: Prioridad) => apiFetch<{ ok: boolean }>(`/cliente/tickets/${id}/prioridad`, { method: "PUT", body: JSON.stringify({ prioridad }) });
+
+export type Macro = { id: string; titulo: string; cuerpo: string };
+export const getMacros = () => apiFetch<{ datos: Macro[] }>("/cliente/macros");
+export const crearMacro = (titulo: string, cuerpo: string) => apiFetch<Macro>("/cliente/macros", { method: "POST", body: JSON.stringify({ titulo, cuerpo }) });
+export const borrarMacro = (mid: string) => apiFetch(`/cliente/macros/${mid}`, { method: "DELETE" });
+export const guardarEtiquetas = (id: string, etiquetas: string[]) => apiFetch<{ ok: boolean; etiquetas: string[] }>(`/cliente/tickets/${id}/etiquetas`, { method: "PUT", body: JSON.stringify({ etiquetas }) });

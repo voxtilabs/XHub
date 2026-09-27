@@ -9,7 +9,7 @@ import { AppShell } from "@/components/app-shell";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import {
   getTicket, getMensajes, getContexto, getSugerencia, responder, notaInterna, cambiarEstado,
-  getAgentes, asignar, cambiarPrioridad, TRANS, type Detalle, type Mensaje, type Contexto, type Estado, type Prioridad, type Agente,
+  getAgentes, asignar, cambiarPrioridad, getMacros, guardarEtiquetas, TRANS, type Detalle, type Mensaje, type Contexto, type Estado, type Prioridad, type Agente, type Macro,
 } from "@/lib/tickets";
 
 type Rol = "exito" | "aviso" | "critico" | "senal" | "neutro";
@@ -40,6 +40,9 @@ function Contenido() {
   const [sugiriendo, setSugiriendo] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [agentes, setAgentes] = useState<Agente[]>([]);
+  const [macros, setMacros] = useState<Macro[]>([]);
+  const [verMacros, setVerMacros] = useState(false);
+  const [nuevaEtq, setNuevaEtq] = useState("");
 
   const cargar = useCallback(async () => {
     setError(null);
@@ -50,6 +53,7 @@ function Contenido() {
   }, [id]);
   useEffect(() => { cargar(); }, [cargar]);
   useEffect(() => { getAgentes().then((r) => setAgentes(r.datos)).catch(() => {}); }, []);
+  useEffect(() => { getMacros().then((r) => setMacros(r.datos)).catch(() => {}); }, []);
   useEffect(() => { if (!toast) return; const x = setTimeout(() => setToast(null), 2600); return () => clearTimeout(x); }, [toast]);
 
   const puede = t?.puede.gestionar ?? false;
@@ -83,6 +87,11 @@ function Contenido() {
   async function ponerPrioridad(p: Prioridad) {
     setError(null);
     try { await cambiarPrioridad(id, p); setT((prev) => prev && { ...prev, prioridad: p }); setToast(`Prioridad → ${p}`); }
+    catch (err) { setError((err as Error).message); }
+  }
+  async function fijarEtiquetas(lista: string[]) {
+    setError(null);
+    try { const r = await guardarEtiquetas(id, lista); setT((prev) => prev && { ...prev, etiquetas: r.etiquetas }); }
     catch (err) { setError((err as Error).message); }
   }
 
@@ -128,6 +137,20 @@ function Contenido() {
 
       {error && <div className="mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}>▲ {error}</div>}
 
+      {puede && (
+        <div className="flex items-center gap-1.5 flex-wrap mb-4">
+          <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mr-1">Etiquetas</span>
+          {(t.etiquetas ?? []).map((e) => (
+            <span key={e} className="inline-flex items-center gap-1 rounded-pill bg-secondary px-2 py-0.5 text-[11.5px]">
+              {e}<button onClick={() => fijarEtiquetas((t.etiquetas ?? []).filter((x) => x !== e))} className="text-muted-foreground hover:text-[hsl(var(--critico))]" aria-label={`quitar ${e}`}>×</button>
+            </span>
+          ))}
+          <input value={nuevaEtq} onChange={(e) => setNuevaEtq(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && nuevaEtq.trim()) { fijarEtiquetas([...(t.etiquetas ?? []), nuevaEtq.trim()]); setNuevaEtq(""); } }}
+            placeholder="+ etiqueta y Enter" className="h-7 w-36 rounded-pill border border-border bg-background px-2.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-[1fr_300px] gap-4">
         {/* Conversación */}
         <div className="flex flex-col gap-3">
@@ -155,13 +178,31 @@ function Contenido() {
           {/* Composer */}
           {puede ? (
             <Card><CardContent className="pt-4">
-              <div className="inline-flex gap-0.5 bg-secondary/60 p-0.5 rounded-md border border-border mb-2">
-                {[["pública", false], ["nota interna", true]].map(([lbl, val]) => (
-                  <button key={String(val)} onClick={() => setInterno(val as boolean)} aria-pressed={interno === val}
-                    className={"px-3 h-8 rounded-[0.4rem] text-[13px] font-medium capitalize " + (interno === val ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground")}>
-                    {lbl as string}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <div className="inline-flex gap-0.5 bg-secondary/60 p-0.5 rounded-md border border-border">
+                  {[["pública", false], ["nota interna", true]].map(([lbl, val]) => (
+                    <button key={String(val)} onClick={() => setInterno(val as boolean)} aria-pressed={interno === val}
+                      className={"px-3 h-8 rounded-[0.4rem] text-[13px] font-medium capitalize " + (interno === val ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground")}>
+                      {lbl as string}
+                    </button>
+                  ))}
+                </div>
+                {macros.length > 0 && (
+                  <div className="relative">
+                    <button onClick={() => setVerMacros((v) => !v)} className="h-8 px-3 rounded-md border border-border bg-secondary/60 text-[13px] font-medium hover:text-foreground text-muted-foreground">Macros ▾</button>
+                    {verMacros && (
+                      <div className="absolute z-20 mt-1 w-72 max-h-64 overflow-auto rounded-md border border-border bg-card shadow-2xl p-1">
+                        {macros.map((mc) => (
+                          <button key={mc.id} onClick={() => { setTexto(mc.cuerpo); setVerMacros(false); }}
+                            className="block w-full text-left rounded-md px-2.5 py-1.5 hover:bg-secondary">
+                            <span className="block text-[13px] font-medium">{mc.titulo}</span>
+                            <span className="block text-[11px] text-muted-foreground truncate">{mc.cuerpo}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={4}
                 placeholder={interno ? "Nota privada para el equipo (la persona no la ve)…" : "Escribe tu respuesta al cliente…"}

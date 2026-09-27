@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -26,6 +27,7 @@ export default function Bandeja() {
 }
 
 function Contenido() {
+  const router = useRouter();
   const [data, setData] = useState<Bandeja | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -120,7 +122,7 @@ function Contenido() {
                 </tr></thead>
                 <tbody>
                   {rows.map((t) => (
-                    <tr key={t.id} className="border-b border-border last:border-0 hover:bg-secondary/40">
+                    <tr key={t.id} onClick={() => router.push(`/tickets/${t.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/40 cursor-pointer">
                       <td className="p-3 tabular-nums text-muted-foreground"><Link href={`/tickets/${t.id}`} className="block">#{t.numero}</Link></td>
                       <td className="p-3"><Link href={`/tickets/${t.id}`} className="block"><div className="font-medium">{t.asunto}</div>{t.resumen && <div className="text-xs text-muted-foreground truncate max-w-[380px]">{t.resumen}</div>}</Link></td>
                       <td className="p-3"><Badge rol={priT[t.prioridad]}>{t.prioridad}</Badge></td>

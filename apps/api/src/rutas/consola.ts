@@ -200,6 +200,42 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
       return { ok: true, prioridad: b.prioridad };
     });
 
+    // Macros (respuestas rápidas) del cliente.
+    r.get("/macros", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "bandeja.ver");
+      return conCliente(ctx.clienteId, async (c) => {
+        const m = await c.query("select id, titulo, cuerpo from ticket_macros order by titulo asc");
+        return { datos: m.rows };
+      });
+    });
+    r.post("/macros", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
+      const b = req.body as { titulo?: string; cuerpo?: string };
+      if (!b?.titulo?.trim() || !b?.cuerpo?.trim()) throw new ErrorApi("VALIDACION", "La macro necesita título y cuerpo");
+      return conCliente(ctx.clienteId, async (c) => {
+        const r2 = await c.query("insert into ticket_macros (cliente_id, titulo, cuerpo) values ($1,$2,$3) returning id, titulo, cuerpo",
+          [ctx.clienteId, b.titulo!.trim(), b.cuerpo!.trim()]);
+        return r2.rows[0];
+      });
+    });
+    r.delete("/macros/:mid", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
+      const { mid } = req.params as { mid: string };
+      await conCliente(ctx.clienteId, (c) => c.query("delete from ticket_macros where id=$1", [mid]));
+      return { ok: true };
+    });
+
+    // Editar las etiquetas de un ticket.
+    r.put("/tickets/:id/etiquetas", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { etiquetas?: string[] };
+      const etq = Array.isArray(b?.etiquetas) ? b.etiquetas.map((x) => String(x).trim()).filter(Boolean).slice(0, 20) : [];
+      const r2 = await conCliente(ctx.clienteId, (c) => c.query("update tickets set etiquetas=$2, actualizado_en=now() where id=$1 returning id", [id, etq]));
+      if (r2.rowCount === 0) throw new ErrorApi("NO_ENCONTRADO", "Ticket no encontrado");
+      return { ok: true, etiquetas: etq };
+    });
+
     // Métricas del cliente (SQL directo, sin actor): tablero honesto y real.
     r.get("/metricas", async (req) => {
       const ctx = await guard(req); exigir(ctx, "bandeja.ver");
