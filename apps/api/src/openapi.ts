@@ -15,7 +15,8 @@ export function generarOpenApi(): object {
     type: "http", scheme: "bearer", description: "Llave de API del cliente (xhub_…) en Authorization: Bearer",
   });
   const seg = [{ [bearer.name]: [] }];
-  const json = (schema: z.ZodTypeAny) => ({ "application/json": { schema } });
+  const json = (schema: z.ZodTypeAny, example?: unknown) =>
+    ({ "application/json": { schema, ...(example !== undefined ? { example } : {}) } });
 
   const errorSchema = z.object({
     error: z.object({ codigo: z.string(), mensaje: z.string(), detalle: z.record(z.unknown()).optional(), request_id: z.string().optional() }),
@@ -33,32 +34,59 @@ export function generarOpenApi(): object {
     asignado_a: z.string().nullable(), resumen: z.string().nullable(),
   }).openapi("Ticket");
 
-  r.registerPath({ method: "post", path: "/v1/tickets", summary: "Crear ticket", security: seg,
-    request: { body: { content: json(E.crearTicket) } },
-    responses: { 200: { description: "Ticket creado", content: json(ticketOut) }, 401: respError, 403: respError, 422: respError } });
-  r.registerPath({ method: "get", path: "/v1/tickets", summary: "Bandeja de tickets", security: seg,
+  const ejTicket = { id: "9b1f…e9", numero: "4821", persona_id: "8bc6…c1", asunto: "No llegó mi pedido #A-1902", estado: "nuevo", prioridad: "alta", canal_origen: "email", asignado_a: null, resumen: null };
+  r.registerPath({ method: "post", path: "/v1/tickets", summary: "Crear ticket", description: "Alcance requerido: `tickets.crear`. Crea la persona si no existe (por canal+identidad) y la deja en su línea de tiempo.", security: seg,
+    request: { body: { content: json(E.crearTicket, { canal: "email", identidad: "juan@empresa.cl", asunto: "No llegó mi pedido #A-1902", prioridad: "alta", cuerpo: "Hice el pedido hace 5 días y aún no llega." }) } },
+    responses: { 200: { description: "Ticket creado", content: json(ticketOut, ejTicket) }, 401: respError, 403: respError, 422: respError } });
+  r.registerPath({ method: "get", path: "/v1/tickets", summary: "Bandeja de tickets", description: "Alcance requerido: `tickets.leer`. Paginación por cursor: repite con `cursor` = el `siguiente` de la respuesta hasta que sea `null`.", security: seg,
     request: { query: z.object({ estado: E.estadoEnum.optional(), cursor: z.string().optional() }) },
-    responses: { 200: { description: "Lista", content: json(z.object({ datos: z.array(ticketOut), siguiente: z.string().nullable() })) }, 401: respError, 403: respError } });
-  r.registerPath({ method: "get", path: "/v1/tickets/{id}/contexto", summary: "Contexto omnicanal + reincidencia", security: seg,
+    responses: { 200: { description: "Lista", content: json(z.object({ datos: z.array(ticketOut), siguiente: z.string().nullable() }), { datos: [ejTicket], siguiente: null }) }, 401: respError, 403: respError } });
+  r.registerPath({ method: "get", path: "/v1/tickets/{id}/contexto", summary: "Contexto omnicanal + reincidencia", description: "Alcance requerido: `tickets.leer`.", security: seg,
     request: { params: z.object({ id: z.string() }) },
     responses: { 200: { description: "Contexto 360" }, 401: respError, 403: respError } });
-  r.registerPath({ method: "get", path: "/v1/tickets/{id}/sugerencia", summary: "Respuesta sugerida por IA", security: seg,
+  r.registerPath({ method: "get", path: "/v1/tickets/{id}/sugerencia", summary: "Respuesta sugerida por IA", description: "Alcance requerido: `tickets.responder`.", security: seg,
     request: { params: z.object({ id: z.string() }) },
     responses: { 200: { description: "Sugerencia (o null)", content: json(z.object({ sugerencia: z.string().nullable() })) } } });
-  r.registerPath({ method: "put", path: "/v1/tickets/{id}/estado", summary: "Cambiar estado del ticket", security: seg,
+  r.registerPath({ method: "put", path: "/v1/tickets/{id}/estado", summary: "Cambiar estado del ticket", description: "Alcance requerido: `tickets.responder`. Transiciones válidas (máquina de estados); una inválida devuelve 409.", security: seg,
     request: { params: z.object({ id: z.string() }), body: { content: json(E.cambiarEstado) } },
     responses: { 200: { description: "Ticket", content: json(ticketOut) }, 409: respError } });
 
   // Personas
-  r.registerPath({ method: "get", path: "/v1/personas/{id}/ficha", summary: "Ficha 360 de una persona", security: seg,
+  r.registerPath({ method: "get", path: "/v1/personas/{id}/ficha", summary: "Ficha 360 de una persona", description: "Alcance requerido: `nucleo.leer`.", security: seg,
     request: { params: z.object({ id: z.string() }) }, responses: { 200: { description: "Ficha" }, 404: respError } });
-  r.registerPath({ method: "get", path: "/v1/personas", summary: "Buscar personas", security: seg,
+  r.registerPath({ method: "get", path: "/v1/personas", summary: "Buscar personas", description: "Alcance requerido: `nucleo.leer`. Búsqueda en español (unaccent).", security: seg,
     request: { query: z.object({ q: z.string() }) }, responses: { 200: { description: "Resultados" } } });
 
   const gen = new OpenApiGeneratorV31(r.definitions);
   return gen.generateDocument({
     openapi: "3.1.0",
-    info: { title: "xHub API", version: "1.0.0", description: "API pública del cliente de xHub. Autenticación por llave (Authorization: Bearer xhub_…). Errores con código estable; cuota por cliente en cabeceras x-cuota-*." },
+    info: {
+      title: "xHub API", version: "1.0.0",
+      description: [
+        "API pública del cliente de xHub. Autenticación por **llave** (`Authorization: Bearer xhub_…`).",
+        "Errores con **código estable** (`error.codigo`); cuota por cliente en cabeceras `x-cuota-*`; rate limit en `x-ratelimit-remaining`.",
+        "",
+        "## Alcances (scopes) por módulo",
+        "La llave lleva alcances; cada operación pide el suyo:",
+        "- `nucleo.leer` — ficha 360 y búsqueda de personas.",
+        "- `tickets.leer` — bandeja y contexto de tickets.",
+        "- `tickets.crear` — crear tickets.",
+        "- `tickets.responder` — cambiar estado y respuesta sugerida.",
+        "- `tickets.asignar` — asignar tickets.",
+        "",
+        "## Copy-paste — una ESCRITURA (crear ticket)",
+        "```sh",
+        "curl -X POST https://api-xhub.voxtilabs.cl/v1/tickets \\",
+        "  -H 'Authorization: Bearer xhub_TU_LLAVE' -H 'content-type: application/json' \\",
+        "  -d '{\"canal\":\"email\",\"identidad\":\"juan@empresa.cl\",\"asunto\":\"Mi pedido\",\"prioridad\":\"alta\"}'",
+        "```",
+        "## Copy-paste — una LECTURA (bandeja)",
+        "```sh",
+        "curl https://api-xhub.voxtilabs.cl/v1/tickets?estado=abierto \\",
+        "  -H 'Authorization: Bearer xhub_TU_LLAVE'",
+        "```",
+      ].join("\n"),
+    },
     servers: [{ url: "https://api-xhub.voxtilabs.cl", description: "Producción" }, { url: "https://api-stagexhub.voxtilabs.cl", description: "Staging" }],
   });
 }
