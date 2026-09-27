@@ -1,56 +1,79 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { PoolClient } from "pg";
 import { ErrorApi } from "@xhub/core";
 import { conCliente } from "@xhub/db";
 import { nucleo } from "../nucleo.js";
 import { guard, exigir } from "./consola.js";
 
 /**
- * Consola de xCRM (sesión). La oportunidad cuelga de la MISMA persona del núcleo, y su
- * creación/cierre se registra en nucleo.interacciones → aparece en la ficha 360 y en el
- * contexto omnicanal del ticket. Eso es "el ticket queda en el CRM y viceversa".
+ * Consola de xCRM al estilo Pipedrive: pipelines con etapas configurables, deals con
+ * campos ricos (moneda, cierre esperado, probabilidad, motivo de pérdida), actividades.
+ * Todo sobre la espina dorsal: la oportunidad cuelga de la MISMA persona del núcleo.
  */
-export const ETAPAS = ["Prospecto", "Calificado", "Propuesta", "Negociación", "Cierre"];
+const ETAPAS_DEFAULT: [string, number][] = [
+  ["Prospecto", 10], ["Contactado", 25], ["Reunido", 40],
+  ["Visita agendada", 60], ["Visita realizada", 80], ["Reservado", 90],
+];
+
+/** Garantiza un pipeline por cliente (crea "Ventas" + etapas y migra las oportunidades viejas). */
+async function asegurarPipeline(c: PoolClient, clienteId: string): Promise<string> {
+  const ex = await c.query("select id from crm_pipelines order by orden asc limit 1");
+  if (ex.rowCount) return ex.rows[0].id;
+  const pl = (await c.query("insert into crm_pipelines (cliente_id, nombre, orden) values ($1,'Ventas',0) returning id", [clienteId])).rows[0].id;
+  const etapas: { nombre: string; id: string }[] = [];
+  let orden = 0;
+  for (const [nombre, prob] of ETAPAS_DEFAULT) {
+    const eid = (await c.query("insert into crm_etapas (cliente_id, pipeline_id, nombre, orden, probabilidad) values ($1,$2,$3,$4,$5) returning id", [clienteId, pl, nombre, orden, prob])).rows[0].id;
+    etapas.push({ nombre, id: eid }); orden++;
+  }
+  const mapa = new Map(etapas.map((e) => [e.nombre.toLowerCase(), e.id]));
+  const primera = etapas[0].id;
+  const viejas = await c.query("select id, etapa from crm_oportunidades where pipeline_id is null");
+  for (const o of viejas.rows) await c.query("update crm_oportunidades set pipeline_id=$2, etapa_id=$3 where id=$1", [o.id, pl, mapa.get(String(o.etapa || "").toLowerCase()) ?? primera]);
+  return pl;
+}
+
+async function ctxGuard(req: FastifyRequest, permiso: string) { const ctx = await guard(req); exigir(ctx, permiso); return ctx; }
 
 export function registrarConsolaCrm(app: FastifyInstance): void {
   app.register(async (r) => {
-    // Embudo: oportunidades abiertas (+ ganadas recientes) con la persona resuelta.
+    // Pipelines + etapas del cliente (auto-crea el default).
+    r.get("/crm/pipelines", async (req) => {
+      const ctx = await ctxGuard(req, "crm.ver");
+      return conCliente(ctx.clienteId, async (c) => {
+        await asegurarPipeline(c, ctx.clienteId);
+        const pls = (await c.query("select id, nombre, orden from crm_pipelines order by orden asc")).rows;
+        const ets = (await c.query("select id, pipeline_id, nombre, orden, probabilidad from crm_etapas order by orden asc")).rows;
+        return { datos: pls.map((p) => ({ ...p, etapas: ets.filter((e) => e.pipeline_id === p.id) })) };
+      });
+    });
+
+    // Embudo de un pipeline: etapas + deals (abiertos + ganados) con la persona resuelta.
     r.get("/oportunidades", async (req) => {
-      const ctx = await guard(req); exigir(ctx, "crm.ver");
+      const ctx = await ctxGuard(req, "crm.ver");
+      const q = req.query as { pipeline?: string };
       return conCliente(ctx.clienteId, async (c) => {
-        const q = await c.query(
-          `select o.id, o.titulo, o.valor::int as valor, o.etapa, o.estado, o.persona_id, o.creado_en,
+        const plId = q.pipeline || await asegurarPipeline(c, ctx.clienteId);
+        const etapas = (await c.query("select id, nombre, orden, probabilidad from crm_etapas where pipeline_id=$1 order by orden asc", [plId])).rows;
+        const ops = (await c.query(
+          `select o.id, o.titulo, o.valor::int as valor, o.moneda, o.etapa_id, o.estado, o.persona_id, o.probabilidad, o.cierre_esperado, o.creado_en,
                   (select identificador from nucleo.identidades i where i.persona_id=o.persona_id and i.canal='email' limit 1) as persona_email
-             from crm_oportunidades o where o.estado <> 'perdida' order by o.creado_en desc limit 200`);
-        const abiertas = q.rows.filter((x) => x.estado === "abierta");
-        const valorAbierto = abiertas.reduce((a, x) => a + Number(x.valor), 0);
-        const ganadas = (await c.query("select count(*)::int n, coalesce(sum(valor),0)::int v from crm_oportunidades where estado='ganada'")).rows[0];
-        return { datos: q.rows, etapas: ETAPAS, resumen: { abiertas: abiertas.length, valorAbierto, ganadas: ganadas.n, valorGanado: ganadas.v }, puede: { gestionar: ctx.esAdmin || ctx.permisos.includes("crm.gestionar") } };
+             from crm_oportunidades o where o.pipeline_id=$1 and o.estado <> 'perdida' order by o.creado_en desc limit 300`, [plId])).rows;
+        const abiertas = ops.filter((o) => o.estado === "abierta");
+        const valorAbierto = abiertas.reduce((a, o) => a + Number(o.valor), 0);
+        const g = (await c.query("select count(*)::int n, coalesce(sum(valor),0)::int v from crm_oportunidades where estado='ganada' and pipeline_id=$1", [plId])).rows[0];
+        return { datos: ops, etapas, pipelineId: plId, resumen: { abiertas: abiertas.length, valorAbierto, ganadas: g.n, valorGanado: g.v }, puede: { gestionar: ctx.esAdmin || ctx.permisos.includes("crm.gestionar") } };
       });
     });
 
-    // Crear oportunidad para una persona (por canal+identidad). Registra interacción.
-    r.post("/oportunidades", async (req) => {
-      const ctx = await guard(req); exigir(ctx, "crm.gestionar");
-      const b = req.body as { canal?: string; identidad?: string; titulo?: string; valor?: number; etapa?: string };
-      if (!b?.canal || !b?.identidad || !b?.titulo?.trim()) throw new ErrorApi("VALIDACION", "Faltan canal, identidad o título");
-      const etapa = b.etapa && ETAPAS.includes(b.etapa) ? b.etapa : ETAPAS[0];
-      return conCliente(ctx.clienteId, async (c) => {
-        const persona = await nucleo.asegurarPersona(c, b.canal!, b.identidad!);
-        const o = (await c.query(
-          "insert into crm_oportunidades (cliente_id, persona_id, titulo, valor, etapa) values ($1,$2,$3,$4,$5) returning id, titulo, valor::int as valor, etapa, estado, persona_id, creado_en",
-          [ctx.clienteId, persona.id, b.titulo!.trim(), Math.max(0, Number(b.valor) || 0), etapa])).rows[0];
-        await nucleo.registrarInteraccion(c, { personaId: persona.id, tipo: "oportunidad.creada", moduloOrigen: "crm", objetoTipo: "oportunidad", objetoId: o.id, resumen: `Oportunidad: ${o.titulo}` });
-        return o;
-      });
-    });
-
-    // Detalle de una oportunidad + sus actividades.
+    // Detalle + actividades.
     r.get("/oportunidades/:id", async (req) => {
-      const ctx = await guard(req); exigir(ctx, "crm.ver");
+      const ctx = await ctxGuard(req, "crm.ver");
       const { id } = req.params as { id: string };
       return conCliente(ctx.clienteId, async (c) => {
         const o = (await c.query(
-          `select o.id, o.titulo, o.valor::int as valor, o.etapa, o.estado, o.persona_id, o.creado_en,
+          `select o.id, o.titulo, o.valor::int as valor, o.moneda, o.etapa_id, o.estado, o.persona_id, o.probabilidad, o.cierre_esperado, o.motivo_perdida, o.creado_en,
+                  (select nombre from crm_etapas e where e.id=o.etapa_id) as etapa,
                   (select identificador from nucleo.identidades i where i.persona_id=o.persona_id and i.canal='email' limit 1) as persona_email
              from crm_oportunidades o where o.id=$1`, [id])).rows[0];
         if (!o) throw new ErrorApi("NO_ENCONTRADO", "Oportunidad no encontrada");
@@ -58,9 +81,54 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
         return { ...o, actividades, puede: { gestionar: ctx.esAdmin || ctx.permisos.includes("crm.gestionar") } };
       });
     });
-    // Agregar actividad (nota / llamada / reunión / tarea).
+
+    // Crear deal (Pipedrive: pipeline/etapa, moneda, cierre esperado, probabilidad).
+    r.post("/oportunidades", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const b = req.body as { canal?: string; identidad?: string; titulo?: string; valor?: number; moneda?: string; pipelineId?: string; etapaId?: string; cierreEsperado?: string; probabilidad?: number };
+      if (!b?.canal || !b?.identidad || !b?.titulo?.trim()) throw new ErrorApi("VALIDACION", "Faltan canal, identidad o título");
+      return conCliente(ctx.clienteId, async (c) => {
+        const plId = b.pipelineId || await asegurarPipeline(c, ctx.clienteId);
+        const etapaId = b.etapaId || (await c.query("select id from crm_etapas where pipeline_id=$1 order by orden asc limit 1", [plId])).rows[0]?.id;
+        const persona = await nucleo.asegurarPersona(c, b.canal!, b.identidad!);
+        const o = (await c.query(
+          `insert into crm_oportunidades (cliente_id, persona_id, titulo, valor, moneda, pipeline_id, etapa_id, cierre_esperado, probabilidad)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id, titulo, valor::int as valor, moneda, etapa_id, estado, persona_id, creado_en`,
+          [ctx.clienteId, persona.id, b.titulo!.trim(), Math.max(0, Number(b.valor) || 0), b.moneda || "CLP", plId, etapaId, b.cierreEsperado || null, b.probabilidad ?? null])).rows[0];
+        await nucleo.registrarInteraccion(c, { personaId: persona.id, tipo: "oportunidad.creada", moduloOrigen: "crm", objetoTipo: "oportunidad", objetoId: o.id, resumen: `Oportunidad: ${o.titulo}` });
+        return o;
+      });
+    });
+
+    // Mover de etapa (kanban) — ahora por etapa_id; hereda la probabilidad de la etapa.
+    r.put("/oportunidades/:id/etapa", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { etapaId?: string };
+      if (!b?.etapaId) throw new ErrorApi("VALIDACION", "Falta la etapa");
+      const r2 = await conCliente(ctx.clienteId, (c) => c.query(
+        "update crm_oportunidades set etapa_id=$2, probabilidad=coalesce((select probabilidad from crm_etapas where id=$2), probabilidad), actualizado_en=now() where id=$1 and estado='abierta' returning id", [id, b.etapaId]));
+      if (r2.rowCount === 0) throw new ErrorApi("NO_ENCONTRADO", "Oportunidad no encontrada o cerrada");
+      return { ok: true };
+    });
+
+    // Cerrar (ganada / perdida) + motivo de pérdida (Pipedrive lost_reason).
+    r.put("/oportunidades/:id/cerrar", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { estado?: string; motivo?: string };
+      if (b?.estado !== "ganada" && b?.estado !== "perdida") throw new ErrorApi("VALIDACION", "Estado inválido (ganada|perdida)");
+      return conCliente(ctx.clienteId, async (c) => {
+        const o = (await c.query("update crm_oportunidades set estado=$2, motivo_perdida=$3, cerrada_en=now(), actualizado_en=now() where id=$1 returning id, persona_id, titulo", [id, b.estado, b.estado === "perdida" ? (b.motivo || null) : null])).rows[0];
+        if (!o) throw new ErrorApi("NO_ENCONTRADO", "Oportunidad no encontrada");
+        await nucleo.registrarInteraccion(c, { personaId: o.persona_id, tipo: `oportunidad.${b.estado}`, moduloOrigen: "crm", objetoTipo: "oportunidad", objetoId: o.id, resumen: `Oportunidad ${b.estado}: ${o.titulo}` });
+        return { ok: true, estado: b.estado };
+      });
+    });
+
+    // Actividades de la oportunidad (nota / llamada / reunión / tarea).
     r.post("/oportunidades/:id/actividades", async (req) => {
-      const ctx = await guard(req); exigir(ctx, "crm.gestionar");
+      const ctx = await ctxGuard(req, "crm.gestionar");
       const { id } = req.params as { id: string };
       const b = req.body as { tipo?: string; cuerpo?: string };
       const tipo = ["nota", "llamada", "reunion", "tarea"].includes(b?.tipo ?? "") ? b!.tipo! : "nota";
@@ -69,38 +137,12 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
         "insert into crm_actividades (cliente_id, oportunidad_id, tipo, cuerpo, autor) values ($1,$2,$3,$4,$5) returning id, tipo, cuerpo, hecho, autor, creado_en",
         [ctx.clienteId, id, tipo, b.cuerpo!.trim(), ctx.usuarioId])).rows[0]);
     });
-    // Marcar/desmarcar una tarea como hecha.
     r.put("/oportunidades/:id/actividades/:aid/hecho", async (req) => {
-      const ctx = await guard(req); exigir(ctx, "crm.gestionar");
+      const ctx = await ctxGuard(req, "crm.gestionar");
       const { aid } = req.params as { aid: string };
       const b = req.body as { hecho?: boolean };
       await conCliente(ctx.clienteId, (c) => c.query("update crm_actividades set hecho=$2 where id=$1", [aid, b?.hecho ?? true]));
       return { ok: true, hecho: b?.hecho ?? true };
-    });
-
-    // Mover de etapa (kanban).    // Mover de etapa (kanban).
-    r.put("/oportunidades/:id/etapa", async (req) => {
-      const ctx = await guard(req); exigir(ctx, "crm.gestionar");
-      const { id } = req.params as { id: string };
-      const b = req.body as { etapa?: string };
-      if (!b?.etapa || !ETAPAS.includes(b.etapa)) throw new ErrorApi("VALIDACION", "Etapa inválida");
-      const r2 = await conCliente(ctx.clienteId, (c) => c.query("update crm_oportunidades set etapa=$2, actualizado_en=now() where id=$1 and estado='abierta' returning id", [id, b.etapa]));
-      if (r2.rowCount === 0) throw new ErrorApi("NO_ENCONTRADO", "Oportunidad no encontrada o cerrada");
-      return { ok: true, etapa: b.etapa };
-    });
-
-    // Cerrar (ganada / perdida). Registra interacción en la historia de la persona.
-    r.put("/oportunidades/:id/cerrar", async (req) => {
-      const ctx = await guard(req); exigir(ctx, "crm.gestionar");
-      const { id } = req.params as { id: string };
-      const b = req.body as { estado?: string };
-      if (b?.estado !== "ganada" && b?.estado !== "perdida") throw new ErrorApi("VALIDACION", "Estado inválido (ganada|perdida)");
-      return conCliente(ctx.clienteId, async (c) => {
-        const o = (await c.query("update crm_oportunidades set estado=$2, cerrada_en=now(), actualizado_en=now() where id=$1 returning id, persona_id, titulo, valor::int as valor", [id, b.estado])).rows[0];
-        if (!o) throw new ErrorApi("NO_ENCONTRADO", "Oportunidad no encontrada");
-        await nucleo.registrarInteraccion(c, { personaId: o.persona_id, tipo: `oportunidad.${b.estado}`, moduloOrigen: "crm", objetoTipo: "oportunidad", objetoId: o.id, resumen: `Oportunidad ${b.estado}: ${o.titulo}` });
-        return { ok: true, estado: b.estado };
-      });
     });
   }, { prefix: "/cliente" });
 }
