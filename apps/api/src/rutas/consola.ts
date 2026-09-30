@@ -63,7 +63,7 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
         }
         const cnt = await c.query("select estado, count(*)::int n from tickets group by estado");
         const porEstado: Record<string, number> = {}; for (const x of cnt.rows) porEstado[x.estado] = x.n;
-        const sinAsignar = (await c.query("select count(*)::int n from tickets where asignado_a is null and estado not in ('resuelto','cerrado')")).rows[0].n;
+        const sinAsignar = (await c.query("select count(*)::int n from tickets where asignado_usuario is null and estado not in ('resuelto','cerrado')")).rows[0].n;
         const vencidos = (await c.query("select count(*)::int n from tickets where sla_incumplido=true and estado not in ('resuelto','cerrado')")).rows[0].n;
         return { ...res, porEstado, sinAsignar, vencidos, puede: { gestionar: ctx.esAdmin || ctx.permisos.includes("bandeja.gestionar") } };
       });
@@ -309,7 +309,7 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
       return conCliente(ctx.clienteId, async (c) => {
         const ficha = await fichaDePersona(c, id);
         const tickets = (await c.query("select id, numero::text as numero, asunto, estado, prioridad from tickets where persona_id=$1 order by numero desc limit 50", [id])).rows;
-        const oportunidades = (await c.query("select id, titulo, valor::int as valor, etapa, estado from crm_oportunidades where persona_id=$1 order by creado_en desc limit 50", [id])).rows;
+        const oportunidades = (await c.query("select id, titulo, valor::float8 as valor, etapa, estado from crm_oportunidades where persona_id=$1 order by creado_en desc limit 50", [id])).rows;
         return { ...ficha, tickets, oportunidades };
       });
     });
@@ -366,7 +366,7 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
         const t = (await c.query("select persona_id from tickets where id=$1", [id])).rows[0];
         if (!t) throw new ErrorApi("NO_ENCONTRADO", "Ticket no encontrado");
         const oportunidades = (await c.query(
-          `select o.id, o.titulo, o.valor::int as valor, o.moneda, o.estado,
+          `select o.id, o.titulo, o.valor::float8 as valor, o.moneda, o.estado,
                   (select nombre from crm_etapas e where e.id=o.etapa_id) as etapa
              from crm_oportunidades o where o.persona_id=$1 order by o.creado_en desc limit 20`, [t.persona_id])).rows;
         return { habilitado: true, oportunidades, puedeGestionar: ctx.esAdmin || ctx.permisos.includes("crm.gestionar") };
@@ -386,7 +386,7 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
         const titulo = b?.titulo?.trim() || `Ticket #${t.numero}: ${t.asunto}`;
         const o = (await c.query(
           `insert into crm_oportunidades (cliente_id, persona_id, titulo, valor, moneda, pipeline_id, etapa_id)
-             values ($1,$2,$3,$4,$5,$6,$7) returning id, titulo, valor::int as valor, moneda, estado`,
+             values ($1,$2,$3,$4,$5,$6,$7) returning id, titulo, valor::float8 as valor, moneda, estado`,
           [ctx.clienteId, t.persona_id, titulo, Math.max(0, Number(b?.valor) || 0), b?.moneda || "CLP", plId, etapaId])).rows[0];
         await nucleo.enlazar(c, "ticket", id, "origino", "oportunidad", o.id);
         await nucleo.registrarInteraccion(c, { personaId: t.persona_id, tipo: "oportunidad.creada", moduloOrigen: "crm", objetoTipo: "oportunidad", objetoId: o.id, resumen: `Oportunidad desde ticket #${t.numero}: ${titulo}` });

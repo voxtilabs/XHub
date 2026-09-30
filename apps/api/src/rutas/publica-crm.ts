@@ -83,7 +83,7 @@ const crearProspecto = z.object({
 }).strict();
 
 // Proyección estable de una oportunidad hacia afuera.
-const SEL_OPORTUNIDAD = `o.id, o.titulo, o.valor::int as valor, o.moneda, o.estado, o.persona_id,
+const SEL_OPORTUNIDAD = `o.id, o.titulo, o.valor::float8 as valor, o.moneda, o.estado, o.persona_id,
   o.etapa_id, o.pipeline_id as embudo_id, o.probabilidad, o.cierre_esperado::text as cierre_esperado,
   o.org_id, o.motivo_perdida, o.creado_en::text as creado_en,
   (select nombre from crm_etapas e where e.id=o.etapa_id) as etapa,
@@ -230,7 +230,7 @@ export function registrarRutasCrm(app: FastifyInstance): void {
       if (cur) { args.push(cur.creadoEn, cur.id); cond.push(`(creado_en, id) < ($${args.length - 1}, $${args.length})`); }
       const where = cond.length ? `where ${cond.join(" and ")}` : "";
       args.push(lim + 1);
-      const filas = (await c.query(`select id, persona_id, titulo, valor::int as valor, moneda, origen, estado, deal_id, creado_en::text as creado_en from crm_leads ${where} order by creado_en desc, id desc limit $${args.length}`, args)).rows;
+      const filas = (await c.query(`select id, persona_id, titulo, valor::float8 as valor, moneda, origen, estado, deal_id, creado_en::text as creado_en from crm_leads ${where} order by creado_en desc, id desc limit $${args.length}`, args)).rows;
       const hay = filas.length > lim; const datos = filas.slice(0, lim); const ult = datos[datos.length - 1];
       return { datos, siguiente: hay && ult ? codificarCursor(ult.creado_en, ult.id) : null };
     });
@@ -242,7 +242,7 @@ export function registrarRutasCrm(app: FastifyInstance): void {
     return conContexto(req, async (c) => {
       const persona = await nucleo.asegurarPersona(c, b.canal, b.identidad);
       const l = (await c.query(
-        "insert into crm_leads (cliente_id, persona_id, titulo, valor, moneda, origen) values ($1,$2,$3,$4,$5,$6) returning id, persona_id, titulo, valor::int as valor, moneda, origen, estado, deal_id, creado_en::text as creado_en",
+        "insert into crm_leads (cliente_id, persona_id, titulo, valor, moneda, origen) values ($1,$2,$3,$4,$5,$6) returning id, persona_id, titulo, valor::float8 as valor, moneda, origen, estado, deal_id, creado_en::text as creado_en",
         [req.ctx!.clienteId, persona.id, b.titulo.trim(), b.valor ?? 0, b.moneda ?? "CLP", b.origen ?? null])).rows[0];
       await nucleo.registrarInteraccion(c, { personaId: persona.id, tipo: "prospecto.creado", moduloOrigen: "crm", objetoTipo: "prospecto", objetoId: l.id, resumen: `Prospecto: ${b.titulo.trim()}` });
       return l;
@@ -254,7 +254,7 @@ export function registrarRutasCrm(app: FastifyInstance): void {
     exigirScope(req.ctx!, "crm.escribir");
     const { id } = req.params as { id: string };
     return conContexto(req, async (c) => {
-      const l = (await c.query("select id, persona_id, titulo, valor::int as valor, moneda from crm_leads where id=$1 and estado='activo'", [id])).rows[0];
+      const l = (await c.query("select id, persona_id, titulo, valor::float8 as valor, moneda from crm_leads where id=$1 and estado='activo'", [id])).rows[0];
       if (!l) throw new ErrorApi("CONFLICTO", "El prospecto no existe o ya fue convertido/archivado");
       const plId = await asegurarPipeline(c, req.ctx!.clienteId);
       const etapaId = (await c.query("select id from crm_etapas where pipeline_id=$1 order by orden asc limit 1", [plId])).rows[0]?.id;
@@ -274,11 +274,11 @@ export function registrarRutasCrm(app: FastifyInstance): void {
     return conContexto(req, async (c) => {
       const plId = q.embudo || await asegurarPipeline(c, req.ctx!.clienteId);
       const porEtapa = (await c.query(
-        `select e.nombre, e.orden, e.probabilidad, count(o.id)::int n, coalesce(sum(o.valor),0)::int valor
+        `select e.nombre, e.orden, e.probabilidad, count(o.id)::int n, coalesce(sum(o.valor),0)::float8 valor
            from crm_etapas e left join crm_oportunidades o on o.etapa_id=e.id and o.estado='abierta'
           where e.pipeline_id=$1 group by e.id, e.nombre, e.orden, e.probabilidad order by e.orden asc`, [plId])).rows;
       const fc = (await c.query("select coalesce(sum(valor * coalesce(probabilidad, (select probabilidad from crm_etapas e where e.id=o.etapa_id), 0) / 100.0),0)::int forecast from crm_oportunidades o where estado='abierta' and pipeline_id=$1", [plId])).rows[0];
-      const g = (await c.query("select count(*)::int n, coalesce(sum(valor),0)::int v from crm_oportunidades where estado='ganada' and pipeline_id=$1", [plId])).rows[0];
+      const g = (await c.query("select count(*)::int n, coalesce(sum(valor),0)::float8 v from crm_oportunidades where estado='ganada' and pipeline_id=$1", [plId])).rows[0];
       const p = (await c.query("select count(*)::int n from crm_oportunidades where estado='perdida' and pipeline_id=$1", [plId])).rows[0];
       const cerradas = g.n + p.n;
       return { embudoId: plId, forecast: fc.forecast, porEtapa, ganadas: { n: g.n, valor: g.v }, perdidas: { n: p.n }, tasaConversion: cerradas > 0 ? Math.round((g.n / cerradas) * 100) : 0 };

@@ -98,7 +98,7 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
       return conCliente(ctx.clienteId, async (c) => ({ datos: (await c.query(
         `select g.id, g.nombre, g.sitio_web, g.rubro, g.telefono,
                 (select count(*)::int from crm_oportunidades o where o.org_id=g.id) as deals,
-                (select coalesce(sum(o.valor),0)::int from crm_oportunidades o where o.org_id=g.id and o.estado='abierta') as valor_abierto
+                (select coalesce(sum(o.valor),0)::float8 from crm_oportunidades o where o.org_id=g.id and o.estado='abierta') as valor_abierto
            from crm_organizaciones g order by g.nombre asc`)).rows }));
     });
     r.post("/crm/organizaciones", async (req) => {
@@ -115,7 +115,7 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
       return conCliente(ctx.clienteId, async (c) => {
         const g = (await c.query("select id, nombre, sitio_web, rubro, telefono, direccion, creado_en from crm_organizaciones where id=$1", [id])).rows[0];
         if (!g) throw new ErrorApi("NO_ENCONTRADO", "Empresa no encontrada");
-        const deals = (await c.query("select id, titulo, valor::int as valor, moneda, estado from crm_oportunidades where org_id=$1 order by creado_en desc", [id])).rows;
+        const deals = (await c.query("select id, titulo, valor::float8 as valor, moneda, estado from crm_oportunidades where org_id=$1 order by creado_en desc", [id])).rows;
         return { ...g, deals };
       });
     });
@@ -128,13 +128,13 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
         const plId = q.pipeline || await asegurarPipeline(c, ctx.clienteId);
         const etapas = (await c.query("select id, nombre, orden, probabilidad from crm_etapas where pipeline_id=$1 order by orden asc", [plId])).rows;
         const ops = (await c.query(
-          `select o.id, o.titulo, o.valor::int as valor, o.moneda, o.etapa_id, o.estado, o.persona_id, o.probabilidad, o.cierre_esperado, o.creado_en, o.org_id, o.etiquetas,
+          `select o.id, o.titulo, o.valor::float8 as valor, o.moneda, o.etapa_id, o.estado, o.persona_id, o.probabilidad, o.cierre_esperado, o.creado_en, o.org_id, o.etiquetas,
                   (select nombre from crm_organizaciones og where og.id=o.org_id) as org_nombre,
                   (select identificador from nucleo.identidades i where i.persona_id=o.persona_id and i.canal='email' limit 1) as persona_email
              from crm_oportunidades o where o.pipeline_id=$1 and o.estado <> 'perdida' order by o.creado_en desc limit 300`, [plId])).rows;
         const abiertas = ops.filter((o) => o.estado === "abierta");
         const valorAbierto = abiertas.reduce((a, o) => a + Number(o.valor), 0);
-        const g = (await c.query("select count(*)::int n, coalesce(sum(valor),0)::int v from crm_oportunidades where estado='ganada' and pipeline_id=$1", [plId])).rows[0];
+        const g = (await c.query("select count(*)::int n, coalesce(sum(valor),0)::float8 v from crm_oportunidades where estado='ganada' and pipeline_id=$1", [plId])).rows[0];
         return { datos: ops, etapas, pipelineId: plId, resumen: { abiertas: abiertas.length, valorAbierto, ganadas: g.n, valorGanado: g.v }, puede: { gestionar: ctx.esAdmin || ctx.permisos.includes("crm.gestionar") } };
       });
     });
@@ -145,11 +145,11 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
       return conCliente(ctx.clienteId, async (c) => {
         const plId = (req.query as { pipeline?: string }).pipeline || await asegurarPipeline(c, ctx.clienteId);
         const porEtapa = (await c.query(
-          `select e.nombre, e.orden, e.probabilidad, count(o.id)::int n, coalesce(sum(o.valor),0)::int valor
+          `select e.nombre, e.orden, e.probabilidad, count(o.id)::int n, coalesce(sum(o.valor),0)::float8 valor
              from crm_etapas e left join crm_oportunidades o on o.etapa_id=e.id and o.estado='abierta'
             where e.pipeline_id=$1 group by e.id, e.nombre, e.orden, e.probabilidad order by e.orden asc`, [plId])).rows;
         const fc = (await c.query("select coalesce(sum(valor * coalesce(probabilidad, (select probabilidad from crm_etapas e where e.id=o.etapa_id), 0) / 100.0),0)::int forecast from crm_oportunidades o where estado='abierta' and pipeline_id=$1", [plId])).rows[0];
-        const g = (await c.query("select count(*)::int n, coalesce(sum(valor),0)::int v from crm_oportunidades where estado='ganada' and pipeline_id=$1", [plId])).rows[0];
+        const g = (await c.query("select count(*)::int n, coalesce(sum(valor),0)::float8 v from crm_oportunidades where estado='ganada' and pipeline_id=$1", [plId])).rows[0];
         const p = (await c.query("select count(*)::int n from crm_oportunidades where estado='perdida' and pipeline_id=$1", [plId])).rows[0];
         const leads = (await c.query("select count(*)::int n from crm_leads where estado='activo'")).rows[0];
         const cerradas = g.n + p.n;
@@ -170,7 +170,7 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
       const { id } = req.params as { id: string };
       return conCliente(ctx.clienteId, async (c) => {
         const o = (await c.query(
-          `select o.id, o.titulo, o.valor::int as valor, o.moneda, o.etapa_id, o.estado, o.persona_id, o.probabilidad, o.cierre_esperado, o.motivo_perdida, o.creado_en, o.org_id, o.etiquetas,
+          `select o.id, o.titulo, o.valor::float8 as valor, o.moneda, o.etapa_id, o.estado, o.persona_id, o.probabilidad, o.cierre_esperado, o.motivo_perdida, o.creado_en, o.org_id, o.etiquetas,
                   (select nombre from crm_organizaciones og where og.id=o.org_id) as org_nombre,
                   (select nombre from crm_etapas e where e.id=o.etapa_id) as etapa,
                   (select identificador from nucleo.identidades i where i.persona_id=o.persona_id and i.canal='email' limit 1) as persona_email
@@ -206,7 +206,7 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
         const persona = await nucleo.asegurarPersona(c, b.canal!, b.identidad!);
         const o = (await c.query(
           `insert into crm_oportunidades (cliente_id, persona_id, titulo, valor, moneda, pipeline_id, etapa_id, cierre_esperado, probabilidad, org_id)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id, titulo, valor::int as valor, moneda, etapa_id, estado, persona_id, creado_en`,
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id, titulo, valor::float8 as valor, moneda, etapa_id, estado, persona_id, creado_en`,
           [ctx.clienteId, persona.id, b.titulo!.trim(), Math.max(0, Number(b.valor) || 0), b.moneda || "CLP", plId, etapaId, b.cierreEsperado || null, b.probabilidad ?? null, b.orgId || null])).rows[0];
         await nucleo.registrarInteraccion(c, { personaId: persona.id, tipo: "oportunidad.creada", moduloOrigen: "crm", objetoTipo: "oportunidad", objetoId: o.id, resumen: `Oportunidad: ${o.titulo}` });
         return o;
@@ -316,7 +316,7 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
     r.get("/crm/leads", async (req) => {
       const ctx = await ctxGuard(req, "crm.ver");
       return conCliente(ctx.clienteId, async (c) => ({ datos: (await c.query(
-        `select l.id, l.titulo, l.valor::int as valor, l.moneda, l.origen, l.estado, l.creado_en,
+        `select l.id, l.titulo, l.valor::float8 as valor, l.moneda, l.origen, l.estado, l.creado_en,
                 (select identificador from nucleo.identidades i where i.persona_id=l.persona_id and i.canal='email' limit 1) as persona_email
            from crm_leads l where l.estado='activo' order by l.creado_en desc limit 200`)).rows }));
     });
@@ -326,7 +326,7 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
       if (!b?.canal || !b?.identidad || !b?.titulo?.trim()) throw new ErrorApi("VALIDACION", "Faltan canal, identidad o título");
       return conCliente(ctx.clienteId, async (c) => {
         const persona = await nucleo.asegurarPersona(c, b.canal!, b.identidad!);
-        const l = (await c.query("insert into crm_leads (cliente_id, persona_id, titulo, valor, moneda, origen) values ($1,$2,$3,$4,$5,$6) returning id, titulo, valor::int as valor, moneda, origen, estado, creado_en",
+        const l = (await c.query("insert into crm_leads (cliente_id, persona_id, titulo, valor, moneda, origen) values ($1,$2,$3,$4,$5,$6) returning id, titulo, valor::float8 as valor, moneda, origen, estado, creado_en",
           [ctx.clienteId, persona.id, b.titulo!.trim(), Math.max(0, Number(b.valor) || 0), b.moneda || "CLP", b.origen?.trim() || null])).rows[0];
         await nucleo.registrarInteraccion(c, { personaId: persona.id, tipo: "lead.creado", moduloOrigen: "crm", objetoTipo: "lead", objetoId: l.id, resumen: `Lead: ${l.titulo}` });
         return l;

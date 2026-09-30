@@ -45,6 +45,9 @@ async function guardAdmin(req: FastifyRequest): Promise<void> {
     throw new ErrorApi("SIN_PERMISO", "Requiere administrador de plataforma");
 }
 
+/** Parseo seguro de un query numérico: NaN → default (evita 500 por «?dias=abc»). */
+const numQ = (v: unknown, def: number): number => { const n = Number(v); return Number.isFinite(n) ? n : def; };
+
 /** Traduce el error de una operación del conector a una causa legible en español. */
 function causaLegible(e: unknown): string {
   const m = (e as Error)?.message || String(e);
@@ -86,33 +89,42 @@ async function ejecutarSyncContactos(clienteId: string, iid: string, password: s
 
   // 2) Escribir en el núcleo del cliente (RLS por conCliente). Idempotente.
   const r = await conCliente(clienteId, async (c) => {
-    let personas = 0, interacciones = 0, fusiones = 0, etiquetados = 0, campos = 0, etiquetasCatalogo = 0;
+    let personas = 0, interacciones = 0, fusiones = 0, etiquetados = 0, campos = 0, etiquetasCatalogo = 0, saltados = 0;
     // Exportar el catálogo de etiquetas de XContact como etiquetas del cliente.
     for (const t of tagsXC) { await asegurarEtiqueta(c, t.nombre); etiquetasCatalogo++; }
     for (const k of contactos) {
-      // Reconciliación por identidad: si el RUT/email/teléfono ya existe (p.ej. la persona
-      // de un ticket), se fusiona/adjunta en UNA sola → el teléfono del contacto aparece
-      // en ese ticket. Repuntamos los objetos de módulo de las personas fusionadas.
-      const { persona: p, idsFusionadas } = await reconciliarPersona(
-        c, k.identidades.map((i) => ({ canal: i.canal as never, valor: i.valor })), k.nombre ?? undefined);
-      personas++;
-      for (const viejo of idsFusionadas) {
-        await c.query("update tickets set persona_id=$1 where persona_id=$2", [p.id, viejo]);
-        await c.query("update crm_oportunidades set persona_id=$1 where persona_id=$2", [p.id, viejo]);
-        await c.query("update crm_leads set persona_id=$1 where persona_id=$2", [p.id, viejo]);
-        fusiones++;
+      // Cada contacto en su SAVEPOINT: uno malformado se revierte SOLO y el lote sigue
+      // (antes un error abortaba toda la transacción y no se importaba nada).
+      await c.query("savepoint sp_contacto");
+      try {
+        // Reconciliación por identidad: si el RUT/email/teléfono ya existe (p.ej. la persona
+        // de un ticket), se fusiona/adjunta en UNA sola → el teléfono del contacto aparece
+        // en ese ticket. Repuntamos los objetos de módulo de las personas fusionadas.
+        const { persona: p, idsFusionadas } = await reconciliarPersona(
+          c, k.identidades.map((i) => ({ canal: i.canal as never, valor: i.valor })), k.nombre ?? undefined);
+        personas++;
+        for (const viejo of idsFusionadas) {
+          await c.query("update tickets set persona_id=$1 where persona_id=$2", [p.id, viejo]);
+          await c.query("update crm_oportunidades set persona_id=$1 where persona_id=$2", [p.id, viejo]);
+          await c.query("update crm_leads set persona_id=$1 where persona_id=$2", [p.id, viejo]);
+          fusiones++;
+        }
+        for (const nombreEtq of k.etiquetas) { await aplicarEtiqueta(c, p.id, await asegurarEtiqueta(c, nombreEtq)); etiquetados++; }
+        for (const campo of k.campos) { await ponerValor(c, "persona", p.id, await asegurarCampo(c, "persona", campo.nombre, "texto" as never), campo.valor); campos++; }
+        const it = await registrarInteraccion(c, {
+          personaId: p.id, tipo: "contacto.importado", moduloOrigen: "conector",
+          objetoTipo: "contacto", objetoId: k.externoId,
+          resumen: `Contacto XContact: ${k.nombre ?? k.identidad}`,
+          meta: { externoId: k.externoId, canal: k.canal, host }, dedupeId: `xc:${host}:${k.externoId}`,
+        });
+        if ((it as { id?: string })?.id) interacciones++;
+        await c.query("release savepoint sp_contacto");
+      } catch {
+        await c.query("rollback to savepoint sp_contacto");
+        saltados++; // un contacto malo no tumba el lote
       }
-      for (const nombreEtq of k.etiquetas) { await aplicarEtiqueta(c, p.id, await asegurarEtiqueta(c, nombreEtq)); etiquetados++; }
-      for (const campo of k.campos) { await ponerValor(c, "persona", p.id, await asegurarCampo(c, "persona", campo.nombre, "texto" as never), campo.valor); campos++; }
-      const it = await registrarInteraccion(c, {
-        personaId: p.id, tipo: "contacto.importado", moduloOrigen: "conector",
-        objetoTipo: "contacto", objetoId: k.externoId,
-        resumen: `Contacto XContact: ${k.nombre ?? k.identidad}`,
-        meta: { externoId: k.externoId, canal: k.canal, host }, dedupeId: `xc:${host}:${k.externoId}`,
-      });
-      if ((it as { id?: string })?.id) interacciones++;
     }
-    return { personas, interacciones, fusiones, etiquetados, campos, etiquetasCatalogo };
+    return { personas, interacciones, fusiones, etiquetados, campos, etiquetasCatalogo, saltados };
   });
 
   // 3) Sellar la última sincronización y marcar la instancia operativa.
@@ -474,14 +486,14 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
     // Actividad y consumo de IA de TODA la plataforma (qué hizo, cuánto costó)
     admin.get("/ia", async (req) => {
       const q = req.query as { dias?: string };
-      return conPlataforma((c) => resumenUsoIA(c, { dias: q.dias ? Number(q.dias) : 30 }));
+      return conPlataforma((c) => resumenUsoIA(c, { dias: numQ(q.dias, 30) }));
     });
 
     // Actividad y consumo de IA de un cliente
     admin.get("/clientes/:id/ia", async (req) => {
       const { id } = req.params as { id: string };
       const q = req.query as { dias?: string };
-      return conPlataforma((c) => resumenUsoIA(c, { clienteId: id, dias: q.dias ? Number(q.dias) : 30 }));
+      return conPlataforma((c) => resumenUsoIA(c, { clienteId: id, dias: numQ(q.dias, 30) }));
     });
 
     // Consumo del cliente (hoy) + cuota efectiva
@@ -565,7 +577,7 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       return {
         clienteId: q.cliente || undefined, actor: q.actor || undefined, recurso: q.recurso || undefined,
         desde: fecha(q.desde, "desde"), hasta: fecha(q.hasta, "hasta"),
-        limite: q.limite ? Number(q.limite) : undefined,
+        limite: q.limite && Number.isFinite(Number(q.limite)) ? Number(q.limite) : undefined,
       };
     };
     admin.get("/auditoria", async (req) => {

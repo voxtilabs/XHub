@@ -31,6 +31,13 @@ export interface CuerpoError {
 export function aCuerpo(e: unknown, requestId?: string): { http: number; cuerpo: CuerpoError } {
   if (e instanceof ErrorApi)
     return { http: e.http, cuerpo: { error: { codigo: e.codigo, mensaje: e.message, detalle: e.detalle, request_id: requestId } } };
+  // Errores de datos de Postgres → 4xx limpios (no un 500 genérico). Un id no-uuid
+  // (link viejo) o un valor fuera de rango no son "algo salió mal de nuestro lado".
+  const code = (e as { code?: string })?.code;
+  if (code === "22P02") // invalid text representation (uuid/enum/número mal formado)
+    return { http: 404, cuerpo: { error: { codigo: "NO_ENCONTRADO", mensaje: "No encontrado (identificador inválido).", request_id: requestId } } };
+  if (code === "22003" || code === "22P03") // numeric/binario fuera de rango
+    return { http: 400, cuerpo: { error: { codigo: "VALIDACION", mensaje: "Un valor está fuera de rango.", request_id: requestId } } };
   // cualquier otra cosa: 500 con voz propia, SIN el mensaje crudo
   return { http: 500, cuerpo: { error: { codigo: "INTERNO", mensaje: "Algo salió mal de nuestro lado.", request_id: requestId } } };
 }
