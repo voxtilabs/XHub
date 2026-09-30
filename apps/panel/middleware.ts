@@ -17,7 +17,9 @@ export function middleware(req: NextRequest) {
   const tieneSesion = req.cookies.getAll().some((c) => c.name.includes("session_token"));
   const path = req.nextUrl.pathname;
   const enLogin = path === "/login";
-  if (!tieneSesion && !enLogin) return NextResponse.redirect(new URL("/login", req.url));
+  // Rutas públicas (sin sesión): login y la política de privacidad (debe leerse sin cuenta).
+  const publica = enLogin || path === "/privacidad";
+  if (!tieneSesion && !publica) return NextResponse.redirect(new URL("/login", req.url));
   if (tieneSesion && (enLogin || path === "/")) return NextResponse.redirect(new URL(inicio, req.url));
   return NextResponse.next();
 }

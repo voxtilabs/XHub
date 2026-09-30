@@ -27,6 +27,7 @@ const RUTAS: Ruta[] = [
   { href: "/organizaciones", label: "Empresas", permiso: "crm.ver", modulo: "crm" },
   { href: "/insights", label: "Insights", permiso: "crm.ver", modulo: "crm" },
   { href: "/persona", label: "Personas", permiso: "ficha360.ver" },
+  { href: "/seguridad", label: "Seguridad" },
 ];
 
 export function BotonTema() {
@@ -89,7 +90,7 @@ export function AppShell() {
 
   const titulo = path.startsWith("/superadmin/auditoria") ? "Auditoría" : path.startsWith("/superadmin/cliente") ? "Cliente" : path.startsWith("/tickets/nuevo") ? "Nuevo ticket" : path.startsWith("/tickets/detalle") ? "Detalle de ticket" : path.startsWith("/ajustes") ? "Ajustes" : rutas.find((r) => activa(r.href))?.label || "Espacio de trabajo";
   const rol = esPlataforma ? "Plataforma" : esAdminCliente ? "Admin cliente" : "Agente";
-  const iconos: Record<string, string> = { "/superadmin": "buildings", "/superadmin/salud-xcontact": "pulse", "/superadmin/muertos": "warning", "/ia": "waveform", "/superadmin/auditoria": "shield-check", "/equipo": "users-three", "/ajustes/webhooks": "webhooks-logo", "/tickets": "chats-circle", "/tickets/metricas": "chart-line", "/leads": "user-plus", "/oportunidades": "kanban", "/organizaciones": "building-office", "/insights": "gauge", "/persona": "identification-card" };
+  const iconos: Record<string, string> = { "/superadmin": "buildings", "/superadmin/salud-xcontact": "pulse", "/superadmin/muertos": "warning", "/ia": "waveform", "/superadmin/auditoria": "shield-check", "/equipo": "users-three", "/ajustes/webhooks": "webhooks-logo", "/tickets": "chats-circle", "/tickets/metricas": "chart-line", "/leads": "user-plus", "/oportunidades": "kanban", "/organizaciones": "building-office", "/insights": "gauge", "/persona": "identification-card", "/seguridad": "lock-key" };
 
   return (
     <div className="xhub-shell">
