@@ -57,6 +57,12 @@ export function generarOpenApi(): object {
     request: { params: z.object({ id: z.string() }) }, responses: { 200: { description: "Ficha" }, 404: respError } });
   r.registerPath({ method: "get", path: "/v1/personas", summary: "Buscar personas", description: "Alcance requerido: `nucleo.leer`. Búsqueda en español (unaccent).", security: seg,
     request: { query: z.object({ q: z.string() }) }, responses: { 200: { description: "Resultados" } } });
+  r.registerPath({ method: "post", path: "/v1/personas", tags: ["Personas"], summary: "Registrar (o recuperar) una persona", description: "Alcance requerido: `nucleo.escribir`. Idempotente por identidad: la misma `canal`+`identidad` devuelve SIEMPRE la misma persona, nunca duplica.", security: seg,
+    request: { body: { content: json(z.object({ canal: E.canalEnum, identidad: z.string(), nombre: z.string().optional() }), { canal: "email", identidad: "juan@empresa.cl", nombre: "Juan Pérez" }) } },
+    responses: { 200: { description: "Persona", content: json(z.object({ id: z.string(), nombre: z.string().nullable() })) }, 401: respError, 403: respError, 422: respError } });
+  r.registerPath({ method: "get", path: "/v1/personas/{id}/interacciones", tags: ["Personas"], summary: "Línea de tiempo unificada de la persona", description: "Alcance requerido: `nucleo.leer`. TODAS las interacciones de la persona (tickets, CRM, llamadas, notas…) en un solo hilo — la espina dorsal. Paginación por cursor (`limite` 1..100, def. 50).", security: seg,
+    request: { params: z.object({ id: z.string() }), query: z.object({ cursor: z.string().optional(), limite: z.string().optional() }) },
+    responses: { 200: { description: "Interacciones", content: json(z.object({ datos: z.array(z.object({ seq: z.string(), id: z.string(), tipo: z.string(), ocurrio_en: z.string(), modulo_origen: z.string(), resumen: z.string().nullable() })), siguiente: z.string().nullable() })) }, 401: respError, 403: respError, 404: respError } });
 
   r.registerPath({ method: "put", path: "/v1/tickets/{id}/asignar", summary: "Asignar ticket a un usuario", description: "Alcance requerido: `tickets.asignar`.", security: seg,
     request: { params: z.object({ id: z.string() }), body: { content: json(E.asignar, { usuarioId: "b2c1e0a4-1111-2222-3333-444455556666" }) } },

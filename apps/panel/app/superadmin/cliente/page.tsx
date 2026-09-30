@@ -36,6 +36,7 @@ export default function ClienteDetalle() {
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [llave, setLlave] = useState<string | null>(null);
+  const [llaveScopes, setLlaveScopes] = useState<string[]>([]);
   const [usuarios, setUsuarios] = useState<Usuarios | null>(null);
   const [lim, setLim] = useState("");
   const [nu, setNu] = useState({ email: "", nombre: "", password: "" });
@@ -69,7 +70,7 @@ export default function ClienteDetalle() {
   const toggle = (mod: string) => accion(async () => { const on = !cli!.modulos.includes(mod); await apiFetch(`/admin/clientes/${id}/modulos/${mod}`, { method: "PUT", body: JSON.stringify({ encendido: on }) }); setCli((c) => c && { ...c, modulos: on ? [...c.modulos, mod] : c.modulos.filter((m) => m !== mod) }); }, "Módulo actualizado");
   const guardarCuota = () => accion(async () => { const n = Number(cuota); await apiFetch(`/admin/clientes/${id}/cuota`, { method: "PUT", body: JSON.stringify({ limiteMensual: n }) }); setConsumo((c) => c && { ...c, cuotaMensual: n }); }, "Cuota fijada");
   const guardarTriage = (t: Triage) => accion(async () => { await apiFetch(`/admin/clientes/${id}/triage`, { method: "PUT", body: JSON.stringify(t) }); setTriage(t); }, "Triage guardado");
-  const nuevaLlave = () => accion(async () => { const r = await apiFetch<{ token: string }>(`/admin/clientes/${id}/llaves`, { method: "POST", body: JSON.stringify({ nombre: "Panel " + new Date().toISOString().slice(0, 10) }) }); setLlave(r.token); }, "Llave creada");
+  const nuevaLlave = () => accion(async () => { const r = await apiFetch<{ token: string; scopes: string[] }>(`/admin/clientes/${id}/llaves`, { method: "POST", body: JSON.stringify({ nombre: "Panel " + new Date().toISOString().slice(0, 10) }) }); setLlave(r.token); setLlaveScopes(r.scopes ?? []); }, "Llave creada");
   const guardarLimite = () => accion(async () => { const n = Number(lim); await apiFetch(`/admin/clientes/${id}/limite-usuarios`, { method: "PUT", body: JSON.stringify({ limite: n }) }); setUsuarios((u) => u && { ...u, limite: n }); }, "Tope de usuarios fijado");
   const crearUsuario = () => accion(async () => {
     await apiFetch(`/admin/clientes/${id}/usuarios`, { method: "POST", body: JSON.stringify(nu) });
@@ -95,7 +96,12 @@ export default function ClienteDetalle() {
           <Card style={{ borderColor: "hsl(var(--senal)/0.5)" }}><CardContent className="pt-5">
             <div className="text-xs font-black uppercase tracking-widest text-[hsl(var(--senal))] mb-2">Llave de API creada</div>
             <div className="font-mono text-[12px] break-all bg-secondary rounded-md p-3">{llave}</div>
-            <p className="text-[11px] text-muted-foreground mt-2">⚠ Se muestra una sola vez — cópiala ahora.</p>
+            {llaveScopes.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {llaveScopes.map((s) => <span key={s} className="text-[10.5px] font-mono px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{s}</span>)}
+              </div>
+            )}
+            <p className="text-[11px] text-muted-foreground mt-2">⚠ Se muestra una sola vez — cópiala ahora. Alcances: {llaveScopes.length ? `${llaveScopes.length} (todos los módulos activos)` : "ninguno"}.</p>
             <Button size="sm" variant="secondary" className="mt-3" onClick={() => setLlave(null)}>La copié</Button>
           </CardContent></Card>
         )}

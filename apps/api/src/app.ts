@@ -78,12 +78,14 @@ export function crearApp(): FastifyInstance {
     reply.code(http).send(cuerpo);
   });
 
-  // Salud / listo
-  app.get("/salud", async () => ({ ok: true }));
-  app.get("/listo", async (_req, reply) => {
+  // Salud / listo. También bajo /api/* (el prefijo que el proxy enruta al API), así
+  // un chequeo externo por el dominio no cae al panel (que redirige a /login).
+  const salud = async () => ({ ok: true });
+  const listo = async (_req: FastifyRequest, reply: import("fastify").FastifyReply) => {
     if (await baseViva()) return { listo: true };
     reply.code(503); return { listo: false };
-  });
+  };
+  for (const pfx of ["", "/api"]) { app.get(`${pfx}/salud`, salud); app.get(`${pfx}/listo`, listo); }
 
   // Contrato OpenAPI (público) + página de documentación. Se montan en la raíz
   // (para el dominio propio del API) Y bajo /api/* — el único prefijo que el proxy

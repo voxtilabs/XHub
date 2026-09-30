@@ -11,7 +11,8 @@ import { entitlementsDe } from "./entitlements.js";
  */
 export interface ScopeDef { scope: string; modulo: string; descripcion: string; }
 export const CATALOGO_SCOPES: ScopeDef[] = [
-  { scope: "nucleo.leer", modulo: "nucleo", descripcion: "Ficha 360 y búsqueda de personas." },
+  { scope: "nucleo.leer", modulo: "nucleo", descripcion: "Ficha 360, búsqueda y línea de tiempo de personas." },
+  { scope: "nucleo.escribir", modulo: "nucleo", descripcion: "Registrar personas por canal + identidad." },
   { scope: "nucleo.administrar", modulo: "nucleo", descripcion: "Supresión de datos del titular (Ley 21.719)." },
   { scope: "tickets.leer", modulo: "tickets", descripcion: "Bandeja y contexto de tickets." },
   { scope: "tickets.crear", modulo: "tickets", descripcion: "Crear tickets." },
@@ -38,8 +39,12 @@ export interface ContextoApi {
 export async function autenticarApi(c: PoolClient, token: string): Promise<ContextoApi> {
   const llave = await resolverLlave(c, token);
   const entitlements = await entitlementsDe(c, llave.clienteId);
-  // los scopes efectivos son los declarados que además tienen su módulo encendido
-  const scopes = llave.scopes.filter((s) => {
+  // Una llave SIN scopes declarados hereda TODOS los del catálogo; una llave sin
+  // scopes no sirve para nada, y este default evita ese footgun. Para restringir, se
+  // declaran explícitamente al crearla.
+  const declarados = llave.scopes?.length ? llave.scopes : CATALOGO_SCOPES.map((s) => s.scope);
+  // Los efectivos son los declarados cuyo módulo está encendido (nucleo va siempre).
+  const scopes = declarados.filter((s) => {
     const modulo = s.split(".")[0];
     return entitlements.has(modulo) || modulo === "nucleo";
   });
