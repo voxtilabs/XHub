@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
+import { randomBytes } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi } from "@xhub/core";
 import { conCliente, conPlataforma } from "@xhub/db";
@@ -297,6 +298,43 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
         const oportunidades = (await c.query("select id, titulo, valor::int as valor, etapa, estado from crm_oportunidades where persona_id=$1 order by creado_en desc limit 50", [id])).rows;
         return { ...ficha, tickets, oportunidades };
       });
+    });
+
+    // Webhooks salientes (autoservicio del admin de cliente). El secreto se muestra 1 vez.
+    r.get("/webhooks", async (req) => {
+      const ctx = await guard(req);
+      if (!ctx.esAdmin) throw new ErrorApi("SIN_PERMISO", "Solo el administrador del cliente gestiona webhooks");
+      return conCliente(ctx.clienteId, async (c) => ({
+        datos: (await c.query("select id, url, eventos, activo, creado_en from plataforma.webhooks where cliente_id=$1 order by creado_en desc", [ctx.clienteId])).rows,
+        entregas: (await c.query("select e.id, e.evento, w.url, e.estado, e.ultimo_codigo, e.intentos, e.creado_en from plataforma.webhook_entregas e join plataforma.webhooks w on w.id=e.webhook_id where e.cliente_id=$1 order by e.creado_en desc limit 25", [ctx.clienteId])).rows,
+        eventosDisponibles: ["ticket.creado", "ticket.estado", "ticket.asignado", "persona.fusionada", "oportunidad.creada", "oportunidad.ganada"],
+      }));
+    });
+    r.post("/webhooks", async (req) => {
+      const ctx = await guard(req);
+      if (!ctx.esAdmin) throw new ErrorApi("SIN_PERMISO", "Solo el administrador del cliente");
+      const b = req.body as { url?: string; eventos?: string[] };
+      if (!b?.url || !/^https:\/\//.test(b.url)) throw new ErrorApi("VALIDACION", "La URL debe ser https://");
+      const eventos = Array.isArray(b.eventos) ? b.eventos.filter((e) => typeof e === "string").slice(0, 20) : [];
+      const secreto = "whsec_" + randomBytes(24).toString("base64url");
+      const id = await conCliente(ctx.clienteId, async (c) => (await c.query(
+        "insert into plataforma.webhooks (cliente_id, url, eventos, secreto) values ($1,$2,$3,$4) returning id", [ctx.clienteId, b.url, eventos, secreto])).rows[0].id);
+      return { id, url: b.url, eventos, secreto };
+    });
+    r.put("/webhooks/:id", async (req) => {
+      const ctx = await guard(req);
+      if (!ctx.esAdmin) throw new ErrorApi("SIN_PERMISO", "Solo el administrador del cliente");
+      const { id } = req.params as { id: string };
+      const b = req.body as { activo?: boolean };
+      await conCliente(ctx.clienteId, (c) => c.query("update plataforma.webhooks set activo=$2 where id=$1 and cliente_id=$3", [id, b?.activo ?? true, ctx.clienteId]));
+      return { ok: true, activo: b?.activo ?? true };
+    });
+    r.delete("/webhooks/:id", async (req) => {
+      const ctx = await guard(req);
+      if (!ctx.esAdmin) throw new ErrorApi("SIN_PERMISO", "Solo el administrador del cliente");
+      const { id } = req.params as { id: string };
+      await conCliente(ctx.clienteId, (c) => c.query("delete from plataforma.webhooks where id=$1 and cliente_id=$2", [id, ctx.clienteId]));
+      return { ok: true };
     });
 
     // Métricas del cliente (SQL directo, sin actor): tablero honesto y real.
