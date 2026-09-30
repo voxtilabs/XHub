@@ -84,13 +84,17 @@ export function crearApp(): FastifyInstance {
     reply.code(503); return { listo: false };
   });
 
-  // Contrato OpenAPI (público) + página de documentación
+  // Contrato OpenAPI (público) + página de documentación. Se montan en la raíz
+  // (para el dominio propio del API) Y bajo /api/* — el único prefijo que el proxy
+  // del staging enruta al API, así los docs son alcanzables sin dominio dedicado.
+  // `data-url` RELATIVO ("openapi.json") → resuelve al lado de la página en ambos montajes.
   const spec = generarOpenApi();
-  app.get("/openapi.json", async () => spec);
-  app.get("/docs", async (_req, reply) => {
-    reply.type("text/html").send(
-      `<!doctype html><html><head><meta charset="utf-8"><title>xHub API</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0"><script id="api-reference" data-url="/openapi.json"></script><script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script></body></html>`);
-  });
+  const paginaDocs =
+    `<!doctype html><html><head><meta charset="utf-8"><title>xHub API</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0"><script id="api-reference" data-url="openapi.json"></script><script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script></body></html>`;
+  for (const pfx of ["", "/api"]) {
+    app.get(`${pfx}/openapi.json`, async () => spec);
+    app.get(`${pfx}/docs`, async (_req, reply) => { reply.type("text/html").send(paginaDocs); });
+  }
 
   // Guard de la API pública del cliente: autentica por llave, rate limit + cuota.
   const guard = async (req: FastifyRequest, reply: import("fastify").FastifyReply) => {

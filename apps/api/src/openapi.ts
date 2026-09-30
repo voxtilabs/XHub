@@ -152,6 +152,6 @@ export function generarOpenApi(): object {
         "```",
       ].join("\n"),
     },
-    servers: [{ url: "https://api-xhub.voxtilabs.cl", description: "Producción" }, { url: "https://api-stagexhub.voxtilabs.cl", description: "Staging" }],
+    servers: [{ url: "https://stagexhub.voxtilabs.cl", description: "Staging (activo)" }, { url: "https://api-xhub.voxtilabs.cl", description: "Producción (dominio dedicado)" }],
   });
 }
