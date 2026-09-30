@@ -3,7 +3,8 @@ import { randomBytes } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi } from "@xhub/core";
 import { conCliente, conPlataforma } from "@xhub/db";
-import { permisosDe, CATALOGO_PERMISOS, listarUsuariosCliente, buscarPersonas, fichaDePersona, modeloIADe, contextoIADe } from "@xhub/modulo-nucleo";
+import { permisosDe, CATALOGO_PERMISOS, listarUsuariosCliente, buscarPersonas, fichaDePersona, modeloIADe, contextoIADe,
+  crearRegla, activarRegla, aplicarReglas, aQuienAfectaria, listarReglas, type EjecutorAccion } from "@xhub/modulo-nucleo";
 import { crearModuloTickets, contextoOmnicanal, reincidencia } from "@xhub/modulo-tickets";
 import { nucleo } from "../nucleo.js";
 import { asegurarPipeline } from "./crm.js";
@@ -43,6 +44,36 @@ export async function guard(req: FastifyRequest): Promise<CtxT> {
 }
 export function exigir(ctx: CtxT, permiso: string): void {
   if (!ctx.esAdmin && !ctx.permisos.includes(permiso)) throw new ErrorApi("SIN_PERMISO", `Requiere el permiso ${permiso}`);
+}
+
+// Plantillas de automatización listas para activar (#87). Nacen apagadas.
+const PLANTILLAS_REGLAS = [
+  { clave: "ticket-a-crm", nombre: "Registrar cada ticket en el CRM", evento: "ticket.creado", moduloDestino: "crm", condicion: {} as Record<string, unknown>, accion: { tipo: "crear_oportunidad" } as Record<string, unknown>,
+    descripcion: "Al entrar un ticket, si la persona no tiene una oportunidad abierta, crea una y enlaza el ticket. Si ya tiene, solo lo enlaza." },
+  { clave: "nota-al-crear", nombre: "Dejar una nota al abrir un ticket", evento: "ticket.creado", moduloDestino: undefined as string | undefined, condicion: {} as Record<string, unknown>, accion: { tipo: "registrar_nota", texto: "Ticket de soporte recibido." } as Record<string, unknown>,
+    descripcion: "Cada ticket deja una nota en la línea de tiempo de la persona." },
+  { clave: "crm-urgentes", nombre: "Solo los tickets urgentes al CRM", evento: "ticket.creado", moduloDestino: "crm", condicion: { prioridad: "urgente" } as Record<string, unknown>, accion: { tipo: "crear_oportunidad" } as Record<string, unknown>,
+    descripcion: "Como la anterior, pero únicamente para tickets de prioridad urgente." },
+];
+
+// Ejecutores de acciones de módulo para las reglas (la capa API sí puede tocar el CRM).
+function ejecutoresRegla(clienteId: string): Record<string, EjecutorAccion> {
+  return {
+    crear_oportunidad: async (c, _accion, ev) => {
+      const t = (await c.query("select persona_id, asunto, numero::text as numero from tickets where id=$1", [ev.objetoId])).rows[0];
+      if (!t) return;
+      const ya = (await c.query("select id from crm_oportunidades where persona_id=$1 and estado='abierta' order by creado_en desc limit 1", [t.persona_id])).rows[0];
+      let oppId: string = ya?.id;
+      if (!oppId) {
+        const plId = await asegurarPipeline(c, clienteId);
+        const etapaId = (await c.query("select id from crm_etapas where pipeline_id=$1 order by orden asc limit 1", [plId])).rows[0]?.id;
+        oppId = (await c.query("insert into crm_oportunidades (cliente_id, persona_id, titulo, pipeline_id, etapa_id) values ($1,$2,$3,$4,$5) returning id",
+          [clienteId, t.persona_id, `Ticket #${t.numero}: ${t.asunto}`, plId, etapaId])).rows[0].id;
+        await nucleo.registrarInteraccion(c, { personaId: t.persona_id, tipo: "oportunidad.creada", moduloOrigen: "crm", objetoTipo: "oportunidad", objetoId: oppId, resumen: `Oportunidad por automatización (ticket #${t.numero})` });
+      }
+      await nucleo.enlazar(c, "ticket", ev.objetoId, "genera", "oportunidad", oppId);
+    },
+  };
 }
 
 export function registrarConsolaTickets(app: FastifyInstance): void {
@@ -181,10 +212,20 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
       const b = req.body as { canal?: string; identidad?: string; asunto?: string; prioridad?: string; cuerpo?: string; categoria?: string };
       if (!b?.canal || !b?.identidad || !b?.asunto?.trim()) throw new ErrorApi("VALIDACION", "Faltan canal, identidad o asunto");
       if (!CANALES.has(b.canal)) throw new ErrorApi("VALIDACION", `Canal inválido: ${b.canal}. Usa uno de: ${[...CANALES].join(", ")}`);
-      return conCliente(ctx.clienteId, (c) => T.crearTicket(c, {
-        canal: b.canal!, identidad: b.identidad!, asunto: b.asunto!.trim(),
-        prioridad: b.prioridad as never, cuerpo: b.cuerpo, categoria: b.categoria,
-      }));
+      return conCliente(ctx.clienteId, async (c) => {
+        const t = await T.crearTicket(c, {
+          canal: b.canal!, identidad: b.identidad!, asunto: b.asunto!.trim(),
+          prioridad: b.prioridad as never, cuerpo: b.cuerpo, categoria: b.categoria,
+        });
+        // Dispara las automatizaciones del cliente (ticket.creado). No rompe el alta del ticket.
+        try {
+          await aplicarReglas(c, {
+            tipo: "ticket.creado", objetoId: t.id, personaId: t.persona_id,
+            datos: { prioridad: t.prioridad, categoria: b.categoria ?? null, canal: t.canal_origen },
+          }, ejecutoresRegla(ctx.clienteId));
+        } catch { /* una regla que falla no debe tumbar la creación */ }
+        return t;
+      });
     });
 
     // Agentes asignables del cliente (para el dropdown de asignación).
@@ -406,6 +447,67 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
         const porEstado: Record<string, number> = {}; for (const x of est.rows) porEstado[x.estado] = x.n;
         const porPrioridad: Record<string, number> = {}; for (const x of pri.rows) porPrioridad[x.prioridad] = x.n;
         return { porEstado, porPrioridad, abiertos, vencidos, csat };
+      });
+    });
+
+    // ── Automatizaciones (motor de reglas por cliente, #86/#87) ─────────────
+    // Gobernanza del cliente: solo el administrador las gestiona. Nacen apagadas,
+    // muestran "a quién afectarían hoy" antes de activarse, y una regla que apunta
+    // a un módulo apagado queda PAUSADA con aviso en vez de fallar.
+    const soloAdmin = (ctx: CtxT) => { if (!ctx.esAdmin) throw new ErrorApi("SIN_PERMISO", "Solo el administrador del cliente gestiona las automatizaciones"); };
+
+    r.get("/reglas", async (req) => {
+      const ctx = await guard(req); soloAdmin(ctx);
+      const datos = await conCliente(ctx.clienteId, (c) => listarReglas(c));
+      return { datos };
+    });
+
+    r.get("/reglas/plantillas", async (req) => {
+      const ctx = await guard(req); soloAdmin(ctx);
+      return { datos: PLANTILLAS_REGLAS };
+    });
+
+    r.post("/reglas", async (req) => {
+      const ctx = await guard(req); soloAdmin(ctx);
+      const b = req.body as { plantilla?: string; nombre?: string; evento?: string; condicion?: Record<string, unknown>; accion?: Record<string, unknown>; moduloDestino?: string };
+      let datos: { nombre: string; evento: string; condicion: Record<string, unknown>; accion: Record<string, unknown>; moduloDestino?: string };
+      if (b.plantilla) {
+        const pl = PLANTILLAS_REGLAS.find((p) => p.clave === b.plantilla);
+        if (!pl) throw new ErrorApi("VALIDACION", `Plantilla desconocida: ${b.plantilla}`);
+        datos = { nombre: pl.nombre, evento: pl.evento, condicion: pl.condicion, accion: pl.accion, moduloDestino: pl.moduloDestino };
+      } else {
+        if (!b.nombre?.trim() || !b.evento || !(b.accion?.tipo)) throw new ErrorApi("VALIDACION", "Faltan nombre, evento o acción");
+        datos = { nombre: b.nombre.trim(), evento: b.evento, condicion: b.condicion ?? {}, accion: b.accion, moduloDestino: b.moduloDestino };
+      }
+      const id = await conCliente(ctx.clienteId, (c) => crearRegla(c, datos));
+      return { id, activa: false };
+    });
+
+    r.put("/reglas/:id/activar", async (req) => {
+      const ctx = await guard(req); soloAdmin(ctx);
+      const { id } = req.params as { id: string };
+      const b = req.body as { activa?: boolean };
+      const activa = b?.activa !== false;
+      await conCliente(ctx.clienteId, (c) => activarRegla(c, id, activa));
+      return { id, activa };
+    });
+
+    // Vista previa: sobre los tickets abiertos que cumplen la condición hoy,
+    // cuántos serían tocados si la regla se ejecutara ahora (excluye los ya hechos).
+    r.get("/reglas/:id/preview", async (req) => {
+      const ctx = await guard(req); soloAdmin(ctx);
+      const { id } = req.params as { id: string };
+      return conCliente(ctx.clienteId, async (c) => {
+        const regla = (await listarReglas(c)).find((x) => x.id === id);
+        if (!regla) throw new ErrorApi("NO_ENCONTRADO", "Regla no encontrada");
+        const cond = (regla.condicion ?? {}) as Record<string, unknown>;
+        const filtros = ["estado not in ('resuelto','cerrado')"]; const vals: unknown[] = [];
+        if (cond.prioridad) { vals.push(cond.prioridad); filtros.push(`prioridad=$${vals.length}`); }
+        if (cond.categoria) { vals.push(cond.categoria); filtros.push(`categoria=$${vals.length}`); }
+        const q = await c.query(`select id from tickets where ${filtros.join(" and ")} order by creado_en desc limit 500`, vals);
+        const candidatos = q.rows.map((x) => x.id as string);
+        const afectados = await aQuienAfectaria(c, id, candidatos);
+        return { evaluados: candidatos.length, afectados };
       });
     });
   }, { prefix: "/cliente" });

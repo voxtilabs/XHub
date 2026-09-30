@@ -18,6 +18,7 @@ const RUTAS: Ruta[] = [
   { href: "/superadmin/auditoria", label: "Auditoría", soloPlataforma: true },
   { href: "/equipo", label: "Mi equipo", soloAdminCliente: true },
   { href: "/ajustes/webhooks", label: "Webhooks", soloAdminCliente: true },
+  { href: "/automatizaciones", label: "Automatizaciones", soloAdminCliente: true },
   { href: "/tickets", label: "Bandeja", permiso: "bandeja.ver", modulo: "tickets" },
   { href: "/tickets/metricas", label: "Métricas", permiso: "bandeja.ver", modulo: "tickets" },
   { href: "/leads", label: "Leads", permiso: "crm.ver", modulo: "crm" },
