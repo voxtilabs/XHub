@@ -1,4 +1,5 @@
 "use client";
+import { Icon } from "@/components/icon";
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,32 +45,36 @@ export default function Auditoria() {
   return (
     <main className="min-h-screen">
       <AppShell />
-      <div className="max-w-5xl mx-auto p-4 sm:p-8 space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">Auditoría</h1>
+      <div className="xhub-page space-y-5">
+        <div className="xhub-page-heading">
+          <div>
+            <div className="xhub-eyebrow">XHUB · AUDITORÍA</div>
+            <h1>Auditoría</h1>
+            <p>Una historia verificable de la actividad de tu plataforma.</p>
+          </div>
           {cadena && (
             <div className="flex items-center gap-2 text-xs" style={{ color: cadena.valida ? "hsl(var(--exito))" : "hsl(var(--critico))" }}>
-              <span className="h-2 w-2 rounded-full" style={{ background: cadena.valida ? "hsl(var(--exito))" : "hsl(var(--critico))" }} />
-              {cadena.valida ? `Cadena de hashes íntegra (${cadena.entradas} entradas)` : `⚠ Cadena rota en seq ${cadena.rotaEn}`}
+              <Icon name={cadena.valida ? "shield-check" : "shield-warning"} className="text-xl shrink-0" />
+              {cadena.valida ? `Cadena de hashes íntegra (${cadena.entradas} entradas)` : `Cadena rota en seq ${cadena.rotaEn}`}
             </div>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2 items-end">
+        <div className="xhub-filter-bar flex flex-wrap gap-3 items-end">
           <div><label className="text-[11px] uppercase tracking-widest text-muted-foreground">Actor</label><Input value={f.actor} onChange={(e) => setF({ ...f, actor: e.target.value })} placeholder="correo o tipo" className="mt-1 w-44" /></div>
           <div><label className="text-[11px] uppercase tracking-widest text-muted-foreground">Acción / recurso</label><Input value={f.recurso} onChange={(e) => setF({ ...f, recurso: e.target.value })} placeholder="p.ej. cliente.creado" className="mt-1 w-52" /></div>
           <div><label className="text-[11px] uppercase tracking-widest text-muted-foreground">Desde</label><Input type="date" value={f.desde} onChange={(e) => setF({ ...f, desde: e.target.value })} className="mt-1 w-40" /></div>
           <div><label className="text-[11px] uppercase tracking-widest text-muted-foreground">Hasta</label><Input type="date" value={f.hasta} onChange={(e) => setF({ ...f, hasta: e.target.value })} className="mt-1 w-40" /></div>
-          <Button size="sm" onClick={cargar}>Buscar</Button>
-          <Button size="sm" variant="secondary" onClick={exportar}>Exportar firmado</Button>
+          <Button size="sm" onClick={cargar}><Icon name="magnifying-glass" /> Buscar</Button>
+          <Button size="sm" variant="secondary" onClick={exportar}><Icon name="download-simple" /> Exportar firmado</Button>
         </div>
 
-        {error && <div className="p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}>▲ {error}</div>}
+        {error && <div className="p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}><Icon name="warning-circle" className="xhub-inline-icon" /> {error}</div>}
 
         <Card><CardContent className="pt-6 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border">
-              <th className="p-2 font-black">Seq</th><th className="p-2 font-black">Cuándo</th><th className="p-2 font-black">Actor</th><th className="p-2 font-black">Acción</th><th className="p-2 font-black">Recurso</th><th className="p-2 font-black">Resultado</th>
+          <table className="xhub-data-table w-full text-sm">
+            <thead><tr className="text-left text-[10px] font-medium uppercase tracking-widest text-muted-foreground border-b border-border">
+              <th className="p-2 font-medium">Seq</th><th className="p-2 font-medium">Cuándo</th><th className="p-2 font-medium">Actor</th><th className="p-2 font-medium">Acción</th><th className="p-2 font-medium">Recurso</th><th className="p-2 font-medium">Resultado</th>
             </tr></thead>
             <tbody>
               {entradas.map((e) => (

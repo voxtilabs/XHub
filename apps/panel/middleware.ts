@@ -22,4 +22,5 @@ export function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/((?!_next/static|_next/image|icon.svg|favicon.ico|api|admin|cliente|v1).*)"] };
+// Public brand assets and local fonts are also needed before signing in.
+export const config = { matcher: ["/((?!_next/static|_next/image|voxia/|icon.svg|favicon.ico|api|admin|cliente|v1).*)"] };

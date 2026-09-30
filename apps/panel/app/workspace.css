@@ -1,0 +1,300 @@
+/* Workspace surfaces extend the selected Horizon login without altering its layout. */
+body:has(.xhub-shell), body:has(.xhub-standalone-header) {
+  --background: 220 19% 8%; --foreground: 216 25% 95%;
+  --card: 220 18% 11%; --card-foreground: 216 25% 95%;
+  --secondary: 220 16% 16%; --secondary-foreground: 216 25% 95%;
+  --border: 220 14% 21%; --input: 220 13% 30%;
+  --muted-foreground: 218 14% 68%; --voxia-body: #b5bdca;
+  --voxia-field: #191d25; --voxia-surface: hsl(var(--card));
+  --voxia-shadow: none; --xhub-shadow: none;
+  --xhub-body: var(--voxia-body); --xhub-panel: hsl(var(--card));
+  background: hsl(var(--background)); color: hsl(var(--foreground));
+}
+html[data-tema="claro"] body:has(.xhub-shell), html[data-tema="claro"] body:has(.xhub-standalone-header) {
+  --background: 220 23% 97%; --foreground: 222 24% 15%;
+  --card: 0 0% 100%; --card-foreground: 222 24% 15%;
+  --secondary: 220 22% 95%; --secondary-foreground: 222 24% 15%;
+  --border: 220 19% 90%; --input: 220 17% 80%;
+  --muted-foreground: 219 13% 43%; --voxia-body: #626c7e;
+  --voxia-field: #fff; --voxia-surface: #fff;
+}
+main:has(> .xhub-shell) { padding-left: 232px; }
+.xhub-sidebar {
+  inset: 0 auto 0 0; width: 232px; padding: 32px 18px 24px;
+  border: 0; border-right: 1px solid #ffffff0a; border-radius: 0;
+  background: #10151e; color: #f5f6fa; box-shadow: none;
+  scrollbar-width: thin; scrollbar-color: #343b48 transparent;
+}
+.xhub-sidebar-brand { padding: 0 12px; }
+.xhub-sidebar .xhub-brand { font-size: 36px; min-height: 40px; }
+.xhub-brand-caption { display:block; margin-top: 5px; font-size:9px; letter-spacing:3.3px; color:#94a0b2; }
+.xhub-workspace { margin: 32px 0 28px; padding: 14px 12px; border: 1px solid #2a303c; border-radius: 12px; gap:10px; background:#171d27; }
+.xhub-workspace-icon { width:30px; height:34px; color:#ff994d; }
+.xhub-workspace .xhub-eyebrow { color: #9da7b7; font:500 10px/1.4 Inter,sans-serif; letter-spacing:0; text-transform:none; }
+.xhub-workspace strong { font:500 12px/1.5 Inter,sans-serif; margin-top:3px; color:#ebedf2; }
+.xhub-nav-caption { color:#8993a4; font-size:9px; font-weight:500; letter-spacing:1.45px; margin:0 12px 12px; }
+.xhub-nav { gap:5px; }
+.xhub-nav-link { min-height:46px; border-radius:10px; padding:11px 13px; gap:12px; font-size:13px; color:#aeb8c7; }
+.xhub-nav-link:hover { color:#fff; background:#202734; }
+.xhub-nav-link.is-active { color:#ffb782; background:#ff7c191c; border-color:#ff8a362c; box-shadow:none; }
+.xhub-nav-link .ph { font-size:21px; }
+.xhub-nav-link .xhub-nav-chevron { font-size:13px; }
+.xhub-sidebar-footer { display:block; padding:24px 12px 0; margin-top:auto; }
+.xhub-sidebar-footer>span { display:block; margin-bottom:12px; font-size:8px; letter-spacing:1.7px; color:#929dac; }
+.xhub-partners { display:flex; align-items:center; gap:16px; }
+.xhub-partners img { object-fit:contain; }
+.xhub-partners img+img { border-left:1px solid #3b414b; padding-left:14px; width:124px; height:25px; }
+.xhub-topbar { margin:0; top:0; height:76px; min-height:76px; padding:0 36px; border:0; border-bottom:1px solid hsl(var(--border)); border-radius:0; box-shadow:none; background:hsl(var(--card)); backdrop-filter:none; }
+.xhub-breadcrumb { gap:12px; font-size:12px; }
+.xhub-breadcrumb strong { font-weight:500; }
+.xhub-user-actions { gap:12px; }
+.xhub-role { border:0; background:hsl(var(--secondary)); color:hsl(var(--muted-foreground)); font-size:10px; }
+.xhub-avatar { width:36px; height:36px; border-radius:50%; border:0; color:var(--voxia-action-text); background:var(--voxia-action-soft); font-size:11px; }
+.xhub-user-label { max-width:150px; font-size:12px; }
+.xhub-user-label small { font-size:10px; margin-top:2px; }
+.xhub-icon-button { border-radius:10px; width:38px; height:38px; background:transparent; border-color:transparent; }
+.xhub-icon-button:hover { border-color:hsl(var(--border)); }
+.xhub-sidebar .xhub-icon-button { color:#b5c0d0; }
+.xhub-page { max-width:1480px; padding:34px 36px 48px; }
+.xhub-page--narrow { max-width:1120px; }
+.xhub-page-heading { margin-bottom:26px; gap:16px; align-items:center; }
+.xhub-page-heading h1 { font:600 32px/1.2 Outfit,sans-serif; letter-spacing:-.8px; }
+.xhub-page-heading .xhub-eyebrow { font:500 10px/1.5 Inter,sans-serif; letter-spacing:1.4px; color:hsl(var(--muted-foreground)); margin-bottom:7px; }
+.xhub-page-heading p { font-size:13px; margin-top:8px; line-height:1.65; }
+.xhub-section-heading { font:500 18px/1.35 Outfit,sans-serif; letter-spacing:-.25px; }
+.xhub-section-heading>.ph { color:var(--voxia-action-text); font-size:21px; }
+.xhub-page .voxia-card { background:hsl(var(--card)); box-shadow:0 2px 5px #00000003; border-radius:14px; }
+.xhub-page .voxia-button-primary, .xhub-page .voxia-button-surface, .xhub-standalone-header button { box-shadow:none; border-radius:9px; font-family:Inter,sans-serif; font-size:12px; font-weight:600; }
+.xhub-page .voxia-button-primary, .xhub-page .voxia-button-surface { min-height:40px; }
+.xhub-page .voxia-button-surface { background:hsl(var(--card)); border-color:hsl(var(--border)); }
+.xhub-page .voxia-input, .xhub-page select, .xhub-page textarea { border-radius:9px; font-size:13px; }
+.xhub-page .voxia-input { box-shadow:none; height:44px; border-color:hsl(var(--border)); }
+.xhub-page .voxia-input:focus { border-color:hsl(var(--ring)); box-shadow:0 0 0 3px var(--voxia-action-soft); }
+.xhub-page thead th { font:500 11px/1.5 Inter,sans-serif; letter-spacing:0; text-transform:none; background:hsl(var(--secondary)/.6); padding:13px 18px; white-space:nowrap; }
+.xhub-page td:not([colspan]) { padding:17px 18px; font-size:12px; }
+.xhub-page [role="tablist"] { display:flex; gap:20px; border-bottom:1px solid hsl(var(--border)); border-radius:0; }
+.xhub-page [role="tab"] { gap:7px; border:0; border-bottom:2px solid transparent; border-radius:0; padding:13px 0; min-height:47px; background:transparent; font:500 12px/1.5 Inter,sans-serif; }
+.xhub-page [role="tab"][data-state="active"] { color:var(--voxia-action-text); border-bottom-color:hsl(var(--primary)); background:transparent; }
+.xhub-page [role="tab"] .ph { font-size:18px; }
+.xhub-page [role="tabpanel"] { margin-top:22px; }
+.xhub-stat { min-height:124px; }
+.xhub-stat-icon, .xhub-feature-icon { border:0; background:var(--voxia-action-soft); color:var(--voxia-action-text); border-radius:11px; }
+.xhub-stat-value { font:600 34px/1.1 Outfit,sans-serif; letter-spacing:-1px; }
+.xhub-stat-label { font-size:12px; }
+.xhub-client-head>a { font:500 17px/1.4 Outfit,sans-serif; }
+.xhub-client-head .xhub-feature-icon { width:40px; height:40px; }
+.xhub-client-modules { margin-top:16px; padding:14px 0; }
+.xhub-client-modules>span { font:500 10px/1.5 Inter,sans-serif; letter-spacing:.4px; }
+.xhub-client-modules button { border-radius:8px; }
+.xhub-client-actions { padding-top:16px; }
+.xhub-client-actions>a { min-height:36px; padding:8px 12px; border-radius:8px; background:var(--voxia-action-soft); color:var(--voxia-action-text); font:500 12px/1.5 Inter,sans-serif; }
+.xhub-client-actions>a:hover { background:var(--voxia-action-border); }
+.xhub-client-actions>button { min-height:36px; border-radius:8px; }
+.xhub-standalone-header { margin:0; padding:18px 36px; border-width:0 0 1px; border-radius:0; }
+.xhub-message-avatar { border-radius:50%; background:var(--voxia-action-soft); color:var(--voxia-action-text); }
+/* Person: useful profile context stays beside the conversation history. */
+.xhub-person-layout { display:grid; grid-template-columns:284px minmax(0,1fr); gap:24px; align-items:start; }
+.xhub-profile-card { overflow:hidden; }
+.xhub-profile-summary { padding:28px 24px 22px; text-align:center; }
+.xhub-person-avatar { display:grid; place-items:center; width:76px; height:76px; margin:0 auto 15px; background:var(--voxia-action-soft); color:var(--voxia-action-text); border-radius:22px; font:500 28px/1 Outfit,sans-serif; }
+.xhub-profile-summary h2 { font:600 23px/1.3 Outfit,sans-serif; letter-spacing:-.4px; }
+.xhub-profile-subtitle { margin:5px 0 14px; font-size:12px; color:hsl(var(--muted-foreground)); }
+.xhub-profile-badges { display:flex; justify-content:center; gap:7px; }
+.xhub-profile-section { padding:22px 24px; border-top:1px solid hsl(var(--border)); }
+.xhub-profile-section h3 { font:600 11px/1.5 Inter,sans-serif; margin-bottom:18px; }
+.xhub-contact-line { display:flex; gap:12px; align-items:flex-start; margin-top:18px; }
+.xhub-contact-line>.ph { font-size:19px; color:hsl(var(--muted-foreground)); margin-top:2px; }
+.xhub-contact-line dt { font-size:10px; color:hsl(var(--muted-foreground)); margin-bottom:4px; }
+.xhub-contact-line dd { font-size:12px; overflow-wrap:anywhere; }
+.xhub-profile-note { display:flex; gap:9px; font-size:11px; line-height:1.7; color:hsl(var(--muted-foreground)); }
+.xhub-profile-note .ph { color:var(--voxia-action-text); font-size:20px; flex-shrink:0; }
+.xhub-person-main { min-width:0; }
+.xhub-person-overview { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:24px; }
+.xhub-person-overview>div { display:flex; align-items:center; gap:13px; padding:19px 17px; border:1px solid hsl(var(--border)); background:hsl(var(--card)); border-radius:12px; }
+.xhub-person-overview .ph { color:var(--voxia-action-text); font-size:23px; }
+.xhub-person-overview strong { display:block; font:500 23px/1.2 Outfit,sans-serif; }
+.xhub-person-overview span { font-size:10px; color:hsl(var(--muted-foreground)); }
+.xhub-person-history { padding:0 24px 6px; }
+.xhub-history-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:24px 0 22px; }
+.xhub-history-heading h2 { font:500 18px/1.35 Outfit,sans-serif; }
+.xhub-history-heading p { color:hsl(var(--muted-foreground)); font-size:11px; margin-top:4px; }
+.xhub-history-count { font-size:10px; padding:4px 9px; border-radius:6px; background:hsl(var(--secondary)); color:hsl(var(--muted-foreground)); white-space:nowrap; }
+.xhub-timeline-item { display:grid; grid-template-columns:38px minmax(0,1fr); gap:14px; position:relative; padding-bottom:27px; }
+.xhub-timeline-item:not(:last-child)::before { content:""; position:absolute; width:1px; background:hsl(var(--border)); left:18px; top:42px; bottom:5px; }
+.xhub-timeline-icon { width:38px; height:38px; border:0; border-radius:12px; background:var(--voxia-action-soft); color:var(--voxia-action-text); }
+.xhub-timeline-item[data-channel="Llamada"] .xhub-timeline-icon { background:var(--xhub-signal-soft); color:hsl(var(--senal)); }
+.xhub-timeline-item[data-channel="WhatsApp"] .xhub-timeline-icon { background:var(--voxia-good-soft); color:hsl(var(--exito)); }
+.xhub-timeline-item[data-channel="Email"] .xhub-timeline-icon { background:hsl(var(--secondary)); color:hsl(var(--muted-foreground)); }
+.xhub-event-top { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:1px; }
+.xhub-event-top strong { font-size:12px; font-weight:600; }
+.xhub-event-top time { font-size:10px; color:hsl(var(--muted-foreground)); white-space:nowrap; }
+.xhub-timeline-item p { margin-top:5px; font-size:12px; color:var(--xhub-body); line-height:1.7; }
+.xhub-event-source { display:inline-block; margin-top:9px; font-size:9px; color:hsl(var(--muted-foreground)); padding:2px 7px; border:1px solid hsl(var(--border)); border-radius:5px; }
+.xhub-identity-row { display:flex; align-items:center; gap:14px; padding:18px 0; border-top:1px solid hsl(var(--border)); }
+.xhub-identity-row .xhub-timeline-icon { flex-shrink:0; }
+.xhub-identity-row strong { display:block; font-size:12px; font-weight:500; text-transform:capitalize; }
+.xhub-identity-row p { font-size:12px; margin-top:4px; color:hsl(var(--muted-foreground)); overflow-wrap:anywhere; }
+.xhub-person-empty { padding:44px 24px; text-align:center; }
+.xhub-person-empty>.ph { font-size:34px; color:hsl(var(--muted-foreground)); }
+.xhub-person-empty h2 { font:500 18px/1.4 Outfit,sans-serif; margin-top:16px; }
+.xhub-person-empty p { font-size:12px; color:hsl(var(--muted-foreground)); margin-top:8px; }
+/* Inbox and team use compact summaries and a single clear content surface. */
+.xhub-inbox-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:26px; }
+.xhub-inbox-metric { display:flex; gap:14px; align-items:center; padding:19px; border:1px solid hsl(var(--border)); border-radius:12px; background:hsl(var(--card)); }
+.xhub-inbox-metric>.ph { color:var(--voxia-action-text); font-size:25px; }
+.xhub-inbox-metric strong { display:block; font:500 28px/1 Outfit,sans-serif; }
+.xhub-inbox-metric span { display:block; margin-top:7px; font-size:11px; color:hsl(var(--muted-foreground)); }
+.xhub-inbox-metric[data-tone="critical"]>.ph { color:hsl(var(--critico)); }
+.xhub-inbox-surface { padding:22px; border:1px solid hsl(var(--border)); border-radius:14px; background:hsl(var(--card)); }
+.xhub-inbox-surface .voxia-card { border-radius:10px; box-shadow:none; overflow:hidden; }
+.xhub-inbox-surface .xhub-filter-bar { margin-bottom:20px; }
+.xhub-filter-bar .voxia-input { padding-left:40px; }
+.xhub-ticket-filters { gap:8px; margin-bottom:20px; }
+.xhub-ticket-filters button { border-radius:7px; min-height:36px; font-size:12px; }
+.xhub-ticket-subject { display:block; margin-bottom:6px; font-size:12px; font-weight:600; line-height:1.5; }
+.xhub-ticket-subject:hover { color:var(--voxia-action-text); }
+.xhub-data-table td:nth-child(2) { min-width:235px; }
+.xhub-data-table td:nth-child(5), .xhub-data-table td:nth-child(6) { white-space:nowrap; }
+.xhub-context-note { display:flex; gap:8px; align-items:flex-start; margin-top:18px; font-size:11px; line-height:1.7; color:hsl(var(--muted-foreground)); }
+.xhub-context-note .ph { font-size:17px; flex-shrink:0; }
+.xhub-team-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:24px; align-items:start; }
+.xhub-team-members { display:grid; gap:14px; }
+.xhub-team-member-head { display:flex; gap:12px; align-items:center; }
+.xhub-team-avatar { display:grid; place-items:center; width:42px; height:42px; flex-shrink:0; border-radius:12px; color:var(--voxia-action-text); background:var(--voxia-action-soft); font:500 14px/1 Outfit,sans-serif; }
+.xhub-team-member-head h2 { font:500 16px/1.4 Outfit,sans-serif; }
+.xhub-team-member-head p { font-size:11px; color:hsl(var(--muted-foreground)); margin-top:3px; overflow-wrap:anywhere; }
+.xhub-team-member-head>div.min-w-0 { flex:1; }
+.xhub-team-permissions { margin-top:20px; border-top:1px solid hsl(var(--border)); }
+.xhub-team-permissions summary { display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; padding-top:16px; font-size:12px; color:var(--xhub-body); list-style:none; }
+.xhub-team-permissions summary::-webkit-details-marker { display:none; }
+.xhub-team-permissions summary span { margin-left:auto; font-size:10px; color:hsl(var(--muted-foreground)); }
+.xhub-team-permissions[open] summary { margin-bottom:12px; }
+.xhub-team-permissions[open] summary>.ph { transform:rotate(180deg); }
+.xhub-team-permissions button { width:100%; min-height:60px; }
+.xhub-team-form { position:sticky; top:100px; padding:24px; }
+.xhub-team-form>p { color:hsl(var(--muted-foreground)); font-size:12px; line-height:1.7; margin:9px 0 24px; }
+.xhub-team-form-fields { display:grid; gap:16px; }
+.xhub-team-form-fields label { display:grid; gap:7px; font-size:12px; font-weight:500; }
+.xhub-team-form-fields small { font-size:10px; color:hsl(var(--muted-foreground)); font-weight:400; }
+.xhub-team-form-fields button { margin-top:3px; width:100%; }
+.xhub-capacity { display:flex; align-items:center; gap:16px; padding:18px 22px; border:1px solid hsl(var(--border)); background:hsl(var(--card)); border-radius:12px; margin-bottom:24px; }
+.xhub-capacity>.ph { font-size:25px; color:var(--voxia-action-text); }
+.xhub-capacity strong { font-size:13px; font-weight:500; }
+.xhub-capacity p { font-size:11px; color:hsl(var(--muted-foreground)); margin-top:3px; }
+.xhub-capacity-track { height:5px; max-width:160px; min-width:70px; flex:1; margin-left:auto; background:hsl(var(--secondary)); border-radius:5px; overflow:hidden; }
+.xhub-capacity-track span { display:block; height:100%; background:hsl(var(--primary)); border-radius:5px; }
+/* Reading sizes are shared across desktop and touch layouts. */
+.xhub-nav-link { font-size:14px; }
+.xhub-person-overview span { font-size:11px; }
+.xhub-contact-line dt { font-size:11px; }
+.xhub-contact-line dd, .xhub-identity-row p { font-size:13px; }
+.xhub-event-top strong, .xhub-timeline-item p { font-size:13px; }
+.xhub-event-top time { font-size:11px; }
+.xhub-event-source { font-size:10px; }
+.xhub-history-heading p { font-size:12px; }
+.xhub-team-member-head p { font-size:12px; }
+.xhub-team-permissions summary { font-size:13px; }
+.xhub-team-form-fields label { font-size:13px; }
+.xhub-inbox-metric span { font-size:12px; }
+.xhub-ticket-subject, .xhub-page td:not([colspan]) { font-size:13px; }
+.xhub-page thead th { font-size:12px; }
+.xhub-page [role="tab"] { font-size:13px; }
+.xhub-team-form { scroll-margin-top:100px; }
+@media(min-width:1600px) { .xhub-page { padding-top:44px; } }
+@media(max-width:1200px) {
+  main:has(> .xhub-shell) { padding-left:216px; }
+  .xhub-sidebar { width:216px; padding-inline:14px; }
+  .xhub-topbar { padding-inline:26px; }
+  .xhub-page { padding:28px 26px 40px; }
+  .xhub-person-layout { grid-template-columns:250px minmax(0,1fr); gap:18px; }
+  .xhub-person-overview { gap:8px; }
+  .xhub-person-overview>div { padding:15px 12px; gap:8px; }
+  .xhub-person-overview .ph { font-size:20px; }
+  .xhub-team-layout { grid-template-columns:minmax(0,1fr) 290px; gap:18px; }
+  .xhub-inbox-metric { padding:16px 13px; gap:10px; }
+  .xhub-inbox-metric span { font-size:10px; }
+}
+@media(max-width:1000px) and (min-width:801px) {
+  .xhub-person-layout, .xhub-team-layout { grid-template-columns:1fr; }
+  .xhub-profile-card { display:grid; grid-template-columns:1fr 1fr; }
+  .xhub-profile-section { border-top:0; border-left:1px solid hsl(var(--border)); }
+  .xhub-profile-card .xhub-profile-section:last-child { grid-column:1/-1; border-left:0; border-top:1px solid hsl(var(--border)); }
+  .xhub-team-form { position:static; }
+  .xhub-inbox-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:800px) {
+  main:has(> .xhub-shell) { padding-left:0; }
+  .xhub-sidebar { top:0; bottom:0; left:0; width:270px; padding:26px 18px; border-radius:0; }
+  .xhub-sidebar-brand { padding:0 10px; }
+  .xhub-sidebar-brand>a { width:auto; }
+  .xhub-topbar { height:66px; min-height:66px; top:0; margin:0; padding:10px 16px; border-radius:0; }
+  .xhub-topbar-start { gap:8px; }
+  .xhub-breadcrumb strong { font-size:15px; }
+  .xhub-user-actions { gap:6px; }
+  .xhub-user-actions .xhub-icon-button { width:36px; height:36px; border-radius:9px; }
+  .xhub-page { padding:26px 20px 36px; }
+  .xhub-page-heading h1 { font-size:28px; letter-spacing:-.6px; }
+  .xhub-page-heading p { font-size:12px; }
+  .xhub-page-heading { margin-bottom:22px; }
+  .xhub-person-layout { grid-template-columns:240px minmax(0,1fr); gap:16px; }
+  .xhub-person-overview { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .xhub-person-overview>div { flex-direction:column; align-items:flex-start; }
+  .xhub-person-history { padding:0 18px 2px; }
+  .xhub-history-count { display:none; }
+  .xhub-team-layout { grid-template-columns:minmax(0,1fr) 270px; gap:16px; }
+  .xhub-inbox-summary { grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+  .xhub-inbox-metric { flex-direction:column; align-items:flex-start; gap:11px; }
+  .xhub-inbox-surface { padding:18px; }
+  .xhub-standalone-header { margin:0; padding:16px 20px; }
+}
+@media(max-width:620px) {
+  .xhub-page { padding:24px 16px 32px; }
+  .xhub-person-layout, .xhub-team-layout { grid-template-columns:1fr; }
+  .xhub-profile-summary { display:grid; grid-template-columns:60px minmax(0,1fr); text-align:left; column-gap:16px; padding:22px; }
+  .xhub-person-avatar { grid-row:1/4; width:60px; height:60px; margin:0; border-radius:17px; font-size:23px; }
+  .xhub-profile-summary h2 { font-size:22px; }
+  .xhub-profile-subtitle { margin:4px 0 10px; }
+  .xhub-profile-badges { justify-content:flex-start; }
+  .xhub-profile-section { padding:20px 22px; }
+  .xhub-profile-section h3 { margin-bottom:12px; }
+  .xhub-contact-line { margin-top:13px; }
+  .xhub-profile-card .xhub-profile-section:last-child { padding:16px 22px; }
+  .xhub-person-overview>div { flex-direction:row; padding:16px 12px; gap:9px; }
+  .xhub-person-overview .ph { font-size:20px; }
+  .xhub-person-overview strong { font-size:23px; }
+  .xhub-person-overview span { font-size:9px; }
+  .xhub-person-overview { margin-bottom:18px; }
+  .xhub-event-top { flex-wrap:wrap; gap:2px 10px; }
+  .xhub-page [role="tablist"] { gap:19px; }
+  .xhub-page [role="tab"] { font-size:11px; }
+  .xhub-team-form { position:static; }
+  .xhub-team-form-fields input { font-size:16px; }
+  .xhub-team-form-fields input::placeholder { font-size:12px; }
+  .xhub-capacity { padding:16px; gap:12px; }
+  .xhub-inbox-summary { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .xhub-inbox-metric { flex-direction:row; align-items:center; padding:16px; gap:12px; }
+  .xhub-inbox-metric strong { font-size:25px; }
+  .xhub-inbox-metric span { font-size:10px; }
+  .xhub-inbox-surface { padding:14px; }
+  .xhub-inbox-surface .xhub-data-table { display:block; }
+  .xhub-inbox-surface .xhub-data-table thead { display:none; }
+  .xhub-inbox-surface .xhub-data-table tbody { display:block; }
+  .xhub-inbox-surface .xhub-data-table tr { display:grid; grid-template-columns:1fr 1fr; gap:13px 14px; padding:18px 16px; }
+  .xhub-inbox-surface .xhub-data-table td { display:block; padding:0; min-width:0; }
+  .xhub-inbox-surface .xhub-data-table td:nth-child(1), .xhub-inbox-surface .xhub-data-table td:nth-child(2) { grid-column:1/-1; }
+  .xhub-inbox-surface .xhub-data-table td[data-label]::before { content:attr(data-label); display:block; font-size:9px; color:hsl(var(--muted-foreground)); margin-bottom:5px; }
+  .xhub-inbox-surface .xhub-data-table td[colspan] { grid-column:1/-1; padding:16px 0; }
+  .xhub-ticket-filters { gap:5px; }
+  .xhub-ticket-filters button { font-size:11px; padding-inline:9px; }
+  .xhub-inbox-page .xhub-page-heading { align-items:flex-start; }
+  .xhub-inbox-page .xhub-page-heading>button { padding-inline:12px; font-size:11px; }
+  .xhub-inbox-page .xhub-page-heading p { max-width:190px; }
+}
+@media(max-width:360px) {
+  .xhub-person-overview>div { padding:12px 8px; gap:6px; }
+  .xhub-person-overview .ph { display:none; }
+  .xhub-person-overview span { font-size:10px; }
+  .xhub-capacity-track { display:none; }
+  .xhub-inbox-metric { padding:14px 11px; gap:9px; }
+  .xhub-inbox-metric>.ph { font-size:21px; }
+}
