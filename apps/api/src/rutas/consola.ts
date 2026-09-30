@@ -2,9 +2,10 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { randomBytes } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi } from "@xhub/core";
-import { conCliente, conPlataforma } from "@xhub/db";
+import { conCliente, conPlataforma, emitir } from "@xhub/db";
 import { permisosDe, CATALOGO_PERMISOS, listarUsuariosCliente, buscarPersonas, fichaDePersona, modeloIADe, contextoIADe,
-  crearRegla, activarRegla, aplicarReglas, aQuienAfectaria, listarReglas, type EjecutorAccion } from "@xhub/modulo-nucleo";
+  crearRegla, activarRegla, aplicarReglas, aQuienAfectaria, listarReglas, type EjecutorAccion,
+  listarEntregas, reintentarEntrega } from "@xhub/modulo-nucleo";
 import { crearModuloTickets, contextoOmnicanal, reincidencia } from "@xhub/modulo-tickets";
 import { nucleo } from "../nucleo.js";
 import { asegurarPipeline } from "./crm.js";
@@ -203,7 +204,12 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
       const { id } = req.params as { id: string };
       const b = req.body as { estado?: string };
       if (!b?.estado || !ESTADOS.has(b.estado)) throw new ErrorApi("VALIDACION", "Estado inválido");
-      return conCliente(ctx.clienteId, (c) => T.cambiarEstado(c, id, b.estado as never));
+      return conCliente(ctx.clienteId, async (c) => {
+        const t = await T.cambiarEstado(c, id, b.estado as never);
+        await emitir(c, { clienteId: ctx.clienteId, modulo: "tickets", tipo: "ticket.estado",
+          payload: { ticketId: t.id, numero: t.numero, personaId: t.persona_id, estado: t.estado } });
+        return t;
+      });
     });
 
     // Crear ticket a mano (crea la persona por canal+identidad si no existe).
@@ -217,6 +223,9 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
           canal: b.canal!, identidad: b.identidad!, asunto: b.asunto!.trim(),
           prioridad: b.prioridad as never, cuerpo: b.cuerpo, categoria: b.categoria,
         });
+        // Evento al outbox (misma tx = outbox transaccional): alimenta webhooks salientes.
+        await emitir(c, { clienteId: ctx.clienteId, modulo: "tickets", tipo: "ticket.creado",
+          payload: { ticketId: t.id, numero: t.numero, personaId: t.persona_id, asunto: t.asunto, prioridad: t.prioridad } });
         // Dispara las automatizaciones del cliente (ticket.creado). No rompe el alta del ticket.
         try {
           await aplicarReglas(c, {
@@ -364,6 +373,22 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
         entregas: (await c.query("select e.id, e.evento, w.url, e.estado, e.ultimo_codigo, e.intentos, e.creado_en from plataforma.webhook_entregas e join plataforma.webhooks w on w.id=e.webhook_id where e.cliente_id=$1 order by e.creado_en desc limit 25", [ctx.clienteId])).rows,
         eventosDisponibles: ["ticket.creado", "ticket.estado", "ticket.asignado", "persona.fusionada", "oportunidad.creada", "oportunidad.ganada"],
       }));
+    });
+    // Entregas paginadas (panel de entregas y reintento, #93). Filtro por estado.
+    r.get("/webhooks/entregas", async (req) => {
+      const ctx = await guard(req);
+      if (!ctx.esAdmin) throw new ErrorApi("SIN_PERMISO", "Solo el administrador del cliente gestiona webhooks");
+      const q = req.query as { estado?: string; cursor?: string; limite?: string };
+      return conCliente(ctx.clienteId, (c) => listarEntregas(c, { estado: q.estado, cursor: q.cursor, limite: q.limite ? Number(q.limite) : undefined }));
+    });
+    // Reintento manual de una entrega fallida.
+    r.post("/webhooks/entregas/:id/reintentar", async (req) => {
+      const ctx = await guard(req);
+      if (!ctx.esAdmin) throw new ErrorApi("SIN_PERMISO", "Solo el administrador del cliente gestiona webhooks");
+      const { id } = req.params as { id: string };
+      const ok = await conCliente(ctx.clienteId, (c) => reintentarEntrega(c, id));
+      if (!ok) throw new ErrorApi("NO_ENCONTRADO", "Esa entrega no existe o no está fallida");
+      return { ok: true, estado: "pendiente" };
     });
     r.post("/webhooks", async (req) => {
       const ctx = await guard(req);

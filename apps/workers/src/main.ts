@@ -1,6 +1,6 @@
-import { despacharLote, cerrarPool } from "@xhub/db";
+import { despacharLote, cerrarPool, conPlataforma } from "@xhub/db";
 import { fijarObservadorIA } from "@xhub/ia";
-import { crearSinkUsoIA } from "@xhub/modulo-nucleo";
+import { crearSinkUsoIA, entregarWebhooksPendientes } from "@xhub/modulo-nucleo";
 import { construirRegistro } from "./registro.js";
 
 // El triage con IA corre aquí (consumidores del outbox): registra su consumo.
@@ -24,7 +24,11 @@ async function bucle(): Promise<void> {
       const r = await despacharLote(registro, { limite: 50, maxIntentos: 5 });
       if (r.procesados || r.fallidos || r.sinConsumidor)
         process.stdout.write(`[xhub-workers] leidos=${r.leidos} ok=${r.procesados} fallidos=${r.fallidos} sin-consumidor=${r.sinConsumidor}\n`);
-      await dormir(r.leidos > 0 ? 150 : ESPERA_VACIO);
+      // Entrega de webhooks salientes: el POST va FUERA de transacción (ley 7).
+      const w = await entregarWebhooksPendientes(conPlataforma, { limite: 20 });
+      if (w.intentadas)
+        process.stdout.write(`[xhub-workers] webhooks intentadas=${w.intentadas} ok=${w.entregadas} reprog=${w.reprogramadas} fallidas=${w.fallidas} bloqueadas=${w.bloqueadas}\n`);
+      await dormir(r.leidos > 0 || w.intentadas > 0 ? 150 : ESPERA_VACIO);
     } catch (e) {
       process.stderr.write(`[xhub-workers] error de lote: ${(e as Error).message}\n`);
       await dormir(ESPERA_VACIO);
