@@ -22,6 +22,7 @@ export const getSugerencia = (id: string) => apiFetch<{ sugerencia: string | nul
 export const responder = (id: string, cuerpo: string) => apiFetch(`/cliente/tickets/${id}/responder`, { method: "POST", body: JSON.stringify({ cuerpo }) });
 export const notaInterna = (id: string, cuerpo: string) => apiFetch(`/cliente/tickets/${id}/nota`, { method: "POST", body: JSON.stringify({ cuerpo }) });
 export const cambiarEstado = (id: string, estado: Estado) => apiFetch<TicketRow>(`/cliente/tickets/${id}/estado`, { method: "PUT", body: JSON.stringify({ estado }) });
+export const resumirTicket = (id: string) => apiFetch<{ resumen: string }>(`/cliente/tickets/${id}/resumir`, { method: "POST" });
 export const crearTicket = (b: { canal: string; identidad: string; asunto: string; prioridad?: Prioridad; cuerpo?: string; categoria?: string }) => apiFetch<TicketRow>(`/cliente/tickets`, { method: "POST", body: JSON.stringify(b) });
 export const getMetricas = () => apiFetch<{ porEstado: Record<string, number>; porPrioridad: Record<string, number>; abiertos: number; vencidos: number; csat: { prom: number; n: number } }>(`/cliente/metricas`);
 

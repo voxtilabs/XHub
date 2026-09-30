@@ -4,7 +4,7 @@ import { ErrorApi } from "@xhub/core";
 import { conPlataforma } from "@xhub/db";
 import {
   limiteUsuariosDe, contarUsuariosCliente, listarUsuariosCliente,
-  permisosDe, fijarPermisos, usuarioDeCliente, CATALOGO_PERMISOS,
+  permisosDe, fijarPermisos, usuarioDeCliente, CATALOGO_PERMISOS, entitlementsDe,
 } from "@xhub/modulo-nucleo";
 import { auth } from "../auth.js";
 import { leerCookieSoporte } from "../soporte.js";
@@ -109,14 +109,16 @@ export function registrarRutasCliente(app: FastifyInstance): void {
       if (!u?.id) throw new ErrorApi("NO_AUTENTICADO", "Sesión requerida");
       const sop = leerCookieSoporte(req.headers.cookie);
       if (u.rol === "plataforma" && sop && sop.a === u.id) {
-        return { id: u.id, email: u.email ?? null, nombre: u.name ?? null, rol: "plataforma", clienteId: sop.c, esAdmin: true, esSoporte: true, motivoSoporte: sop.m, permisos: CATALOGO_PERMISOS.map((p) => p.clave) };
+        const modSop = [...(await conPlataforma((c) => entitlementsDe(c, sop.c)))];
+        return { id: u.id, email: u.email ?? null, nombre: u.name ?? null, rol: "plataforma", clienteId: sop.c, esAdmin: true, esSoporte: true, motivoSoporte: sop.m, permisos: CATALOGO_PERMISOS.map((p) => p.clave), modulos: modSop };
       }
       const esAdmin = u.rol === "admin_cliente";
       // El admin de cliente tiene acceso total: recibe todas las claves del catálogo.
       const permisos = esAdmin
         ? CATALOGO_PERMISOS.map((p) => p.clave)
         : await conPlataforma((c) => permisosDe(c, u.id!));
-      return { id: u.id, email: u.email ?? null, nombre: u.name ?? null, rol: u.rol ?? "usuario", clienteId: u.clienteId ?? null, esAdmin, permisos };
+      const modulos = u.clienteId ? [...(await conPlataforma((c) => entitlementsDe(c, u.clienteId!)))] : [];
+      return { id: u.id, email: u.email ?? null, nombre: u.name ?? null, rol: u.rol ?? "usuario", clienteId: u.clienteId ?? null, esAdmin, permisos, modulos };
     });
 
     // Marca blanca del cliente logueado: el panel se pinta con ella (o defaults si no hay).

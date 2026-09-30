@@ -14,18 +14,18 @@ import { apiDocsUrl, apiFetch } from "@/lib/api";
  * usa <Link> para navegar sin recargar la página (sin el flash blanco de antes).
  */
 
-type Ruta = { href: string; label: string; soloPlataforma?: boolean; soloAdminCliente?: boolean; permiso?: string };
+type Ruta = { href: string; label: string; soloPlataforma?: boolean; soloAdminCliente?: boolean; permiso?: string; modulo?: string };
 const RUTAS: Ruta[] = [
   { href: "/superadmin", label: "Clientes", soloPlataforma: true },
   { href: "/ia", label: "IA", soloPlataforma: true },
   { href: "/equipo", label: "Mi equipo", soloAdminCliente: true },
   { href: "/ajustes/webhooks", label: "Webhooks", soloAdminCliente: true },
-  { href: "/tickets", label: "Bandeja", permiso: "bandeja.ver" },
-  { href: "/tickets/metricas", label: "Métricas", permiso: "bandeja.ver" },
-  { href: "/leads", label: "Leads", permiso: "crm.ver" },
-  { href: "/oportunidades", label: "Oportunidades", permiso: "crm.ver" },
-  { href: "/organizaciones", label: "Empresas", permiso: "crm.ver" },
-  { href: "/insights", label: "Insights", permiso: "crm.ver" },
+  { href: "/tickets", label: "Bandeja", permiso: "bandeja.ver", modulo: "tickets" },
+  { href: "/tickets/metricas", label: "Métricas", permiso: "bandeja.ver", modulo: "tickets" },
+  { href: "/leads", label: "Leads", permiso: "crm.ver", modulo: "crm" },
+  { href: "/oportunidades", label: "Oportunidades", permiso: "crm.ver", modulo: "crm" },
+  { href: "/organizaciones", label: "Empresas", permiso: "crm.ver", modulo: "crm" },
+  { href: "/insights", label: "Insights", permiso: "crm.ver", modulo: "crm" },
   { href: "/persona", label: "Personas", permiso: "ficha360.ver" },
 ];
 
@@ -80,7 +80,7 @@ export function AppShell() {
   const rutas = RUTAS.filter((r) => {
     if (r.soloPlataforma) return esPlataforma;
     if (r.soloAdminCliente) return esAdminCliente;
-    if (r.permiso) return !esPlataforma && puede(r.permiso);
+    if (r.permiso) return !esPlataforma && puede(r.permiso) && (!r.modulo || (yo?.modulos?.includes(r.modulo) ?? false));
     return true;
   });
   const inic = (usuario?.name || usuario?.email || "X5").split(/[ @.]/).map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();

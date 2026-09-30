@@ -9,7 +9,7 @@ import { AppShell } from "@/components/app-shell";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import {
   getTicket, getMensajes, getContexto, getSugerencia, responder, notaInterna, cambiarEstado,
-  getAgentes, asignar, cambiarPrioridad, getMacros, guardarEtiquetas, getCategorias, cambiarCategoria, calificarCsat, TRANS, type Detalle, type Mensaje, type Contexto, type Estado, type Prioridad, type Agente, type Macro, type Categoria,
+  getAgentes, asignar, cambiarPrioridad, getMacros, guardarEtiquetas, getCategorias, cambiarCategoria, calificarCsat, resumirTicket, TRANS, type Detalle, type Mensaje, type Contexto, type Estado, type Prioridad, type Agente, type Macro, type Categoria,
 } from "@/lib/tickets";
 
 type Rol = "exito" | "aviso" | "critico" | "senal" | "neutro";
@@ -38,6 +38,7 @@ function Contenido() {
   const [interno, setInterno] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [sugiriendo, setSugiriendo] = useState(false);
+  const [resumiendo, setResumiendo] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [agentes, setAgentes] = useState<Agente[]>([]);
   const [macros, setMacros] = useState<Macro[]>([]);
@@ -75,6 +76,11 @@ function Contenido() {
     setSugiriendo(true); setError(null);
     try { const s = await getSugerencia(id); if (s.sugerencia) { setTexto(s.sugerencia); setInterno(false); } else setToast("La IA no devolvió sugerencia (¿apagada?)"); }
     catch (e) { setError((e as Error).message); } finally { setSugiriendo(false); }
+  }
+  async function resumir() {
+    setResumiendo(true); setError(null);
+    try { const r = await resumirTicket(id); setT((prev) => prev && { ...prev, resumen: r.resumen }); }
+    catch (e) { setError((e as Error).message); } finally { setResumiendo(false); }
   }
   async function transicionar(e: Estado) {
     setError(null);
@@ -173,6 +179,13 @@ function Contenido() {
       <div className="grid lg:grid-cols-[1fr_300px] gap-4">
         {/* Conversación */}
         <div className="flex flex-col gap-3">
+          <Card><CardContent className="pt-4">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Resumen IA</span>
+              {puede && <button onClick={resumir} disabled={resumiendo} className="text-[11.5px] text-[hsl(var(--senal))] hover:underline disabled:opacity-50">{resumiendo ? "resumiendo…" : "✦ resumir"}</button>}
+            </div>
+            <div className="text-[13px] text-muted-foreground">{t.resumen || "Sin resumen. Pulsa «resumir» para generarlo con IA."}</div>
+          </CardContent></Card>
           <Card><CardContent className="pt-5 space-y-3">
             {msgs.length === 0 && <div className="text-[13px] text-muted-foreground">Sin mensajes todavía.</div>}
             {msgs.map((m) => {

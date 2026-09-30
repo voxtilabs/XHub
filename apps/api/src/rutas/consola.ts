@@ -152,6 +152,14 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
       return { ok: true };
     });
 
+    // Resumen de la conversación por IA (o fallback determinista). Guarda el resumen.
+    r.post("/tickets/:id/resumir", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
+      const { id } = req.params as { id: string };
+      const resumen = await conCliente(ctx.clienteId, (c) => T.resumirConversacion(c, id));
+      return { resumen };
+    });
+
     // Cambiar estado (máquina de transiciones del módulo; una inválida da 409).
     r.put("/tickets/:id/estado", async (req) => {
       const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
