@@ -111,6 +111,23 @@ export function mapearTagV5(row: Record<string, unknown>): EtiquetaXContact | nu
   return { nombre, color: (typeof row.cor === "string" && row.cor.trim()) ? row.cor.trim() : null };
 }
 
+/**
+ * Valida el acceso a una instancia v5 SIN leer datos: solo autentica (y toca /tags,
+ * que es barato) para confirmar que responde y que las credenciales sirven. Se usa al
+ * VINCULAR (#58): un vínculo mal configurado se rechaza al crearse, no en la 1ª sync.
+ */
+export async function validarAccesoV5(o: OpcionesLecturaV5): Promise<{ ok: boolean; motivo?: string }> {
+  try {
+    const { f, auth } = autenticadorV5(o);
+    const token = await auth.token(); // login v5; lanza si credenciales/host fallan
+    const r = await f(`https://${o.host}:8011/api/v5/tags`, { headers: { authorization: `Bearer ${token}` } });
+    if (!r.ok) return { ok: false, motivo: `XContact respondió ${r.status} al validar` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, motivo: (e as Error).message.slice(0, 140) };
+  }
+}
+
 /** Lee el CATÁLOGO de etiquetas (tags) de la instancia v5 (:8011/api/v5/tags). */
 export async function leerTagsV5(o: OpcionesLecturaV5): Promise<EtiquetaXContact[]> {
   const { f, auth } = autenticadorV5(o);

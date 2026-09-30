@@ -13,7 +13,7 @@ import {
   asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
   configIA, fijarModeloDefault, fijarModeloCliente, fijarContextoCliente,
 } from "@xhub/modulo-nucleo";
-import { sincronizarContactosInstancia, reconciliarContactosInstancia, type NucleoContactos, type DepsSondeo } from "@xhub/modulo-conector";
+import { sincronizarContactosInstancia, reconciliarContactosInstancia, validarAccesoV5, type NucleoContactos, type DepsSondeo } from "@xhub/modulo-conector";
 import { fetchXContact } from "../fetch-xcontact.js";
 import { consumoDelDia } from "@xhub/cuotas";
 import { fijarConfigTriage, configTriage } from "@xhub/modulo-tickets";
@@ -352,7 +352,7 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
     admin.get("/clientes/:id/xcontact/instancias", async (req) => {
       const { id } = req.params as { id: string };
       return conPlataforma(async (c) => ({ datos: (await c.query(
-        `select i.id, i.nombre, i.host, i.version_api, i.usuario, i.credencial_ref, i.estado_salud,
+        `select i.id, i.nombre, i.host, i.version_api, i.usuario, i.credencial_ref, i.externo_id, i.estado_salud,
                 i.ultima_prueba::text as ultima_prueba, i.resumen, i.creada_en::text as creada_en,
                 i.sondeo_activo, i.intervalo_sondeo_seg, i.ultimo_sondeo::text as ultimo_sondeo,
                 i.fallos_consecutivos, i.corte_hasta::text as corte_hasta, (i.corte_hasta is not null and i.corte_hasta > now()) as breaker_abierto, i.ultima_causa,
@@ -382,16 +382,25 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
 
     admin.post("/clientes/:id/xcontact/instancias", async (req) => {
       const { id } = req.params as { id: string };
-      const b = req.body as { nombre?: string; host?: string; versionApi?: string; usuario?: string; credencialRef?: string; resumen?: Record<string, unknown> };
+      const b = req.body as { nombre?: string; host?: string; versionApi?: string; usuario?: string; credencialRef?: string; externoId?: string; password?: string; validar?: boolean; resumen?: Record<string, unknown> };
       const nombre = b?.nombre?.trim(); const host = b?.host?.trim();
       if (!nombre || !host) throw new ErrorApi("VALIDACION", "Faltan nombre y host");
+      const hostLimpio = host.replace(/^https?:\/\//, "").replace(/\/.*/, "");
+      // Validación AL VINCULAR (#58): si hay credencial (y no se pidió omitir), se comprueba
+      // que la instancia RESPONDE antes de guardarla — un vínculo roto se rechaza aquí, no
+      // en la primera sincronización. Solo v5 (el traductor vivo).
+      const clave = b?.password || (b?.credencialRef ? process.env[b.credencialRef] : "") || "";
+      if (b?.validar !== false && (b.versionApi || "v5") === "v5" && b?.usuario && clave) {
+        const chk = await validarAccesoV5({ host: hostLimpio, usuario: b.usuario, clave, fetchImpl: fetchXContact });
+        if (!chk.ok) throw new ErrorApi("VALIDACION", `La instancia no valida: ${chk.motivo}`);
+      }
       // NUNCA se guarda el secreto: solo host, usuario y la REFERENCIA de la credencial.
       const estado = b.resumen ? estadoInstancia(b.resumen as never) : "sin_probar";
       const r = await conPlataforma((c) => c.query(
-        `insert into plataforma.instancias_xcontact (cliente_id, nombre, host, version_api, usuario, credencial_ref, estado_salud, ultima_prueba, resumen)
-           values ($1,$2,$3,$4,$5,$6,$7, case when $8::jsonb is null then null else now() end, $8)
-         returning id, nombre, host, version_api, usuario, credencial_ref, estado_salud, ultima_prueba::text as ultima_prueba, resumen, creada_en::text as creada_en`,
-        [id, nombre, host.replace(/^https?:\/\//, "").replace(/\/.*/, ""), b.versionApi || "v5", b.usuario || null, b.credencialRef || null, estado, b.resumen ? JSON.stringify(b.resumen) : null]));
+        `insert into plataforma.instancias_xcontact (cliente_id, nombre, host, version_api, usuario, credencial_ref, externo_id, estado_salud, ultima_prueba, resumen)
+           values ($1,$2,$3,$4,$5,$6,$7,$8, case when $9::jsonb is null then null else now() end, $9)
+         returning id, nombre, host, version_api, usuario, credencial_ref, externo_id, estado_salud, ultima_prueba::text as ultima_prueba, resumen, creada_en::text as creada_en`,
+        [id, nombre, hostLimpio, b.versionApi || "v5", b.usuario || null, b.credencialRef || null, b.externoId || null, estado, b.resumen ? JSON.stringify(b.resumen) : null]));
       return r.rows[0];
     });
 
