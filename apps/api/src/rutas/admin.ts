@@ -10,7 +10,7 @@ import {
   resumenUsoIA, CATALOGO_SCOPES, SCOPES_VALIDOS, entitlementsDe,
   listarLlaves, actualizarScopesLlave, revocarLlave,
   asegurarPersonaPorIdentidad, registrarInteraccion,
-  adjuntarIdentidad, asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
+  asegurarIdentidad, asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
 } from "@xhub/modulo-nucleo";
 import { leerContactosV5 } from "@xhub/modulo-conector";
 import { fetchXContact } from "../fetch-xcontact.js";
@@ -317,10 +317,10 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
           if (!p) continue;
           personas++;
           // Identidades adicionales (la xcontact SIEMPRE + teléfonos/emails extra).
+          // Idempotente y sin abortar la transacción ante duplicados (on conflict do nothing).
           for (const idr of k.identidades) {
             if (idr.canal === k.canal && idr.valor === k.identidad) continue;
-            try { await adjuntarIdentidad(c, p.id, idr.canal as never, idr.valor); identidades++; }
-            catch { /* ya pertenece a alguien: idempotente / no cruzamos personas */ }
+            if (await asegurarIdentidad(c, p.id, idr.canal as never, idr.valor)) identidades++;
           }
           // Etiquetas (grupos de XContact) — get-or-create + aplicar (ambos idempotentes).
           for (const nombreEtq of k.etiquetas) { await aplicarEtiqueta(c, p.id, await asegurarEtiqueta(c, nombreEtq)); etiquetados++; }

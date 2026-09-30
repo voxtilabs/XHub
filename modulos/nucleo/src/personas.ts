@@ -79,6 +79,21 @@ export async function adjuntarIdentidad(c: PoolClient, personaId: string, canal:
   }
 }
 
+/**
+ * Adjunta una identidad de forma IDEMPOTENTE (para la ingesta): si ya existe —en esta
+ * u otra persona— no hace nada y NO aborta la transacción (a diferencia de
+ * adjuntarIdentidad, que lanza en el duplicado). Devuelve true si la creó.
+ */
+export async function asegurarIdentidad(c: PoolClient, personaId: string, canal: Canal, valor: string): Promise<boolean> {
+  const raiz = await resolverRaiz(c, personaId);
+  const clienteId = (await c.query("select nullif(current_setting('app.cliente_id', true),'') cid")).rows[0].cid;
+  const norm = normalizarIdentidad(canal, valor);
+  const r = await c.query(
+    "insert into nucleo.identidades (cliente_id, persona_id, canal, identificador) values ($1,$2,$3,$4) on conflict do nothing",
+    [clienteId, raiz.id, canal, norm]);
+  return (r.rowCount ?? 0) > 0;
+}
+
 export interface Identidad { canal: Canal; identificador: string; seq: string; }
 export async function identidadesDe(c: PoolClient, personaId: string): Promise<Identidad[]> {
   const raiz = await resolverRaiz(c, personaId);
