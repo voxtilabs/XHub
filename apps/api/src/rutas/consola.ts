@@ -80,7 +80,10 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
                   primera_respuesta_en, resuelto_en, satisfaccion, sla_incumplido, creado_en, actualizado_en
              from tickets where id=$1`, [id]);
         if (t.rowCount === 0) throw new ErrorApi("NO_ENCONTRADO", "Ticket no encontrado");
-        return { ...t.rows[0], puede: { gestionar: ctx.esAdmin || ctx.permisos.includes("bandeja.gestionar") } };
+        const pid = t.rows[0].persona_id;
+        const ids = (await c.query("select canal, identificador from nucleo.identidades where persona_id=$1 order by (canal='telefono') desc, (canal='email') desc, canal", [pid])).rows;
+        const pnombre = (await c.query("select nombre from nucleo.personas where id=$1", [pid])).rows[0]?.nombre ?? null;
+        return { ...t.rows[0], persona_nombre: pnombre, persona_identidades: ids, puede: { gestionar: ctx.esAdmin || ctx.permisos.includes("bandeja.gestionar") } };
       });
     });
 

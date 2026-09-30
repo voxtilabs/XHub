@@ -138,6 +138,16 @@ function Contenido() {
             {t.sla_incumplido && <Badge rol="critico">SLA vencido</Badge>}
           </div>
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight mt-1.5">{t.asunto}</h1>
+          {(t.persona_nombre || (t.persona_identidades && t.persona_identidades.length > 0)) && (
+            <div className="text-[13px] mt-1 flex items-center gap-x-3 gap-y-0.5 flex-wrap">
+              {t.persona_nombre && <span className="font-medium">{t.persona_nombre}</span>}
+              {t.persona_identidades?.map((i) => (
+                <span key={i.canal + i.identificador} className="text-muted-foreground tabular-nums">
+                  {i.canal === "telefono" ? "📞" : i.canal === "email" ? "✉" : i.canal === "rut" ? "🆔" : i.canal === "xcontact" ? "⟳" : "•"} {i.identificador}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="text-[12.5px] text-muted-foreground mt-1">
             {t.canal_origen ?? "sin canal"}{t.categoria ? ` · ${t.categoria}` : ""} · creado {fecha(t.creado_en)} · {t.asignado_usuario ? (agentes.find((a) => a.id === t.asignado_usuario)?.nombre || agentes.find((a) => a.id === t.asignado_usuario)?.email || "asignado") : "sin asignar"}
             {(t.etiquetas ?? []).map((e) => <span key={e} className="ml-1.5 rounded-pill bg-secondary px-1.5 py-0.5 text-[10.5px]">{e}</span>)}

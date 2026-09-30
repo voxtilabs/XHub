@@ -5,7 +5,8 @@ export type Estado = "nuevo" | "abierto" | "pendiente" | "resuelto" | "cerrado";
 export type Prioridad = "baja" | "media" | "alta" | "urgente";
 export type TicketRow = { id: string; numero: string; persona_id: string; asunto: string; estado: Estado; prioridad: Prioridad; canal_origen: string | null; asignado_a: string | null; asignado_usuario?: string | null; resumen: string | null; sla_incumplido?: boolean };
 export type Bandeja = { datos: TicketRow[]; siguiente: string | null; porEstado: Record<string, number>; sinAsignar: number; vencidos: number; puede: { gestionar: boolean } };
-export type Detalle = TicketRow & { categoria: string | null; etiquetas: string[]; asignado_usuario: string | null; urgencia_detectada: string | null; sla_primera_resp_vence: string | null; sla_resolucion_vence: string | null; primera_respuesta_en: string | null; resuelto_en: string | null; satisfaccion: number | null; sla_incumplido: boolean; creado_en: string; actualizado_en: string; puede: { gestionar: boolean } };
+export type Identidad = { canal: string; identificador: string };
+export type Detalle = TicketRow & { categoria: string | null; etiquetas: string[]; asignado_usuario: string | null; urgencia_detectada: string | null; sla_primera_resp_vence: string | null; sla_resolucion_vence: string | null; primera_respuesta_en: string | null; resuelto_en: string | null; satisfaccion: number | null; sla_incumplido: boolean; creado_en: string; actualizado_en: string; persona_nombre?: string | null; persona_identidades?: Identidad[]; puede: { gestionar: boolean } };
 export type Mensaje = { seq: number; autor_tipo: "persona" | "agente" | "sistema"; autor_id: string | null; cuerpo: string; interno: boolean; creado_en: string };
 export type Contexto = { omnicanal: { tipo: string; modulo: string; ocurrioEn: string; resumen: string | null }[]; reincidencia: { totalTickets: number; ultimos30: number; esRecurrente: boolean; mismoCanal: Record<string, number> } };
 
