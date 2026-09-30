@@ -4,7 +4,7 @@ import { esCifrado, _cifrarCon, _descifrarCon, _huella } from "../src/cripto.js"
 
 const M1 = randomBytes(32);
 const M2 = randomBytes(32);
-const SECRETO = "Xcontact@2026-super-secreta";
+const SECRETO = "clave-de-prueba-no-real-123";
 
 test("roundtrip: cifra y descifra con la misma maestra", () => {
   const sobre = _cifrarCon(SECRETO, M1);
