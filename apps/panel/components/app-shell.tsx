@@ -17,6 +17,7 @@ import { apiDocsUrl, apiFetch } from "@/lib/api";
 type Ruta = { href: string; label: string; soloPlataforma?: boolean; soloAdminCliente?: boolean; permiso?: string; modulo?: string };
 const RUTAS: Ruta[] = [
   { href: "/superadmin", label: "Clientes", soloPlataforma: true },
+  { href: "/superadmin/salud-xcontact", label: "Salud XContact", soloPlataforma: true },
   { href: "/ia", label: "IA", soloPlataforma: true },
   { href: "/equipo", label: "Mi equipo", soloAdminCliente: true },
   { href: "/ajustes/webhooks", label: "Webhooks", soloAdminCliente: true },

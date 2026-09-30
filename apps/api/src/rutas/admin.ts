@@ -208,6 +208,35 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       return probarXContact({ host: b.host.trim(), usuario: b.usuario.trim(), password: b.password || "", apiKey: b.apiKey || "" });
     });
 
+    // ── Tablero de salud de la flota XContact (#66) ─────────────────────────────
+    // Todas las instancias de todos los clientes con su último scorecard + rollup.
+    // 'sin_fuente' (nunca probada) ensucia el estado general a propósito.
+    admin.get("/xcontact/salud", async () => {
+      return conPlataforma(async (c) => {
+        const inst = (await c.query(
+          `select i.id, i.nombre, i.host, i.version_api, i.estado_salud,
+                  i.ultima_prueba::text as ultima_prueba, i.resumen,
+                  cl.id as cliente_id, cl.nombre as cliente
+             from plataforma.instancias_xcontact i
+             left join plataforma.clientes cl on cl.id = i.cliente_id
+            order by cl.nombre nulls first, i.creada_en desc`)).rows;
+        const cuenta = (e: string) => inst.filter((x) => x.estado_salud === e).length;
+        const rollup = {
+          total: inst.length,
+          operativas: cuenta("operativa"),
+          parciales: cuenta("parcial") + cuenta("degradada"),
+          caidas: cuenta("caida"),
+          sinProbar: cuenta("sin_probar"),
+          // El estado general es el peor: una caída o una sin probar ensucia todo.
+          general: inst.length === 0 ? "sin_instancias"
+            : cuenta("caida") > 0 ? "caida"
+            : cuenta("sin_probar") > 0 || cuenta("parcial") + cuenta("degradada") > 0 ? "parcial"
+            : "operativa",
+        };
+        return { rollup, instancias: inst };
+      });
+    });
+
     // ── Registro de instancias de XContact por cliente (#57) ────────────────────
     // Deriva el estado de salud del último scorecard del probe.
     const estadoInstancia = (r: { alcanzable?: boolean; login?: boolean; puedeLeerColas?: boolean; puedeLeerContactos?: boolean } | null): string => {
