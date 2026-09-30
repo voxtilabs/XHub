@@ -4,22 +4,18 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
 import { useYo } from "@/lib/permisos";
-import { useMarca } from "@/lib/marca";
-import { apiDocsUrl, apiFetch } from "@/lib/api";
+import { apiDocsUrl } from "@/lib/api";
+import { Icon } from "@/components/icon";
+import { Brand } from "@/components/brand";
 
-/**
- * AppShell — la barra superior ÚNICA de xHub. Antes cada página dibujaba su propio
- * header (un punto + "xHub"), lo que se veía inconsistente y "de demo". Este shell da
- * una identidad real (marca X5, navegación por rol, tema día/noche en su sitio) y
- * usa <Link> para navegar sin recargar la página (sin el flash blanco de antes).
- */
-
+/** Shared navigation and role guards for the XHub workspace. */
 type Ruta = { href: string; label: string; soloPlataforma?: boolean; soloAdminCliente?: boolean; permiso?: string; modulo?: string };
 const RUTAS: Ruta[] = [
   { href: "/superadmin", label: "Clientes", soloPlataforma: true },
   { href: "/superadmin/salud-xcontact", label: "Salud XContact", soloPlataforma: true },
   { href: "/superadmin/muertos", label: "Cola de muertos", soloPlataforma: true },
   { href: "/ia", label: "IA", soloPlataforma: true },
+  { href: "/superadmin/auditoria", label: "Auditoría", soloPlataforma: true },
   { href: "/equipo", label: "Mi equipo", soloAdminCliente: true },
   { href: "/ajustes/webhooks", label: "Webhooks", soloAdminCliente: true },
   { href: "/tickets", label: "Bandeja", permiso: "bandeja.ver", modulo: "tickets" },
@@ -31,7 +27,7 @@ const RUTAS: Ruta[] = [
   { href: "/persona", label: "Personas", permiso: "ficha360.ver" },
 ];
 
-function BotonTema() {
+export function BotonTema() {
   const [tema, setTema] = useState<"oscuro" | "claro">("oscuro");
   useEffect(() => {
     setTema(document.documentElement.getAttribute("data-tema") === "claro" ? "claro" : "oscuro");
@@ -45,24 +41,25 @@ function BotonTema() {
     try { localStorage.setItem("xhub_tema", nuevo); } catch { /* privado */ }
   }
   return (
-    <button onClick={alternar} aria-label="Cambiar tema día / noche" title="Día / Noche"
-      className="h-8 w-8 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition">
-      {tema === "claro" ? (
-        <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
-      ) : (
-        <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-      )}
+    <button type="button" onClick={alternar} aria-label="Cambiar tema día / noche" title={tema === "claro" ? "Usar modo oscuro" : "Usar modo claro"} className="xhub-icon-button">
+      <Icon name={tema === "claro" ? "moon" : "sun-dim"} weight="regular" />
     </button>
   );
 }
 
 export function AppShell() {
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  useEffect(() => {
+    if (!menuAbierto) return;
+    const cerrar = (event: KeyboardEvent) => { if (event.key === "Escape") setMenuAbierto(false); };
+    window.addEventListener("keydown", cerrar);
+    return () => window.removeEventListener("keydown", cerrar);
+  }, [menuAbierto]);
   const path = usePathname();
+  useEffect(() => { setMenuAbierto(false); }, [path]);
   const router = useRouter();
   const { data: sesion, isPending } = useSession();
   const { yo, puede, cargando: cargandoYo } = useYo();
-  async function salirSoporte() { try { await apiFetch("/admin/soporte", { method: "DELETE" }); } catch { /* igual salimos */ } window.location.href = "/superadmin"; }
-  const marca = useMarca();
   const usuario = sesion?.user as { email?: string; name?: string; rol?: string } | undefined;
   const esPlataforma = !usuario || usuario.rol === "plataforma";
   const esAdminCliente = usuario?.rol === "admin_cliente";
@@ -86,77 +83,52 @@ export function AppShell() {
     return true;
   });
   const inic = (usuario?.name || usuario?.email || "X5").split(/[ @.]/).map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-  const activa = (href: string) => path === href || path.startsWith(href + "/");
+  const activa = (href: string) => href === "/superadmin" ? path === href || path.startsWith("/superadmin/cliente") : path === href || path.startsWith(href + "/");
+
+  const titulo = path.startsWith("/superadmin/auditoria") ? "Auditoría" : path.startsWith("/superadmin/cliente") ? "Cliente" : path.startsWith("/tickets/nuevo") ? "Nuevo ticket" : path.startsWith("/tickets/detalle") ? "Detalle de ticket" : path.startsWith("/ajustes") ? "Ajustes" : rutas.find((r) => activa(r.href))?.label || "Espacio de trabajo";
+  const rol = esPlataforma ? "Plataforma" : esAdminCliente ? "Admin cliente" : "Agente";
+  const iconos: Record<string, string> = { "/superadmin": "buildings", "/superadmin/salud-xcontact": "pulse", "/superadmin/muertos": "warning", "/ia": "waveform", "/superadmin/auditoria": "shield-check", "/equipo": "users-three", "/ajustes/webhooks": "webhooks-logo", "/tickets": "chats-circle", "/tickets/metricas": "chart-line", "/leads": "user-plus", "/oportunidades": "kanban", "/organizaciones": "building-office", "/insights": "gauge", "/persona": "identification-card" };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-[hsl(var(--background)/0.72)] backdrop-blur-xl">
-      {yo?.esSoporte && (
-        <div className="flex items-center gap-2 px-4 sm:px-6 py-1.5 text-[12.5px] font-medium" style={{ background: "hsl(var(--critico))", color: "white" }}>
-          <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-          <span>Modo soporte — estás actuando dentro de un cliente{yo.motivoSoporte ? ` · ${yo.motivoSoporte}` : ""}</span>
-          <button onClick={salirSoporte} className="ml-auto rounded-pill bg-white/20 hover:bg-white/30 px-3 py-0.5 font-semibold transition">Salir de soporte</button>
+    <div className="xhub-shell">
+      <a href="#xhub-content" className="xhub-skip-link">Ir al contenido</a>
+      <aside id="xhub-sidebar" className={`xhub-sidebar ${menuAbierto ? "is-open" : ""}`} aria-label="Menú principal">
+        <div className="xhub-sidebar-brand">
+          <Link href={casa} aria-label="xHub · Inicio"><Brand /><span className="xhub-brand-caption">WORKSPACE</span></Link>
+          <button type="button" className="xhub-icon-button xhub-mobile-close" aria-label="Cerrar menú" onClick={() => setMenuAbierto(false)}><Icon name="x" /></button>
         </div>
-      )}
-      <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
-        {/* Marca: cuadro con degradé señal→acción (identidad X5) + wordmark */}
-        <Link href={esPlataforma ? "/superadmin" : "/tickets"} className="flex items-center gap-2.5 shrink-0 group">
-          {marca?.logo_url ? (
-            <img src={marca.logo_url} alt={marca.nombre_marca || "logo"} className="h-8 w-auto max-w-[130px] object-contain" />
-          ) : (
-            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: "hsl(var(--primary))", boxShadow: "0 0 12px hsl(var(--primary))" }} />
-          )}
-          <span className="leading-none">
-            <span className="block font-semibold tracking-tight text-[15px]">{marca?.nombre_marca || "xHub"}</span>
-            <span className="block text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{marca?.nombre_marca ? "xHub" : "X5 Soluciones"}</span>
-          </span>
-        </Link>
-
-        {/* Navegación por rol */}
-        <nav className="hidden md:flex items-center gap-1 ml-2">
+        <div className="xhub-workspace"><span className="xhub-workspace-icon"><Icon name={esPlataforma ? "buildings" : "users-three"} /></span><div><span className="xhub-eyebrow">{rol}</span><strong>{esPlataforma ? "Centro de administración" : esAdminCliente ? "Tu equipo de trabajo" : "Tu espacio de trabajo"}</strong></div></div>
+        <span className="xhub-nav-caption">ESPACIO DE TRABAJO</span>
+        <nav aria-label="Navegación principal" className="xhub-nav">
           {rutas.map((r) => (
-            <Link key={r.href + r.label} href={r.href}
-              className={`px-3 h-8 grid place-items-center rounded-md text-sm transition ${
-                activa(r.href) ? "bg-secondary text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}>
-              {r.label}
+            <Link key={r.href + r.label} href={r.href} aria-current={activa(r.href) ? "page" : undefined} className={`xhub-nav-link ${activa(r.href) ? "is-active" : ""}`} onClick={() => setMenuAbierto(false)}>
+              <Icon name={iconos[r.href]} weight="regular" /><span>{r.label}</span>{activa(r.href) && <Icon name="caret-right" className="xhub-nav-chevron" />}
             </Link>
           ))}
         </nav>
-
-        <div className="flex-1" />
-
-        {/* Cluster derecho: API + tema + usuario */}
-        {esPlataforma && (
-          <a href={apiDocsUrl()} target="_blank" rel="noreferrer"
-            className="hidden sm:grid h-8 px-3 place-items-center rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition">
-            API&nbsp;↗
-          </a>
-        )}
-        <BotonTema />
-        {usuario && (
-          <div className="flex items-center gap-2 pl-2 sm:pl-3 sm:ml-1 sm:border-l border-border">
-            <span className="h-8 w-8 rounded-full grid place-items-center text-xs font-semibold bg-secondary text-foreground shrink-0">{inic}</span>
-            <div className="hidden sm:block leading-tight min-w-0">
-              <div className="text-[13px] font-medium truncate max-w-[160px]">{usuario.email}</div>
-              <div className="text-[11px] text-muted-foreground">{esPlataforma ? "Plataforma" : "Admin cliente"}</div>
-            </div>
-            <button onClick={() => signOut()} title="Cerrar sesión" aria-label="Cerrar sesión"
-              className="h-8 w-8 grid place-items-center rounded-md text-muted-foreground hover:text-critico hover:bg-secondary transition">
-              <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Nav móvil */}
-      <nav className="md:hidden flex items-center gap-0.5 px-2 pb-2 -mt-1 overflow-x-auto no-scrollbar">
-        {rutas.map((r) => (
-          <Link key={r.href + r.label} href={r.href}
-            className={`px-3 h-8 grid place-items-center rounded-md text-sm whitespace-nowrap transition ${
-              activa(r.href) ? "bg-secondary text-foreground font-medium" : "text-muted-foreground"}`}>
-            {r.label}
-          </Link>
-        ))}
-      </nav>
-    </header>
+        <div className="xhub-sidebar-footer"><span>UNA SOLUCIÓN DE</span><div className="xhub-partners"><span className="xhub-partner-x5"><img src="/voxia/x5-official.png" alt="" width="27" height="34" /><span>X5 Soluciones</span></span><span className="xhub-partner-divider" aria-hidden="true" /><img className="xhub-partner-xcontact" src="/voxia/xcontact-official.svg" alt="XContact" width="94" height="23" /></div></div>
+      </aside>
+      {menuAbierto && <button className="xhub-menu-backdrop" aria-label="Cerrar menú" onClick={() => setMenuAbierto(false)} />}
+      <header className="xhub-topbar">
+        <div className="xhub-topbar-start">
+          <button type="button" className="xhub-icon-button xhub-menu-toggle" aria-label="Abrir menú" aria-controls="xhub-sidebar" aria-expanded={menuAbierto} onClick={() => setMenuAbierto(!menuAbierto)}><Icon name="list" /></button>
+          <div className="xhub-breadcrumb"><span>{rol}</span><span aria-hidden="true">/</span><strong>{titulo}</strong></div>
+        </div>
+        <div className="xhub-user-actions">
+          {esPlataforma && <a href={apiDocsUrl()} target="_blank" rel="noreferrer" className="xhub-api-link">API <Icon name="arrow-up-right" /></a>}
+          <span className="xhub-role"><Icon name={esPlataforma ? "planet" : "users-three"} />{rol}</span>
+          <BotonTema />
+          {usuario && <details className="xhub-session-menu" onKeyDown={(event) => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}>
+            <summary aria-label="Menú de usuario">
+              <span className="xhub-avatar" aria-hidden="true">{inic}</span>
+              <div className="xhub-user-label"><span>{usuario.name || usuario.email}</span><small>{usuario.email}</small></div>
+              <Icon name="caret-down" weight="regular" />
+            </summary>
+            <div className="xhub-session-popover"><span>{usuario.name || usuario.email}</span><small>{rol} · {usuario.email}</small><button type="button" onClick={() => signOut()} className="xhub-session-signout"><Icon name="sign-out" weight="regular" /> Cerrar sesión</button></div>
+          </details>}
+        </div>
+      </header>
+      <span id="xhub-content" tabIndex={-1} className="xhub-content-anchor" />
+    </div>
   );
 }
