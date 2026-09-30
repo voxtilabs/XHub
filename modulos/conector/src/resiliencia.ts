@@ -37,7 +37,9 @@ export class Cortacircuitos {
 export class BaldeDeFichas {
   private fichas: number;
   private ultimo: number;
-  constructor(private capacidad: number, private tasaPorSeg: number, private ahora: () => number = () => Date.now()) {
+  constructor(private capacidad: number, private tasaPorSeg: number,
+    private ahora: () => number = () => Date.now(),
+    private dormir: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms))) {
     this.fichas = capacidad; this.ultimo = ahora();
   }
   /** Intenta tomar una ficha. true si había. */
@@ -47,6 +49,16 @@ export class BaldeDeFichas {
     this.ultimo = t;
     if (this.fichas >= 1) { this.fichas -= 1; return true; }
     return false;
+  }
+  /**
+   * Espera hasta que haya ficha y la toma. Así una ráfaga de 10N llamadas se ENTREGA
+   * repartida en el tiempo y NINGUNA se pierde (a diferencia de `tomar`, que rechaza).
+   */
+  async esperarFicha(): Promise<void> {
+    while (!this.tomar()) {
+      const faltan = 1 - this.fichas;
+      await this.dormir(Math.max(1, Math.ceil((faltan / this.tasaPorSeg) * 1000)));
+    }
   }
 }
 

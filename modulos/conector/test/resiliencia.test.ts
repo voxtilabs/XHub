@@ -39,3 +39,10 @@ test("clasificar errores de XContact y decidir reintento", () => {
   expect(esReintentable("permiso")).toBe(false);
   expect(esReintentable("caida")).toBe(true);
 });
+
+test("#54: una ráfaga de 10 con capacidad 3 se entrega ENTERA (ninguna se pierde), repartida", async () => {
+  const balde = new BaldeDeFichas(3, 50);   // 3 de golpe, luego 50/seg (20ms c/u)
+  let entregadas = 0;
+  await Promise.all(Array.from({ length: 10 }, async () => { await balde.esperarFicha(); entregadas++; }));
+  expect(entregadas).toBe(10);   // las 10, ninguna descartada
+});
