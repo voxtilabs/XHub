@@ -44,7 +44,16 @@ export function crearApp(): FastifyInstance {
         headers: fromNodeHeaders(req.headers),
         ...(req.body ? { body: JSON.stringify(req.body) } : {}),
       });
-      const resp = await auth.handler(pedido);
+      let resp: Response;
+      try {
+        resp = await auth.handler(pedido);
+      } catch (e) {
+        // DIAGNÓSTICO temporal: Better Auth lanzó en vez de devolver error. Surface el
+        // mensaje real para depurar (staging). TODO: quitar tras resolver.
+        process.stderr.write(`[auth] handler lanzó: ${(e as Error).stack || (e as Error).message}\n`);
+        reply.status(500);
+        return reply.send({ authError: (e as Error).message, tipo: (e as Error).name });
+      }
       reply.status(resp.status);
       for (const [k, v] of resp.headers.entries()) {
         if (k.toLowerCase() !== "set-cookie") reply.header(k, v);
