@@ -2,6 +2,7 @@ import { despacharLote, cerrarPool, conPlataforma } from "@xhub/db";
 import { fijarObservadorIA } from "@xhub/ia";
 import { crearSinkUsoIA, entregarWebhooksPendientes } from "@xhub/modulo-nucleo";
 import { construirRegistro } from "./registro.js";
+import { tickSondeo } from "./sondeo.js";
 
 // El triage con IA corre aquí (consumidores del outbox): registra su consumo.
 fijarObservadorIA(crearSinkUsoIA());
@@ -17,6 +18,11 @@ let vivo = true;
 
 async function dormir(ms: number): Promise<void> { return new Promise((r) => setTimeout(r, ms)); }
 
+// El sondeo de XContact se evalúa cada SONDEO_TICK_MS (no en cada vuelta del bucle);
+// tickSondeo solo toca las instancias cuyo intervalo ya venció, así que es barato.
+const SONDEO_TICK_MS = Number(process.env.SONDEO_TICK_MS ?? 10000);
+let proximoSondeo = 0;
+
 async function bucle(): Promise<void> {
   process.stdout.write(`[xhub-workers] despachando outbox · ${registro.length} consumidores\n`);
   while (vivo) {
@@ -28,6 +34,13 @@ async function bucle(): Promise<void> {
       const w = await entregarWebhooksPendientes(conPlataforma, { limite: 20 });
       if (w.intentadas)
         process.stdout.write(`[xhub-workers] webhooks intentadas=${w.intentadas} ok=${w.entregadas} reprog=${w.reprogramadas} fallidas=${w.fallidas} bloqueadas=${w.bloqueadas}\n`);
+      // Sondeo incremental de XContact (throttled). Aislado por instancia (#136).
+      if (Date.now() >= proximoSondeo) {
+        proximoSondeo = Date.now() + SONDEO_TICK_MS;
+        const s = await tickSondeo().catch((e) => { process.stderr.write(`[sondeo] tick error: ${(e as Error).message}\n`); return null; });
+        if (s && s.debidas)
+          process.stdout.write(`[xhub-workers] sondeo debidas=${s.debidas} ok=${s.sincronizadas} contactos=${s.contactos} fallidas=${s.fallidas}\n`);
+      }
       await dormir(r.leidos > 0 || w.intentadas > 0 ? 150 : ESPERA_VACIO);
     } catch (e) {
       process.stderr.write(`[xhub-workers] error de lote: ${(e as Error).message}\n`);

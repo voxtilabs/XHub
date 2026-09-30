@@ -1,0 +1,89 @@
+import { conCliente, conPlataforma } from "@xhub/db";
+import {
+  reconciliarPersona, registrarInteraccion,
+  asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
+} from "@xhub/modulo-nucleo";
+import { sincronizarContactosInstancia, type NucleoContactos, type DepsSondeo } from "@xhub/modulo-conector";
+import { fetchXContact } from "./fetch-xcontact.js";
+
+/**
+ * Scheduler de SONDEO incremental (#59) con aislamiento por instancia (#136).
+ *
+ * Cada tick toma las instancias con `sondeo_activo` cuyo intervalo ya venció, y las
+ * sincroniza de a poco (cursor por instancia). El aislamiento es la clave: una instancia
+ * lenta o caída ocupa SOLO su propio cupo (timeout + try/catch por instancia, corridas en
+ * lotes de concurrencia acotada), así nunca frena la sincronización de las demás.
+ */
+const nucleoContactos: NucleoContactos = {
+  reconciliarPersona: (c, ids, nombre) => reconciliarPersona(c, ids as never, nombre),
+  registrarInteraccion: (c, e) => registrarInteraccion(c, e as never),
+  asegurarEtiqueta: (c, n) => asegurarEtiqueta(c, n),
+  aplicarEtiqueta: (c, p, e) => aplicarEtiqueta(c, p, e),
+  asegurarCampo: (c, o, n, t) => asegurarCampo(c, o, n, t as never),
+  ponerValor: (c, o, id, campo, v) => ponerValor(c, o, id, campo, v),
+  repuntarObjetos: async (c, viejo, nuevo) => {
+    await c.query("update tickets set persona_id=$1 where persona_id=$2", [nuevo, viejo]);
+    await c.query("update crm_oportunidades set persona_id=$1 where persona_id=$2", [nuevo, viejo]);
+    await c.query("update crm_leads set persona_id=$1 where persona_id=$2", [nuevo, viejo]);
+  },
+};
+const deps: DepsSondeo = { conCliente, conPlataforma, fetchImpl: fetchXContact, nucleo: nucleoContactos };
+
+interface FilaInstancia { id: string; cliente_id: string; host: string; usuario: string; credencial_ref: string | null; cursor: string | null }
+export interface ResumenTick { debidas: number; sincronizadas: number; contactos: number; fallidas: number }
+
+const CONCURRENCIA = Number(process.env.SONDEO_CONCURRENCIA ?? 4);
+const LOTE_INSTANCIA = Number(process.env.SONDEO_LOTE ?? 100);   // contactos por corrida/instancia
+const TIMEOUT_MS = Number(process.env.SONDEO_TIMEOUT_MS ?? 30000);
+
+const conTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
+  Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error("timeout de sondeo de instancia")), ms))]);
+
+async function sondearUna(f: FilaInstancia): Promise<{ ok: boolean; contactos: number }> {
+  const clave = f.credencial_ref ? process.env[f.credencial_ref] : "";
+  if (!f.usuario || !clave) {
+    // Sin credencial no se puede sondear: degradada con causa, pero NO frena a las demás.
+    await conPlataforma((c) => c.query(
+      "update plataforma.instancias_xcontact set estado_salud='degradada', ultimo_sondeo=now() where id=$1", [f.id]))
+      .catch(() => {});
+    return { ok: false, contactos: 0 };
+  }
+  try {
+    const r = await conTimeout(sincronizarContactosInstancia(
+      deps, { id: f.id, clienteId: f.cliente_id, host: f.host, usuario: f.usuario, clave },
+      { limite: LOTE_INSTANCIA, desde: f.cursor }), TIMEOUT_MS);
+    return { ok: true, contactos: r.leidos };
+  } catch (e) {
+    // Fallo aislado: marca la instancia y sigue. No propaga (no tumba el lote).
+    await conPlataforma((c) => c.query(
+      "update plataforma.instancias_xcontact set estado_salud='caida', ultimo_sondeo=now() where id=$1", [f.id]))
+      .catch(() => {});
+    process.stderr.write(`[sondeo] instancia ${f.id} falló: ${(e as Error).message}\n`);
+    return { ok: false, contactos: 0 };
+  }
+}
+
+/** Un tick: sincroniza las instancias cuyo intervalo venció. Concurrencia acotada + aislamiento. */
+export async function tickSondeo(): Promise<ResumenTick> {
+  const debidas = await conPlataforma(async (c) => (await c.query(
+    `select i.id, i.cliente_id, i.host, i.usuario, i.credencial_ref, sc.cursor
+       from plataforma.instancias_xcontact i
+       left join plataforma.sync_cursor sc on sc.instancia_id = i.id and sc.tipo='contactos'
+      where i.sondeo_activo = true and i.cliente_id is not null
+        and (i.ultimo_sondeo is null or i.ultimo_sondeo < now() - (i.intervalo_sondeo_seg || ' seconds')::interval)
+      order by i.ultimo_sondeo asc nulls first
+      limit 50`)).rows as FilaInstancia[]);
+  if (debidas.length === 0) return { debidas: 0, sincronizadas: 0, contactos: 0, fallidas: 0 };
+
+  let sincronizadas = 0, contactos = 0, fallidas = 0;
+  // Lotes de concurrencia acotada: una instancia enferma ocupa solo su cupo (#136).
+  for (let i = 0; i < debidas.length; i += CONCURRENCIA) {
+    const lote = debidas.slice(i, i + CONCURRENCIA);
+    const res = await Promise.allSettled(lote.map(sondearUna));
+    for (const x of res) {
+      if (x.status === "fulfilled" && x.value.ok) { sincronizadas++; contactos += x.value.contactos; }
+      else fallidas++;
+    }
+  }
+  return { debidas: debidas.length, sincronizadas, contactos, fallidas };
+}

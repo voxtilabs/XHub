@@ -15,6 +15,7 @@
     "@xhub/ia": "workspace:*",
     "@xhub/db": "workspace:*",
     "@xhub/modulo-nucleo": "workspace:*",
+    "@xhub/modulo-conector": "workspace:*",
     "@xhub/modulo-tickets": "workspace:*",
     "@xhub/sdk-modulo": "workspace:*"
   },

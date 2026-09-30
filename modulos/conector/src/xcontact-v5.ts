@@ -25,7 +25,11 @@ export interface OpcionesLecturaV5 {
   clave: string;
   fetchImpl?: typeof fetch;   // inyectable (la app le pasa uno con TLS relajado)
   limite?: number;            // tope de contactos por corrida
+  desde?: string;             // cursor: solo contactos con id externo > este (sondeo incremental #59)
 }
+
+/** El id externo de XContact es numérico; comparamos como número para ordenar/cursar. */
+const idNum = (s: string): number => { const n = Number(s); return Number.isFinite(n) ? n : 0; };
 
 const emailValido = (s: unknown): string | null => (typeof s === "string" && s.includes("@")) ? s.trim().toLowerCase() : null;
 const lista = (v: unknown): Record<string, unknown>[] => Array.isArray(v) ? v as Record<string, unknown>[] : [];
@@ -85,12 +89,16 @@ export async function leerContactosV5(o: OpcionesLecturaV5): Promise<ContactoNor
   const j = JSON.parse(await r.text()) as { data?: unknown[] } | unknown[];
   const rows = (Array.isArray(j) ? j : j.data ?? []) as Record<string, unknown>[];
   const lim = o.limite ?? 500;
+  const desde = o.desde ? idNum(o.desde) : -1;
   const out: ContactoNormalizado[] = [];
-  for (const row of rows.slice(0, lim)) {
+  for (const row of rows) {
     const m = mapearContactoV5(row);
-    if (m) out.push(m);
+    // Sondeo incremental: v5 devuelve todo el arreglo, así que el cursor lo aplicamos
+    // aquí — solo procesamos ids nuevos (> cursor). Reanudable: reiniciar continúa.
+    if (m && idNum(m.externoId) > desde) out.push(m);
   }
-  return out;
+  out.sort((a, b) => idNum(a.externoId) - idNum(b.externoId)); // ascendente para cursar sin huecos
+  return out.slice(0, lim);
 }
 
 export interface EtiquetaXContact { nombre: string; color: string | null; }

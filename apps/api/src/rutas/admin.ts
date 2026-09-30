@@ -13,7 +13,7 @@ import {
   asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
   configIA, fijarModeloDefault, fijarModeloCliente, fijarContextoCliente,
 } from "@xhub/modulo-nucleo";
-import { leerContactosV5, leerTagsV5 } from "@xhub/modulo-conector";
+import { sincronizarContactosInstancia, type NucleoContactos, type DepsSondeo } from "@xhub/modulo-conector";
 import { fetchXContact } from "../fetch-xcontact.js";
 import { consumoDelDia } from "@xhub/cuotas";
 import { fijarConfigTriage, configTriage } from "@xhub/modulo-tickets";
@@ -69,9 +69,28 @@ async function encolarMuerto(clienteId: string, instanciaId: string, tipo: strin
     [clienteId, instanciaId, tipo, JSON.stringify(carga), causaLegible(e)])).catch(() => { /* no romper por la cola */ });
 }
 
+// Dependencias de composición para el orquestador de sondeo del conector: le inyectamos
+// las operaciones del núcleo y el repunte de objetos de módulo (tickets/crm/leads), que
+// el conector no conoce. Mismo objeto para la sync manual y para el scheduler.
+const nucleoContactos: NucleoContactos = {
+  reconciliarPersona: (c, ids, nombre) => reconciliarPersona(c, ids as never, nombre),
+  registrarInteraccion: (c, e) => registrarInteraccion(c, e as never),
+  asegurarEtiqueta: (c, n) => asegurarEtiqueta(c, n),
+  aplicarEtiqueta: (c, p, e) => aplicarEtiqueta(c, p, e),
+  asegurarCampo: (c, o, n, t) => asegurarCampo(c, o, n, t as never),
+  ponerValor: (c, o, id, campo, v) => ponerValor(c, o, id, campo, v),
+  repuntarObjetos: async (c, viejo, nuevo) => {
+    await c.query("update tickets set persona_id=$1 where persona_id=$2", [nuevo, viejo]);
+    await c.query("update crm_oportunidades set persona_id=$1 where persona_id=$2", [nuevo, viejo]);
+    await c.query("update crm_leads set persona_id=$1 where persona_id=$2", [nuevo, viejo]);
+  },
+};
+const depsSondeoApi: DepsSondeo = { conCliente, conPlataforma, fetchImpl: fetchXContact, nucleo: nucleoContactos };
+
 /**
  * Ejecuta el sync de contactos de una instancia hacia el núcleo del cliente. Reutilizable
- * por la ruta de sync y por el reintento de la cola de muertos. Lanza en caso de fallo.
+ * por la ruta de sync y por el reintento de la cola de muertos. INCREMENTAL: parte del
+ * cursor guardado (id externo) y lo avanza (#59). Lanza en caso de fallo.
  */
 async function ejecutarSyncContactos(clienteId: string, iid: string, password: string | undefined, limitePedido: number | undefined): Promise<Record<string, number>> {
   const inst = await conPlataforma((c) => c.query(
@@ -81,56 +100,19 @@ async function ejecutarSyncContactos(clienteId: string, iid: string, password: s
   const clave = password || (credencial_ref ? process.env[credencial_ref] : "") || "";
   if (!usuario || !clave) throw new ErrorApi("VALIDACION", "Falta la contraseña (en el body o en la env var referenciada)");
 
-  // 1) Leer y normalizar (toda la HTTP acá, antes de abrir transacción — ley 7):
-  //    contactos + catálogo de etiquetas (tags) de la instancia.
-  const opsLect = { host, usuario, clave, fetchImpl: fetchXContact };
-  const contactos = await leerContactosV5({ ...opsLect, limite: Math.min(200, Math.max(1, Number(limitePedido) || 25)) });
-  const tagsXC = await leerTagsV5(opsLect).catch(() => []); // el catálogo es opcional; no romper el sync si falla
+  // Cursor guardado: parte desde el último id externo procesado (sondeo incremental #59).
+  const cur = await conPlataforma((c) => c.query(
+    "select cursor from plataforma.sync_cursor where instancia_id=$1 and tipo='contactos'", [iid]));
+  const desde = (cur.rows[0]?.cursor as string | null) ?? null;
 
-  // 2) Escribir en el núcleo del cliente (RLS por conCliente). Idempotente.
-  const r = await conCliente(clienteId, async (c) => {
-    let personas = 0, interacciones = 0, fusiones = 0, etiquetados = 0, campos = 0, etiquetasCatalogo = 0, saltados = 0;
-    // Exportar el catálogo de etiquetas de XContact como etiquetas del cliente.
-    for (const t of tagsXC) { await asegurarEtiqueta(c, t.nombre); etiquetasCatalogo++; }
-    for (const k of contactos) {
-      // Cada contacto en su SAVEPOINT: uno malformado se revierte SOLO y el lote sigue
-      // (antes un error abortaba toda la transacción y no se importaba nada).
-      await c.query("savepoint sp_contacto");
-      try {
-        // Reconciliación por identidad: si el RUT/email/teléfono ya existe (p.ej. la persona
-        // de un ticket), se fusiona/adjunta en UNA sola → el teléfono del contacto aparece
-        // en ese ticket. Repuntamos los objetos de módulo de las personas fusionadas.
-        const { persona: p, idsFusionadas } = await reconciliarPersona(
-          c, k.identidades.map((i) => ({ canal: i.canal as never, valor: i.valor })), k.nombre ?? undefined);
-        personas++;
-        for (const viejo of idsFusionadas) {
-          await c.query("update tickets set persona_id=$1 where persona_id=$2", [p.id, viejo]);
-          await c.query("update crm_oportunidades set persona_id=$1 where persona_id=$2", [p.id, viejo]);
-          await c.query("update crm_leads set persona_id=$1 where persona_id=$2", [p.id, viejo]);
-          fusiones++;
-        }
-        for (const nombreEtq of k.etiquetas) { await aplicarEtiqueta(c, p.id, await asegurarEtiqueta(c, nombreEtq)); etiquetados++; }
-        for (const campo of k.campos) { await ponerValor(c, "persona", p.id, await asegurarCampo(c, "persona", campo.nombre, "texto" as never), campo.valor); campos++; }
-        const it = await registrarInteraccion(c, {
-          personaId: p.id, tipo: "contacto.importado", moduloOrigen: "conector",
-          objetoTipo: "contacto", objetoId: k.externoId,
-          resumen: `Contacto XContact: ${k.nombre ?? k.identidad}`,
-          meta: { externoId: k.externoId, canal: k.canal, host }, dedupeId: `xc:${host}:${k.externoId}`,
-        });
-        if ((it as { id?: string })?.id) interacciones++;
-        await c.query("release savepoint sp_contacto");
-      } catch {
-        await c.query("rollback to savepoint sp_contacto");
-        saltados++; // un contacto malo no tumba el lote
-      }
-    }
-    return { personas, interacciones, fusiones, etiquetados, campos, etiquetasCatalogo, saltados };
-  });
-
-  // 3) Sellar la última sincronización y marcar la instancia operativa.
-  await conPlataforma((c) => c.query(
-    "update plataforma.instancias_xcontact set estado_salud='operativa', ultima_prueba=now(), actualizada_en=now() where id=$1", [iid]));
-  return { leidos: contactos.length, ...r };
+  const r = await sincronizarContactosInstancia(
+    depsSondeoApi,
+    { id: iid, clienteId, host, usuario, clave },
+    { limite: Math.min(200, Math.max(1, Number(limitePedido) || 25)), desde });
+  return {
+    leidos: r.leidos, personas: r.personas, interacciones: r.interacciones, fusiones: r.fusiones,
+    etiquetados: r.etiquetados, campos: r.campos, etiquetasCatalogo: r.etiquetasCatalogo, saltados: r.saltados,
+  };
 }
 
 export function registrarRutasAdmin(app: FastifyInstance): void {
@@ -363,9 +345,28 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
     admin.get("/clientes/:id/xcontact/instancias", async (req) => {
       const { id } = req.params as { id: string };
       return conPlataforma(async (c) => ({ datos: (await c.query(
-        `select id, nombre, host, version_api, usuario, credencial_ref, estado_salud,
-                ultima_prueba::text as ultima_prueba, resumen, creada_en::text as creada_en
-           from plataforma.instancias_xcontact where cliente_id=$1 order by creada_en desc`, [id])).rows }));
+        `select i.id, i.nombre, i.host, i.version_api, i.usuario, i.credencial_ref, i.estado_salud,
+                i.ultima_prueba::text as ultima_prueba, i.resumen, i.creada_en::text as creada_en,
+                i.sondeo_activo, i.intervalo_sondeo_seg, i.ultimo_sondeo::text as ultimo_sondeo,
+                sc.cursor as sync_cursor, sc.ultimo_sync::text as sync_ultimo, sc.vueltas as sync_vueltas
+           from plataforma.instancias_xcontact i
+           left join plataforma.sync_cursor sc on sc.instancia_id = i.id and sc.tipo='contactos'
+          where i.cliente_id=$1 order by i.creada_en desc`, [id])).rows }));
+    });
+
+    // Activar/ajustar el SONDEO incremental por instancia (#59). El scheduler de workers
+    // toma las que tienen sondeo_activo cuando su intervalo vence.
+    admin.put("/clientes/:id/xcontact/instancias/:iid/sondeo", async (req) => {
+      const { id, iid } = req.params as { id: string; iid: string };
+      const b = req.body as { activo?: boolean; intervaloSeg?: number };
+      const activo = b?.activo !== false;
+      const intervalo = Math.min(86400, Math.max(30, Number(b?.intervaloSeg) || 300));
+      const r = await conPlataforma((c) => c.query(
+        `update plataforma.instancias_xcontact set sondeo_activo=$3, intervalo_sondeo_seg=$4, actualizada_en=now()
+           where id=$2 and cliente_id=$1 returning id, sondeo_activo, intervalo_sondeo_seg`,
+        [id, iid, activo, intervalo]));
+      if (!r.rowCount) throw new ErrorApi("NO_ENCONTRADO", "Instancia no encontrada");
+      return r.rows[0];
     });
 
     admin.post("/clientes/:id/xcontact/instancias", async (req) => {
