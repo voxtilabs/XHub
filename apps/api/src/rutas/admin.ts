@@ -315,6 +315,7 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
           `select i.id, i.nombre, i.host, i.version_api, i.estado_salud,
                   i.ultima_prueba::text as ultima_prueba, i.resumen,
                   i.sondeo_activo, i.ultimo_sondeo::text as ultimo_sondeo,
+                  i.fallos_consecutivos, (i.corte_hasta is not null and i.corte_hasta > now()) as breaker_abierto, i.ultima_causa,
                   sd.deriva as deriva, sd.detectada_en::text as deriva_en, sd.reparada_en::text as deriva_reparada_en,
                   (select count(*)::int from plataforma.conector_muertos m where m.instancia_id=i.id and m.resuelto_en is null) as muertos,
                   cl.id as cliente_id, cl.nombre as cliente
@@ -354,6 +355,7 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
         `select i.id, i.nombre, i.host, i.version_api, i.usuario, i.credencial_ref, i.estado_salud,
                 i.ultima_prueba::text as ultima_prueba, i.resumen, i.creada_en::text as creada_en,
                 i.sondeo_activo, i.intervalo_sondeo_seg, i.ultimo_sondeo::text as ultimo_sondeo,
+                i.fallos_consecutivos, i.corte_hasta::text as corte_hasta, (i.corte_hasta is not null and i.corte_hasta > now()) as breaker_abierto, i.ultima_causa,
                 sc.cursor as sync_cursor, sc.ultimo_sync::text as sync_ultimo, sc.vueltas as sync_vueltas,
                 sd.deriva as deriva, sd.conteo_local as deriva_local, sd.conteo_remoto as deriva_remoto,
                 sd.detectada_en::text as deriva_en, sd.reparada_en::text as deriva_reparada_en

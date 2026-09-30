@@ -98,8 +98,9 @@ export async function sincronizarContactosInstancia(
          ultimo_sync = now(), items_ultimo = excluded.items_ultimo,
          vueltas = plataforma.sync_cursor.vueltas + 1`,
       [inst.id, cursorNuevo, contactos.length]);
+    // Éxito → cierra el cortacircuitos (#53): reinicia el conteo de fallos y su corte.
     await c.query(
-      "update plataforma.instancias_xcontact set estado_salud='operativa', ultimo_sondeo=now(), ultima_prueba=now(), actualizada_en=now() where id=$1",
+      "update plataforma.instancias_xcontact set estado_salud='operativa', ultimo_sondeo=now(), ultima_prueba=now(), fallos_consecutivos=0, corte_hasta=null, ultima_causa=null, actualizada_en=now() where id=$1",
       [inst.id]);
   });
   return { ...r, leidos: contactos.length, cursorNuevo };

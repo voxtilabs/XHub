@@ -40,9 +40,22 @@ const numEnv = (v: string | undefined, def: number): number => { const n = Numbe
 const CONCURRENCIA = numEnv(process.env.SONDEO_CONCURRENCIA, 4);
 const LOTE_INSTANCIA = numEnv(process.env.SONDEO_LOTE, 100);   // contactos por corrida/instancia
 const TIMEOUT_MS = numEnv(process.env.SONDEO_TIMEOUT_MS, 30000);
+const BREAKER_UMBRAL = numEnv(process.env.SONDEO_BREAKER_UMBRAL, 5);      // fallos antes de abrir
+const BREAKER_COOLDOWN_SEG = numEnv(process.env.SONDEO_BREAKER_COOLDOWN, 300); // enfriamiento (prueba de reapertura)
 
 const conTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
   Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error("timeout de sondeo de instancia")), ms))]);
+
+/** Traduce el error a una causa legible en español para el tablero (#66). */
+function causaLegible(m: string): string {
+  if (/timeout/i.test(m)) return "La instancia no respondió a tiempo (timeout).";
+  if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(m)) return "El host de la instancia no resuelve (DNS).";
+  if (/ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ETIMEDOUT|socket/i.test(m)) return "No se pudo conectar con la instancia (red).";
+  if (/40[13]|auth|supervisor|token/i.test(m)) return "Credenciales rechazadas por XContact.";
+  if (/5\d\d/.test(m)) return "XContact respondió con un error de servidor.";
+  if (/certificate|TLS|SSL/i.test(m)) return "Problema con el certificado TLS de la instancia.";
+  return `Fallo del sondeo: ${m.slice(0, 120)}`;
+}
 
 async function sondearUna(f: FilaInstancia): Promise<{ ok: boolean; contactos: number }> {
   const clave = f.credencial_ref ? process.env[f.credencial_ref] : "";
@@ -59,9 +72,15 @@ async function sondearUna(f: FilaInstancia): Promise<{ ok: boolean; contactos: n
       { limite: LOTE_INSTANCIA, desde: f.cursor }), TIMEOUT_MS);
     return { ok: true, contactos: r.leidos };
   } catch (e) {
-    // Fallo aislado: marca la instancia y sigue. No propaga (no tumba el lote).
+    // Fallo aislado: cuenta el fallo y, si pasa el umbral, ABRE el cortacircuitos (#53):
+    // marca degradada + corte_hasta, y la due-query dejará de llamarla hasta que expire.
     await conPlataforma((c) => c.query(
-      "update plataforma.instancias_xcontact set estado_salud='caida', ultimo_sondeo=now() where id=$1", [f.id]))
+      `update plataforma.instancias_xcontact
+          set fallos_consecutivos = fallos_consecutivos + 1,
+              corte_hasta = case when fallos_consecutivos + 1 >= $2 then now() + ($3 || ' seconds')::interval else corte_hasta end,
+              estado_salud = case when fallos_consecutivos + 1 >= $2 then 'degradada' else 'caida' end,
+              ultima_causa = $4, ultimo_sondeo = now()
+        where id=$1`, [f.id, BREAKER_UMBRAL, BREAKER_COOLDOWN_SEG, causaLegible((e as Error).message)]))
       .catch(() => {});
     process.stderr.write(`[sondeo] instancia ${f.id} falló: ${(e as Error).message}\n`);
     return { ok: false, contactos: 0 };
@@ -75,6 +94,7 @@ export async function tickSondeo(): Promise<ResumenTick> {
        from plataforma.instancias_xcontact i
        left join plataforma.sync_cursor sc on sc.instancia_id = i.id and sc.tipo='contactos'
       where i.sondeo_activo = true and i.cliente_id is not null
+        and (i.corte_hasta is null or i.corte_hasta <= now())  -- breaker abierto → no la llames (#53)
         and (i.ultimo_sondeo is null or i.ultimo_sondeo < now() - (i.intervalo_sondeo_seg || ' seconds')::interval)
       order by i.ultimo_sondeo asc nulls first
       limit 50`)).rows as FilaInstancia[]);
