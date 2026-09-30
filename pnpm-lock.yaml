@@ -39,6 +39,9 @@ importers:
       '@xhub/ia':
         specifier: workspace:*
         version: link:../../packages/ia
+      '@xhub/modulo-conector':
+        specifier: workspace:*
+        version: link:../../modulos/conector
       '@xhub/modulo-nucleo':
         specifier: workspace:*
         version: link:../../modulos/nucleo

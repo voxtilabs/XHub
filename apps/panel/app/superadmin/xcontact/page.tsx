@@ -27,6 +27,7 @@ export default function XContactProbe() {
   const [instancias, setInstancias] = useState<Instancia[]>([]);
   const [nombreInst, setNombreInst] = useState("XContact producción");
   const [credRef, setCredRef] = useState("");
+  const [sincronizando, setSincronizando] = useState("");
 
   useEffect(() => { apiFetch<{ datos: Cliente[] }>("/admin/clientes").then((r) => setClientes(r.datos)).catch(() => {}); }, []);
   const cargarInstancias = (cid: string) => { if (!cid) { setInstancias([]); return; } apiFetch<{ datos: Instancia[] }>(`/admin/clientes/${cid}/xcontact/instancias`).then((r) => setInstancias(r.datos)).catch(() => setInstancias([])); };
@@ -48,6 +49,14 @@ export default function XContactProbe() {
     } catch (e) { setError((e as Error).message); }
   }
   function cargarInstancia(i: Instancia) { setF({ host: i.host, usuario: i.usuario ?? "", password: "", apiKey: "" }); setNombreInst(i.nombre); setCredRef(i.credencial_ref ?? ""); setRes(null); flash("Config cargada — poné la clave y probá"); }
+  async function sincronizar(i: Instancia) {
+    if (!f.password) { setError("Poné la contraseña del supervisor (arriba) para sincronizar"); return; }
+    setSincronizando(i.id); setError(null);
+    try {
+      const r = await apiFetch<{ leidos: number; personas: number; interacciones: number }>(`/admin/clientes/${clienteId}/xcontact/instancias/${i.id}/sincronizar`, { method: "POST", body: JSON.stringify({ password: f.password, limite: 25 }) });
+      flash(`Sincronizados ${r.leidos} contactos → ${r.personas} personas, ${r.interacciones} interacciones`); cargarInstancias(clienteId);
+    } catch (e) { setError((e as Error).message); } finally { setSincronizando(""); }
+  }
   async function borrarInstancia(i: Instancia) { try { await apiFetch(`/admin/clientes/${clienteId}/xcontact/instancias/${i.id}`, { method: "DELETE" }); cargarInstancias(clienteId); } catch (e) { setError((e as Error).message); } }
 
   const R = res?.resumen;
@@ -81,7 +90,8 @@ export default function XContactProbe() {
                         <Badge rol={ESTADO_ROL[i.estado_salud] ?? "neutro"} className="ml-2">{i.estado_salud}</Badge>
                         <div className="text-[11px] text-muted-foreground font-mono">{i.host} · {i.version_api}{i.usuario ? ` · ${i.usuario}` : ""}{i.ultima_prueba ? ` · probada ${i.ultima_prueba.slice(0, 16).replace("T", " ")}` : ""}</div>
                       </div>
-                      <div className="flex gap-3 shrink-0">
+                      <div className="flex gap-3 shrink-0 items-center">
+                        <button onClick={() => sincronizar(i)} disabled={sincronizando === i.id} className="text-[12px] text-[hsl(var(--exito))] hover:underline disabled:opacity-50">{sincronizando === i.id ? "sincronizando…" : "⇊ sincronizar contactos"}</button>
                         <button onClick={() => cargarInstancia(i)} className="text-[12px] text-[hsl(var(--senal))] hover:underline">cargar</button>
                         <button onClick={() => borrarInstancia(i)} className="text-[12px] text-muted-foreground hover:text-[hsl(var(--critico))]">borrar</button>
                       </div>
