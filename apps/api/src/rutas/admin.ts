@@ -9,8 +9,8 @@ import {
   fijarLimiteUsuarios, limiteUsuariosDe, contarUsuariosCliente, listarUsuariosCliente,
   resumenUsoIA, CATALOGO_SCOPES, SCOPES_VALIDOS, entitlementsDe,
   listarLlaves, actualizarScopesLlave, revocarLlave,
-  asegurarPersonaPorIdentidad, registrarInteraccion,
-  asegurarIdentidad, asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
+  reconciliarPersona, registrarInteraccion,
+  asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
   configIA, fijarModeloDefault, fijarModeloCliente,
 } from "@xhub/modulo-nucleo";
 import { leerContactosV5, leerTagsV5 } from "@xhub/modulo-conector";
@@ -86,16 +86,21 @@ async function ejecutarSyncContactos(clienteId: string, iid: string, password: s
 
   // 2) Escribir en el núcleo del cliente (RLS por conCliente). Idempotente.
   const r = await conCliente(clienteId, async (c) => {
-    let personas = 0, interacciones = 0, identidades = 0, etiquetados = 0, campos = 0, etiquetasCatalogo = 0;
+    let personas = 0, interacciones = 0, fusiones = 0, etiquetados = 0, campos = 0, etiquetasCatalogo = 0;
     // Exportar el catálogo de etiquetas de XContact como etiquetas del cliente.
     for (const t of tagsXC) { await asegurarEtiqueta(c, t.nombre); etiquetasCatalogo++; }
     for (const k of contactos) {
-      const p = await asegurarPersonaPorIdentidad(c, k.canal as never, k.identidad, k.nombre ?? undefined);
-      if (!p) continue;
+      // Reconciliación por identidad: si el RUT/email/teléfono ya existe (p.ej. la persona
+      // de un ticket), se fusiona/adjunta en UNA sola → el teléfono del contacto aparece
+      // en ese ticket. Repuntamos los objetos de módulo de las personas fusionadas.
+      const { persona: p, idsFusionadas } = await reconciliarPersona(
+        c, k.identidades.map((i) => ({ canal: i.canal as never, valor: i.valor })), k.nombre ?? undefined);
       personas++;
-      for (const idr of k.identidades) {
-        if (idr.canal === k.canal && idr.valor === k.identidad) continue;
-        if (await asegurarIdentidad(c, p.id, idr.canal as never, idr.valor)) identidades++;
+      for (const viejo of idsFusionadas) {
+        await c.query("update tickets set persona_id=$1 where persona_id=$2", [p.id, viejo]);
+        await c.query("update crm_oportunidades set persona_id=$1 where persona_id=$2", [p.id, viejo]);
+        await c.query("update crm_leads set persona_id=$1 where persona_id=$2", [p.id, viejo]);
+        fusiones++;
       }
       for (const nombreEtq of k.etiquetas) { await aplicarEtiqueta(c, p.id, await asegurarEtiqueta(c, nombreEtq)); etiquetados++; }
       for (const campo of k.campos) { await ponerValor(c, "persona", p.id, await asegurarCampo(c, "persona", campo.nombre, "texto" as never), campo.valor); campos++; }
@@ -107,7 +112,7 @@ async function ejecutarSyncContactos(clienteId: string, iid: string, password: s
       });
       if ((it as { id?: string })?.id) interacciones++;
     }
-    return { personas, interacciones, identidades, etiquetados, campos, etiquetasCatalogo };
+    return { personas, interacciones, fusiones, etiquetados, campos, etiquetasCatalogo };
   });
 
   // 3) Sellar la última sincronización y marcar la instancia operativa.
