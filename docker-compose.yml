@@ -111,7 +111,7 @@ services:
       XHUB_MASTER_KEY: ${XHUB_MASTER_KEY:-}
       XHUB_MASTER_KEY_ANTERIOR: ${XHUB_MASTER_KEY_ANTERIOR:-}
       # Almacenamiento de adjuntos S3-compatible (#41). Backend interno MinIO.
-      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_BUCKET: ${S3_BUCKET:-xhub-adjuntos}
@@ -142,7 +142,7 @@ services:
       XHUB_MASTER_KEY: ${XHUB_MASTER_KEY:-}
       XHUB_MASTER_KEY_ANTERIOR: ${XHUB_MASTER_KEY_ANTERIOR:-}
       # Almacenamiento de adjuntos S3-compatible (#41). Backend interno MinIO.
-      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_BUCKET: ${S3_BUCKET:-xhub-adjuntos}
@@ -156,32 +156,6 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }
-
-  # Almacenamiento S3-compatible (#41): MinIO. Portable (ADR 0007) — mismo compose en
-  # cualquier VPS. Sin puertos del host publicados; el api lo alcanza por la red interna.
-  minio:
-    image: minio/minio:latest
-    command: ["server", "/data", "--console-address", ":9001"]
-    environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
-    volumes: [miniodata:/data]
-    restart: unless-stopped
-
-  # Crea el bucket al arrancar (idempotente). Espera a que MinIO responda. Entrypoint en
-  # array JSON (evita el folding de YAML); $$ pasa un $ literal al shell (no lo interpola compose).
-  minio-init:
-    image: minio/mc:latest
-    depends_on: [minio]
-    environment:
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
-      S3_BUCKET: ${S3_BUCKET:-xhub-adjuntos}
-    entrypoint:
-      - /bin/sh
-      - -c
-      - 'until mc alias set x http://minio:9000 "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY"; do echo esperando-minio; sleep 2; done; mc mb -p x/"$$S3_BUCKET"; echo bucket-listo'
-    restart: "no"
 
   panel:
     <<: *xhub
@@ -210,4 +184,3 @@ services:
 volumes:
   pgdata:
   redisdata:
-  miniodata:

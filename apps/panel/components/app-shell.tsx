@@ -19,6 +19,7 @@ const RUTAS: Ruta[] = [
   { href: "/equipo", label: "Mi equipo", soloAdminCliente: true },
   { href: "/ajustes/webhooks", label: "Webhooks", soloAdminCliente: true },
   { href: "/automatizaciones", label: "Automatizaciones", soloAdminCliente: true },
+  { href: "/ajustes/ia", label: "Inteligencia artificial", soloAdminCliente: true },
   { href: "/desarrollo", label: "Desarrolladores", soloAdminCliente: true },
   { href: "/tickets", label: "Bandeja", permiso: "bandeja.ver", modulo: "tickets" },
   { href: "/tickets/metricas", label: "Métricas", permiso: "bandeja.ver", modulo: "tickets" },
@@ -90,7 +91,7 @@ export function AppShell() {
 
   const titulo = path.startsWith("/superadmin/auditoria") ? "Auditoría" : path.startsWith("/superadmin/cliente") ? "Cliente" : path.startsWith("/tickets/nuevo") ? "Nuevo ticket" : path.startsWith("/tickets/detalle") ? "Detalle de ticket" : path.startsWith("/ajustes") ? "Ajustes" : rutas.find((r) => activa(r.href))?.label || "Espacio de trabajo";
   const rol = esPlataforma ? "Plataforma" : esAdminCliente ? "Admin cliente" : "Agente";
-  const iconos: Record<string, string> = { "/superadmin": "buildings", "/superadmin/salud-xcontact": "pulse", "/superadmin/muertos": "warning", "/ia": "waveform", "/superadmin/auditoria": "shield-check", "/equipo": "users-three", "/ajustes/webhooks": "webhooks-logo", "/tickets": "chats-circle", "/tickets/metricas": "chart-line", "/leads": "user-plus", "/oportunidades": "kanban", "/organizaciones": "building-office", "/insights": "gauge", "/persona": "identification-card", "/seguridad": "lock-key" };
+  const iconos: Record<string, string> = { "/superadmin": "buildings", "/superadmin/salud-xcontact": "pulse", "/superadmin/muertos": "warning", "/ia": "waveform", "/superadmin/auditoria": "shield-check", "/equipo": "users-three", "/ajustes/webhooks": "webhooks-logo", "/tickets": "chats-circle", "/tickets/metricas": "chart-line", "/leads": "user-plus", "/oportunidades": "kanban", "/organizaciones": "building-office", "/insights": "gauge", "/persona": "identification-card", "/seguridad": "lock-key", "/ajustes/ia": "cpu", "/desarrollo": "plugs-connected", "/automatizaciones": "lightning" };
 
   return (
     <div className="xhub-shell">

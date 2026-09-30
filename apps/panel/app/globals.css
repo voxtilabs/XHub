@@ -180,3 +180,19 @@ svg.ph { display: inline-block; width: 1em; height: 1em; flex-shrink: 0; vertica
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Scroll propio (global) ──────────────────────────────────────────────────
+   Fino, redondeado, con los colores del diseño; se ilumina al pasar el cursor.
+   Reemplaza el scrollbar feo del navegador en TODO el panel (Firefox + WebKit). */
+* { scrollbar-width: thin; scrollbar-color: hsl(var(--border)) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background .15s ease;
+}
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.55); background-clip: padding-box; }
+::-webkit-scrollbar-corner { background: transparent; }

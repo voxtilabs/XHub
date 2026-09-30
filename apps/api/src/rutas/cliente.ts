@@ -6,6 +6,7 @@ import { conPlataforma } from "@xhub/db";
 import {
   limiteUsuariosDe, contarUsuariosCliente, listarUsuariosCliente,
   permisosDe, fijarPermisos, usuarioDeCliente, CATALOGO_PERMISOS, entitlementsDe,
+  contextoIADe, modeloIADe, fijarContextoCliente,
 } from "@xhub/modulo-nucleo";
 import { auth } from "../auth.js";
 import { leerCookieSoporte } from "../soporte.js";
@@ -124,6 +125,24 @@ export function registrarRutasCliente(app: FastifyInstance): void {
         await c.query(`delete from "user" where id=$1 and "clienteId"=$2`, [id, clienteId]);
       });
       return { ok: true };
+    });
+
+    // Contexto de IA del cliente (rubro, tono, datos): lo edita el ADMIN DEL CLIENTE
+    // para su propio espacio. Se antepone a los prompts de resumen y sugerencia. El
+    // modelo lo fija la plataforma (control de costo), así que acá va solo informativo.
+    cli.get("/ia", async (req) => {
+      const { clienteId } = ctx(req);
+      return conPlataforma(async (c) => ({
+        contexto: await contextoIADe(c, clienteId),
+        modelo: await modeloIADe(c, clienteId),
+      }));
+    });
+    cli.put("/ia", async (req) => {
+      const { clienteId } = ctx(req);
+      const b = req.body as { contexto?: string };
+      const contexto = typeof b?.contexto === "string" ? b.contexto.slice(0, 4000) : "";
+      await conPlataforma((c) => fijarContextoCliente(c, clienteId, contexto));
+      return { ok: true, contexto: contexto.trim() || null };
     });
   }, { prefix: "/cliente" });
 
