@@ -42,3 +42,10 @@ export const getCategorias = () => apiFetch<{ datos: Categoria[] }>("/cliente/ca
 export const crearCategoria = (nombre: string) => apiFetch<Categoria>("/cliente/categorias", { method: "POST", body: JSON.stringify({ nombre }) });
 export const cambiarCategoria = (id: string, categoria: string | null) => apiFetch<{ ok: boolean }>(`/cliente/tickets/${id}/categoria`, { method: "PUT", body: JSON.stringify({ categoria }) });
 export const calificarCsat = (id: string, estrellas: number) => apiFetch<{ ok: boolean }>(`/cliente/tickets/${id}/csat`, { method: "PUT", body: JSON.stringify({ estrellas }) });
+
+// Puente xTickets ↔ xCRM: las oportunidades de la persona del ticket, y abrir una desde aquí.
+export type OportunidadDeTicket = { id: string; titulo: string; valor: number; moneda: string; estado: string; etapa: string | null };
+export type TicketCrm = { habilitado: boolean; oportunidades: OportunidadDeTicket[]; puedeGestionar: boolean };
+export const getTicketCrm = (id: string) => apiFetch<TicketCrm>(`/cliente/tickets/${id}/crm`);
+export const crearOportunidadDesdeTicket = (id: string, b: { titulo?: string; valor?: number; moneda?: string }) =>
+  apiFetch<{ id: string; titulo: string }>(`/cliente/tickets/${id}/crm/oportunidad`, { method: "POST", body: JSON.stringify(b) });

@@ -9,7 +9,7 @@ import { AppShell } from "@/components/app-shell";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import {
   getTicket, getMensajes, getContexto, getSugerencia, responder, notaInterna, cambiarEstado,
-  getAgentes, asignar, cambiarPrioridad, getMacros, guardarEtiquetas, getCategorias, cambiarCategoria, calificarCsat, resumirTicket, TRANS, type Detalle, type Mensaje, type Contexto, type Estado, type Prioridad, type Agente, type Macro, type Categoria,
+  getAgentes, asignar, cambiarPrioridad, getMacros, guardarEtiquetas, getCategorias, cambiarCategoria, calificarCsat, resumirTicket, getTicketCrm, crearOportunidadDesdeTicket, TRANS, type Detalle, type Mensaje, type Contexto, type Estado, type Prioridad, type Agente, type Macro, type Categoria, type TicketCrm,
 } from "@/lib/tickets";
 
 type Rol = "exito" | "aviso" | "critico" | "senal" | "neutro";
@@ -45,6 +45,8 @@ function Contenido() {
   const [verMacros, setVerMacros] = useState(false);
   const [nuevaEtq, setNuevaEtq] = useState("");
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [crm, setCrm] = useState<TicketCrm | null>(null);
+  const [creandoOpp, setCreandoOpp] = useState(false);
 
   const cargar = useCallback(async () => {
     setError(null);
@@ -54,6 +56,8 @@ function Contenido() {
     } catch (e) { setError((e as Error).message); } finally { setCargando(false); }
   }, [id]);
   useEffect(() => { cargar(); }, [cargar]);
+  const cargarCrm = useCallback(() => { getTicketCrm(id).then(setCrm).catch(() => setCrm(null)); }, [id]);
+  useEffect(() => { cargarCrm(); }, [cargarCrm]);
   useEffect(() => { getAgentes().then((r) => setAgentes(r.datos)).catch(() => {}); }, []);
   useEffect(() => { getMacros().then((r) => setMacros(r.datos)).catch(() => {}); }, []);
   useEffect(() => { getCategorias().then((r) => setCategorias(r.datos)).catch(() => {}); }, []);
@@ -76,6 +80,11 @@ function Contenido() {
     setSugiriendo(true); setError(null);
     try { const s = await getSugerencia(id); if (s.sugerencia) { setTexto(s.sugerencia); setInterno(false); } else setToast("La IA no devolvió sugerencia (¿apagada?)"); }
     catch (e) { setError((e as Error).message); } finally { setSugiriendo(false); }
+  }
+  async function crearOpp() {
+    setCreandoOpp(true); setError(null);
+    try { await crearOportunidadDesdeTicket(id, {}); setToast("Oportunidad creada en el CRM"); cargarCrm(); cargar(); }
+    catch (e) { setError((e as Error).message); } finally { setCreandoOpp(false); }
   }
   async function resumir() {
     setResumiendo(true); setError(null);
@@ -252,6 +261,31 @@ function Contenido() {
 
         {/* Contexto 360 */}
         <div className="flex flex-col gap-3">
+          {crm?.habilitado && (
+            <Card><CardContent className="pt-5">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">CRM · Oportunidades</div>
+                {crm.puedeGestionar && (
+                  <button onClick={crearOpp} disabled={creandoOpp} className="text-[11.5px] text-[hsl(var(--senal))] hover:underline disabled:opacity-50">{creandoOpp ? "creando…" : "＋ nueva"}</button>
+                )}
+              </div>
+              {crm.oportunidades.length === 0 ? (
+                <div className="text-[12.5px] text-muted-foreground">Esta persona no tiene oportunidades. {crm.puedeGestionar && "Abrí una desde el ticket con «＋ nueva»."}</div>
+              ) : (
+                <div className="space-y-0">
+                  {crm.oportunidades.map((o) => (
+                    <Link key={o.id} href={`/oportunidades/${o.id}`} className="flex items-center justify-between gap-2 py-2 border-t border-border first:border-t-0 hover:opacity-80">
+                      <div className="min-w-0">
+                        <div className="text-[12.5px] truncate">{o.titulo}</div>
+                        <div className="text-[11px] text-muted-foreground">{o.etapa ?? "—"} · {o.estado}</div>
+                      </div>
+                      <span className="text-[12px] tabular-nums font-medium shrink-0">{o.moneda} {o.valor.toLocaleString("es-CL")}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent></Card>
+          )}
           <Card><CardContent className="pt-5">
             <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Reincidencia</div>
             {ctx ? (

@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AppShell } from "@/components/app-shell";
 import { RequierePermiso } from "@/components/requiere-permiso";
-import { getOportunidad, agregarActividad, marcarHecho, getProductos, getDealProductos, addDealProducto, quitarDealProducto, guardarEtiquetasDeal, type OportunidadDetalle, type Producto, type DealProducto } from "@/lib/crm";
+import { getOportunidad, agregarActividad, marcarHecho, getProductos, getDealProductos, addDealProducto, quitarDealProducto, guardarEtiquetasDeal, getTicketsDeOportunidad, type OportunidadDetalle, type Producto, type DealProducto, type TicketDeOportunidad } from "@/lib/crm";
 
 const TIPOS = [["nota", "📝 Nota"], ["llamada", "📞 Llamada"], ["reunion", "🤝 Reunión"], ["tarea", "✅ Tarea"]] as const;
 const icono: Record<string, string> = { nota: "📝", llamada: "📞", reunion: "🤝", tarea: "✅" };
@@ -36,6 +36,7 @@ function Contenido() {
   const [items, setItems] = useState<DealProducto[]>([]);
   const [pf, setPf] = useState({ productoId: "", nombre: "", cantidad: 1, precio: 0 });
   const [nuevaEtq, setNuevaEtq] = useState("");
+  const [tickets, setTickets] = useState<TicketDeOportunidad[]>([]);
 
   const cargar = useCallback(async () => {
     setError(null);
@@ -44,6 +45,7 @@ function Contenido() {
   useEffect(() => { cargar(); }, [cargar]);
   const cargarProd = useCallback(async () => { try { const [c, li] = await Promise.all([getProductos(), getDealProductos(id)]); setCatalogo(c.datos); setItems(li.datos); } catch { /* noop */ } }, [id]);
   useEffect(() => { cargarProd(); }, [cargarProd]);
+  useEffect(() => { getTicketsDeOportunidad(id).then((r) => setTickets(r.datos)).catch(() => {}); }, [id]);
 
   const puede = o?.puede.gestionar ?? false;
   async function agregar() {
@@ -151,6 +153,24 @@ function Contenido() {
           </div>
         )}
       </CardContent></Card>
+
+      {/* Puente xCRM ↔ xTickets: el soporte de esta misma persona */}
+      {tickets.length > 0 && (
+        <Card className="mt-4"><CardContent className="pt-5">
+          <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Soporte · Tickets de esta persona</div>
+          <div className="space-y-0">
+            {tickets.map((t) => (
+              <Link key={t.id} href={`/tickets/${t.id}`} className="flex items-center justify-between gap-2 py-2.5 border-t border-border first:border-t-0 hover:opacity-80">
+                <div className="min-w-0">
+                  <div className="text-[13px] truncate">#{t.numero} · {t.asunto}</div>
+                  <div className="text-[10.5px] text-muted-foreground mt-0.5">{t.estado} · {t.prioridad} · {fecha(t.creado_en)}</div>
+                </div>
+                <span className="text-[hsl(var(--senal))] text-xs shrink-0">ver →</span>
+              </Link>
+            ))}
+          </div>
+        </CardContent></Card>
+      )}
     </div>
   );
 }

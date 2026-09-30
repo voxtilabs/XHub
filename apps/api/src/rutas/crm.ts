@@ -181,6 +181,20 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
       });
     });
 
+    // PUENTE xCRM ↔ xTickets: los tickets de la persona de esta oportunidad. La misma
+    // persona de la espina dorsal; así la oportunidad "ve" el soporte y viceversa.
+    r.get("/oportunidades/:id/tickets", async (req) => {
+      const ctx = await ctxGuard(req, "crm.ver");
+      const { id } = req.params as { id: string };
+      return conCliente(ctx.clienteId, async (c) => {
+        const o = (await c.query("select persona_id from crm_oportunidades where id=$1", [id])).rows[0];
+        if (!o) throw new ErrorApi("NO_ENCONTRADO", "Oportunidad no encontrada");
+        const datos = (await c.query(
+          "select id, numero, asunto, estado, prioridad, creado_en from tickets where persona_id=$1 order by creado_en desc limit 20", [o.persona_id])).rows;
+        return { datos };
+      });
+    });
+
     // Crear deal (Pipedrive: pipeline/etapa, moneda, cierre esperado, probabilidad).
     r.post("/oportunidades", async (req) => {
       const ctx = await ctxGuard(req, "crm.gestionar");

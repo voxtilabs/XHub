@@ -6,6 +6,7 @@ import { conCliente, conPlataforma } from "@xhub/db";
 import { permisosDe, CATALOGO_PERMISOS, listarUsuariosCliente, buscarPersonas, fichaDePersona } from "@xhub/modulo-nucleo";
 import { crearModuloTickets, contextoOmnicanal, reincidencia } from "@xhub/modulo-tickets";
 import { nucleo } from "../nucleo.js";
+import { asegurarPipeline } from "./crm.js";
 import { enviarCorreo } from "../correo.js";
 import { leerCookieSoporte } from "../soporte.js";
 import { auth } from "../auth.js";
@@ -343,6 +344,49 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
       const { id } = req.params as { id: string };
       await conCliente(ctx.clienteId, (c) => c.query("delete from plataforma.webhooks where id=$1 and cliente_id=$2", [id, ctx.clienteId]));
       return { ok: true };
+    });
+
+    // ── PUENTE xTickets ↔ xCRM ────────────────────────────────────────────────
+    // La persona del ticket es la MISMA del CRM (espina dorsal). Estas dos rutas la
+    // hacen visible y accionable desde el detalle del ticket: ver sus oportunidades
+    // y abrir una nueva desde el propio ticket, enlazada y en su línea de tiempo.
+
+    // Oportunidades de la persona de este ticket.
+    r.get("/tickets/:id/crm", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "bandeja.ver");
+      const { id } = req.params as { id: string };
+      const puedeVer = ctx.esAdmin || ctx.permisos.includes("crm.ver") || ctx.permisos.includes("crm.gestionar");
+      if (!puedeVer) return { habilitado: false, oportunidades: [], puedeGestionar: false };
+      return conCliente(ctx.clienteId, async (c) => {
+        const t = (await c.query("select persona_id from tickets where id=$1", [id])).rows[0];
+        if (!t) throw new ErrorApi("NO_ENCONTRADO", "Ticket no encontrado");
+        const oportunidades = (await c.query(
+          `select o.id, o.titulo, o.valor::int as valor, o.moneda, o.estado,
+                  (select nombre from crm_etapas e where e.id=o.etapa_id) as etapa
+             from crm_oportunidades o where o.persona_id=$1 order by o.creado_en desc limit 20`, [t.persona_id])).rows;
+        return { habilitado: true, oportunidades, puedeGestionar: ctx.esAdmin || ctx.permisos.includes("crm.gestionar") };
+      });
+    });
+
+    // Abrir una oportunidad DESDE el ticket: misma persona, enlazada, auditada.
+    r.post("/tickets/:id/crm/oportunidad", async (req) => {
+      const ctx = await guard(req); exigir(ctx, "crm.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { titulo?: string; valor?: number; moneda?: string } | undefined;
+      return conCliente(ctx.clienteId, async (c) => {
+        const t = (await c.query("select persona_id, asunto, numero from tickets where id=$1", [id])).rows[0];
+        if (!t) throw new ErrorApi("NO_ENCONTRADO", "Ticket no encontrado");
+        const plId = await asegurarPipeline(c, ctx.clienteId);
+        const etapaId = (await c.query("select id from crm_etapas where pipeline_id=$1 order by orden asc limit 1", [plId])).rows[0]?.id;
+        const titulo = b?.titulo?.trim() || `Ticket #${t.numero}: ${t.asunto}`;
+        const o = (await c.query(
+          `insert into crm_oportunidades (cliente_id, persona_id, titulo, valor, moneda, pipeline_id, etapa_id)
+             values ($1,$2,$3,$4,$5,$6,$7) returning id, titulo, valor::int as valor, moneda, estado`,
+          [ctx.clienteId, t.persona_id, titulo, Math.max(0, Number(b?.valor) || 0), b?.moneda || "CLP", plId, etapaId])).rows[0];
+        await nucleo.enlazar(c, "ticket", id, "origino", "oportunidad", o.id);
+        await nucleo.registrarInteraccion(c, { personaId: t.persona_id, tipo: "oportunidad.creada", moduloOrigen: "crm", objetoTipo: "oportunidad", objetoId: o.id, resumen: `Oportunidad desde ticket #${t.numero}: ${titulo}` });
+        return o;
+      });
     });
 
     // Métricas del cliente (SQL directo, sin actor): tablero honesto y real.

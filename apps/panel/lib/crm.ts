@@ -11,6 +11,8 @@ export type OportunidadDetalle = Oportunidad & { etapa: string | null; motivo_pe
 export const getPipelines = () => apiFetch<{ datos: Pipeline[] }>("/cliente/crm/pipelines");
 export const getOportunidades = (pipeline?: string) => apiFetch<Embudo>(`/cliente/oportunidades${pipeline ? `?pipeline=${pipeline}` : ""}`);
 export const getOportunidad = (id: string) => apiFetch<OportunidadDetalle>(`/cliente/oportunidades/${id}`);
+export type TicketDeOportunidad = { id: string; numero: string; asunto: string; estado: string; prioridad: string; creado_en: string };
+export const getTicketsDeOportunidad = (id: string) => apiFetch<{ datos: TicketDeOportunidad[] }>(`/cliente/oportunidades/${id}/tickets`);
 export const crearOportunidad = (b: { canal: string; identidad: string; titulo: string; valor?: number; moneda?: string; pipelineId?: string; etapaId?: string; cierreEsperado?: string; probabilidad?: number; orgId?: string }) => apiFetch<Oportunidad>("/cliente/oportunidades", { method: "POST", body: JSON.stringify(b) });
 export const moverEtapa = (id: string, etapaId: string) => apiFetch(`/cliente/oportunidades/${id}/etapa`, { method: "PUT", body: JSON.stringify({ etapaId }) });
 export const cerrarOportunidad = (id: string, estado: "ganada" | "perdida", motivo?: string) => apiFetch(`/cliente/oportunidades/${id}/cerrar`, { method: "PUT", body: JSON.stringify({ estado, motivo }) });
