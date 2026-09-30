@@ -44,6 +44,72 @@ async function guardAdmin(req: FastifyRequest): Promise<void> {
     throw new ErrorApi("SIN_PERMISO", "Requiere administrador de plataforma");
 }
 
+/** Traduce el error de una operación del conector a una causa legible en español. */
+function causaLegible(e: unknown): string {
+  const m = (e as Error)?.message || String(e);
+  if (/NO_ENCONTRADO|no encontrada/i.test(m)) return "La instancia ya no existe.";
+  if (/VALIDACION|falta la contraseña/i.test(m)) return "Falta la contraseña del supervisor.";
+  if (/\b401\b|auth/i.test(m)) return "XContact rechazó la autenticación (usuario/clave o api_key).";
+  if (/timeout/i.test(m)) return "XContact no respondió a tiempo (timeout).";
+  if (/ECONN|fetch failed|network|getaddrinfo|socket/i.test(m)) return "No se pudo conectar con XContact.";
+  return `Fallo al sincronizar: ${m}`.slice(0, 300);
+}
+
+/** Encola (o incrementa) un muerto para (instancia, tipo), con su causa en español. */
+async function encolarMuerto(clienteId: string, instanciaId: string, tipo: string, carga: Record<string, unknown>, e: unknown): Promise<void> {
+  await conPlataforma((c) => c.query(
+    `insert into plataforma.conector_muertos (cliente_id, instancia_id, tipo, carga, causa)
+       values ($1,$2,$3,$4,$5)
+     on conflict (instancia_id, tipo) where resuelto_en is null
+       do update set intentos = conector_muertos.intentos + 1, causa = excluded.causa, ultimo_intento = now()`,
+    [clienteId, instanciaId, tipo, JSON.stringify(carga), causaLegible(e)])).catch(() => { /* no romper por la cola */ });
+}
+
+/**
+ * Ejecuta el sync de contactos de una instancia hacia el núcleo del cliente. Reutilizable
+ * por la ruta de sync y por el reintento de la cola de muertos. Lanza en caso de fallo.
+ */
+async function ejecutarSyncContactos(clienteId: string, iid: string, password: string | undefined, limitePedido: number | undefined): Promise<Record<string, number>> {
+  const inst = await conPlataforma((c) => c.query(
+    "select host, usuario, credencial_ref from plataforma.instancias_xcontact where id=$2 and cliente_id=$1", [clienteId, iid]));
+  if (!inst.rowCount) throw new ErrorApi("NO_ENCONTRADO", "Instancia no encontrada");
+  const { host, usuario, credencial_ref } = inst.rows[0] as { host: string; usuario: string; credencial_ref: string | null };
+  const clave = password || (credencial_ref ? process.env[credencial_ref] : "") || "";
+  if (!usuario || !clave) throw new ErrorApi("VALIDACION", "Falta la contraseña (en el body o en la env var referenciada)");
+
+  // 1) Leer y normalizar (toda la HTTP acá, antes de abrir transacción — ley 7).
+  const contactos = await leerContactosV5({ host, usuario, clave, fetchImpl: fetchXContact, limite: Math.min(200, Math.max(1, Number(limitePedido) || 25)) });
+
+  // 2) Escribir en el núcleo del cliente (RLS por conCliente). Idempotente.
+  const r = await conCliente(clienteId, async (c) => {
+    let personas = 0, interacciones = 0, identidades = 0, etiquetados = 0, campos = 0;
+    for (const k of contactos) {
+      const p = await asegurarPersonaPorIdentidad(c, k.canal as never, k.identidad, k.nombre ?? undefined);
+      if (!p) continue;
+      personas++;
+      for (const idr of k.identidades) {
+        if (idr.canal === k.canal && idr.valor === k.identidad) continue;
+        if (await asegurarIdentidad(c, p.id, idr.canal as never, idr.valor)) identidades++;
+      }
+      for (const nombreEtq of k.etiquetas) { await aplicarEtiqueta(c, p.id, await asegurarEtiqueta(c, nombreEtq)); etiquetados++; }
+      for (const campo of k.campos) { await ponerValor(c, "persona", p.id, await asegurarCampo(c, "persona", campo.nombre, "texto" as never), campo.valor); campos++; }
+      const it = await registrarInteraccion(c, {
+        personaId: p.id, tipo: "contacto.importado", moduloOrigen: "conector",
+        objetoTipo: "contacto", objetoId: k.externoId,
+        resumen: `Contacto XContact: ${k.nombre ?? k.identidad}`,
+        meta: { externoId: k.externoId, canal: k.canal, host }, dedupeId: `xc:${host}:${k.externoId}`,
+      });
+      if ((it as { id?: string })?.id) interacciones++;
+    }
+    return { personas, interacciones, identidades, etiquetados, campos };
+  });
+
+  // 3) Sellar la última sincronización y marcar la instancia operativa.
+  await conPlataforma((c) => c.query(
+    "update plataforma.instancias_xcontact set estado_salud='operativa', ultima_prueba=now(), actualizada_en=now() where id=$1", [iid]));
+  return { leidos: contactos.length, ...r };
+}
+
 export function registrarRutasAdmin(app: FastifyInstance): void {
   app.register(async (admin) => {
     admin.addHook("onRequest", async (req: FastifyRequest) => { await guardAdmin(req); });
@@ -299,49 +365,49 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
     admin.post("/clientes/:id/xcontact/instancias/:iid/sincronizar", async (req) => {
       const { id, iid } = req.params as { id: string; iid: string };
       const b = req.body as { password?: string; limite?: number } | undefined;
-      const inst = await conPlataforma((c) => c.query(
-        "select host, usuario, credencial_ref, version_api from plataforma.instancias_xcontact where id=$2 and cliente_id=$1", [id, iid]));
-      if (!inst.rowCount) throw new ErrorApi("NO_ENCONTRADO", "Instancia no encontrada");
-      const { host, usuario, credencial_ref } = inst.rows[0] as { host: string; usuario: string; credencial_ref: string | null };
-      const clave = b?.password || (credencial_ref ? process.env[credencial_ref] : "") || "";
-      if (!usuario || !clave) throw new ErrorApi("VALIDACION", "Falta la contraseña (en el body o en la env var referenciada)");
+      try {
+        const r = await ejecutarSyncContactos(id, iid, b?.password, b?.limite);
+        // Éxito: si había un muerto vivo para esta instancia, queda resuelto.
+        await conPlataforma((c) => c.query("update plataforma.conector_muertos set resuelto_en=now() where instancia_id=$1 and tipo='sync.contactos' and resuelto_en is null", [iid]));
+        return r;
+      } catch (e) {
+        await encolarMuerto(id, iid, "sync.contactos", { limite: b?.limite ?? 25 }, e);
+        throw e;
+      }
+    });
 
-      // 1) Leer y normalizar (toda la HTTP acá, antes de abrir transacción).
-      const contactos = await leerContactosV5({ host, usuario, clave, fetchImpl: fetchXContact, limite: Math.min(200, Math.max(1, Number(b?.limite) || 25)) });
+    // ── Cola de muertos del conector (#56) ──────────────────────────────────────
+    admin.get("/conector/muertos", async () => conPlataforma(async (c) => ({ datos: (await c.query(
+      `select m.id, m.cliente_id, m.instancia_id, m.tipo, m.carga, m.causa, m.intentos,
+              m.creado_en::text as creado_en, m.ultimo_intento::text as ultimo_intento,
+              cl.nombre as cliente, i.nombre as instancia
+         from plataforma.conector_muertos m
+         left join plataforma.clientes cl on cl.id=m.cliente_id
+         left join plataforma.instancias_xcontact i on i.id=m.instancia_id
+        where m.resuelto_en is null order by m.ultimo_intento desc`)).rows })));
 
-      // 2) Escribir en el núcleo del cliente (RLS por conCliente). Idempotente.
-      const r = await conCliente(id, async (c) => {
-        let personas = 0, interacciones = 0, identidades = 0, etiquetados = 0, campos = 0;
-        for (const k of contactos) {
-          const p = await asegurarPersonaPorIdentidad(c, k.canal as never, k.identidad, k.nombre ?? undefined);
-          if (!p) continue;
-          personas++;
-          // Identidades adicionales (la xcontact SIEMPRE + teléfonos/emails extra).
-          // Idempotente y sin abortar la transacción ante duplicados (on conflict do nothing).
-          for (const idr of k.identidades) {
-            if (idr.canal === k.canal && idr.valor === k.identidad) continue;
-            if (await asegurarIdentidad(c, p.id, idr.canal as never, idr.valor)) identidades++;
-          }
-          // Etiquetas (grupos de XContact) — get-or-create + aplicar (ambos idempotentes).
-          for (const nombreEtq of k.etiquetas) { await aplicarEtiqueta(c, p.id, await asegurarEtiqueta(c, nombreEtq)); etiquetados++; }
-          // Campos adicionales.
-          for (const campo of k.campos) { await ponerValor(c, "persona", p.id, await asegurarCampo(c, "persona", campo.nombre, "texto" as never), campo.valor); campos++; }
-          const it = await registrarInteraccion(c, {
-            personaId: p.id, tipo: "contacto.importado", moduloOrigen: "conector",
-            objetoTipo: "contacto", objetoId: k.externoId,
-            resumen: `Contacto XContact: ${k.nombre ?? k.identidad}`,
-            meta: { externoId: k.externoId, canal: k.canal, host },
-            dedupeId: `xc:${host}:${k.externoId}`,
-          });
-          if ((it as { id?: string })?.id) interacciones++;
-        }
-        return { personas, interacciones, identidades, etiquetados, campos };
-      });
+    // Reintentar un muerto: re-ejecuta la operación con su carga (clave por body o env).
+    admin.post("/conector/muertos/:mid/reintentar", async (req) => {
+      const { mid } = req.params as { mid: string };
+      const b = req.body as { password?: string } | undefined;
+      const m = await conPlataforma((c) => c.query("select cliente_id, instancia_id, tipo, carga from plataforma.conector_muertos where id=$1 and resuelto_en is null", [mid]));
+      if (!m.rowCount) throw new ErrorApi("NO_ENCONTRADO", "Trabajo no encontrado o ya resuelto");
+      const { cliente_id, instancia_id, carga } = m.rows[0] as { cliente_id: string; instancia_id: string; carga: { limite?: number } };
+      try {
+        const r = await ejecutarSyncContactos(cliente_id, instancia_id, b?.password, carga?.limite);
+        await conPlataforma((c) => c.query("update plataforma.conector_muertos set resuelto_en=now() where id=$1", [mid]));
+        return { resuelto: true, ...r };
+      } catch (e) {
+        await conPlataforma((c) => c.query("update plataforma.conector_muertos set intentos=intentos+1, causa=$2, ultimo_intento=now() where id=$1", [mid, causaLegible(e)]));
+        throw e;
+      }
+    });
 
-      // 3) Sellar la última sincronización y marcar la instancia operativa.
-      await conPlataforma((c) => c.query(
-        "update plataforma.instancias_xcontact set estado_salud='operativa', ultima_prueba=now(), actualizada_en=now() where id=$1", [iid]));
-      return { leidos: contactos.length, ...r };
+    // Descartar un muerto (marcarlo resuelto sin reintentar).
+    admin.delete("/conector/muertos/:mid", async (req) => {
+      const { mid } = req.params as { mid: string };
+      await conPlataforma((c) => c.query("update plataforma.conector_muertos set resuelto_en=now() where id=$1", [mid]));
+      return { ok: true };
     });
 
     // PANORAMA: el pulso de TODA la plataforma de un vistazo (vista 360 del superadmin).
