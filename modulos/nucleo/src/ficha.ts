@@ -34,6 +34,9 @@ export interface Ficha {
   campos: { nombre: string; tipo: string; valor: unknown }[];
   lineaDeTiempo: Interaccion[];
   enlaces: Enlace[];
+  // Fuente espejada (modo degradado #67): si la persona vino del conector, su origen
+  // y la fecha del último dato traído — para avisar «datos desactualizados» en pantalla.
+  fuente: { tipo: string; externoId: string | null; ultimoDato: string | null } | null;
 }
 
 /**
@@ -57,6 +60,17 @@ export async function fichaDePersona(c: PoolClient, personaId: string, limiteTim
   const tl = await lineaDeTiempo(c, persona.id, undefined, limiteTimeline);
   const enl = await enlacesDe(c, "persona", persona.id);
 
+  // Fuente espejada: si tiene identidad xcontact, vino del conector. El «último dato»
+  // es la interacción más reciente escrita por el conector (su última sincronización).
+  const xc = identidades.find((i) => i.canal === "xcontact");
+  let fuente: Ficha["fuente"] = null;
+  if (xc) {
+    const ud = await c.query(
+      "select max(ocurrio_en)::text as ultimo from nucleo.interacciones where cliente_id=$1 and persona_id=$2 and modulo_origen='conector'",
+      [cid, persona.id]);
+    fuente = { tipo: "xcontact", externoId: xc.identificador, ultimoDato: ud.rows[0]?.ultimo ?? null };
+  }
+
   return {
     persona: { id: persona.id, nombre: persona.nombre },
     identidades,
@@ -64,5 +78,6 @@ export async function fichaDePersona(c: PoolClient, personaId: string, limiteTim
     campos: campos.rows,
     lineaDeTiempo: tl.datos,
     enlaces: enl,
+    fuente,
   };
 }

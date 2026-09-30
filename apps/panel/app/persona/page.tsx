@@ -13,7 +13,8 @@ type Ident = { canal: string; identificador?: string; valor?: string };
 type Item = { seq: string; tipo: string; ocurrio_en: string; modulo_origen: string; resumen: string | null };
 type TicketMini = { id: string; numero: string; asunto: string; estado: string; prioridad: string };
 type OpMini = { id: string; titulo: string; valor: number; etapa: string; estado: string };
-type Ficha = { persona: { id: string; nombre: string | null }; identidades: Ident[]; etiquetas: { nombre: string }[]; lineaDeTiempo: Item[]; tickets: TicketMini[]; oportunidades: OpMini[] };
+type Fuente = { tipo: string; externoId: string | null; ultimoDato: string | null } | null;
+type Ficha = { persona: { id: string; nombre: string | null }; identidades: Ident[]; etiquetas: { nombre: string }[]; lineaDeTiempo: Item[]; tickets: TicketMini[]; oportunidades: OpMini[]; fuente: Fuente };
 
 const fecha = (s: string) => { try { return new Date(s).toLocaleString("es-CL", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return s; } };
 const iconoMod = (m: string) => m === "tickets" ? "🎫" : m === "crm" ? "💼" : "•";
@@ -83,6 +84,19 @@ function Contenido() {
               </div>
             </div>
           </div>
+
+          {ficha.fuente?.tipo === "xcontact" && (() => {
+            const ud = ficha.fuente.ultimoDato ? new Date(ficha.fuente.ultimoDato) : null;
+            const dias = ud ? Math.floor((Date.now() - ud.getTime()) / 86400000) : null;
+            const vieja = dias != null && dias > 7;
+            return (
+              <div className="mb-4 p-2.5 rounded-md text-[12.5px] flex items-center gap-2 flex-wrap"
+                style={{ background: vieja ? "hsl(var(--aviso)/0.1)" : "hsl(var(--secondary))", color: vieja ? "hsl(var(--aviso))" : "hsl(var(--muted-foreground))" }}>
+                <span>{vieja ? "⚠" : "⟳"}</span>
+                <span>Datos espejados de <b>XContact</b> (id {ficha.fuente.externoId}). {ud ? <>Última sincronización: {ud.toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}{vieja ? ` · desactualizados (${dias} días)` : ""}.</> : "sin fecha de sincronización."} xHub muestra su copia aunque la fuente esté caída.</span>
+              </div>
+            );
+          })()}
 
           <div className="grid md:grid-cols-[1fr_260px] gap-4">
             {/* Historia unificada */}
