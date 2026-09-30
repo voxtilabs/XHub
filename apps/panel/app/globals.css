@@ -1,51 +1,182 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Fixed instances of the bundled variable fonts: identical real weights in every engine. */
+@font-face { font-family: 'Inter'; src: url('/voxia/fonts/inter-400.woff2') format('woff2'); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('/voxia/fonts/inter-500.woff2') format('woff2'); font-style: normal; font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('/voxia/fonts/inter-600.woff2') format('woff2'); font-style: normal; font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('/voxia/fonts/inter-700.woff2') format('woff2'); font-style: normal; font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Outfit'; src: url('/voxia/fonts/outfit-400.woff2') format('woff2'); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Outfit'; src: url('/voxia/fonts/outfit-500.woff2') format('woff2'); font-style: normal; font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Outfit'; src: url('/voxia/fonts/outfit-600.woff2') format('woff2'); font-style: normal; font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Outfit'; src: url('/voxia/fonts/outfit-650.woff2') format('woff2'); font-style: normal; font-weight: 650; font-display: swap; }
+@font-face { font-family: 'Outfit'; src: url('/voxia/fonts/outfit-700.woff2') format('woff2'); font-style: normal; font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Outfit'; src: url('/voxia/fonts/outfit-750.woff2') format('woff2'); font-style: normal; font-weight: 750; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url('/voxia/fonts/mono-400.woff2') format('woff2'); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url('/voxia/fonts/mono-500.woff2') format('woff2'); font-style: normal; font-weight: 500; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url('/voxia/fonts/mono-600.woff2') format('woff2'); font-style: normal; font-weight: 600; font-display: swap; }
+
+/* Identidad X5 / XContact: acción naranja y señal cian.
+   Valores canónicos: packages/ui/src/tokens.css. Composición Studio de Voxia. */
 :root {
-  --background: 220 45% 4%; --foreground: 0 0% 100%;
-  --card: 213 40% 7%; --card-foreground: 0 0% 100%;
-  --primary: 24 100% 55%; --primary-foreground: 222 47% 8%;
-  --secondary: 213 30% 12%; --secondary-foreground: 0 0% 100%;
-  --muted: 213 25% 14%; --muted-foreground: 215 16% 65%;
-  --accent: 213 30% 12%; --accent-foreground: 0 0% 100%;
-  --border: 210 20% 18%; --input: 210 20% 18%; --ring: 24 100% 55%;
-  --senal: 192 74% 70%; --exito: 158 64% 52%; --aviso: 39 92% 55%; --critico: 0 84% 63%;
+  --background: 216 33.3333% 2.9412%;
+  --foreground: 0 0% 100%;
+  --card: 210 41.1765% 6.6667%;
+  --card-foreground: 0 0% 100%;
+  --primary: 25.1528 100% 55.098%;
+  --primary-foreground: 228.5714 84% 4.902%;
+  --secondary: 208.6957 36.5079% 12.3529%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 208.6957 36.5079% 12.3529%;
+  --muted-foreground: 211.7647 18.6813% 64.3137%;
+  --accent: 25 41.3793% 11.3725%;
+  --accent-foreground: 25.5944 100% 71.9608%;
+  --border: 210 26.5306% 19.2157%;
+  --input: 210 22.0779% 30.1961%;
+  --ring: 25.1528 100% 55.098%;
+  --senal: 190.9091 78.0645% 69.6078%;
+  --exito: 158.1132 64.3725% 51.5686%;
+  --aviso: 36.067 100% 65.098%;
+  --critico: 348.661 100% 75.098%;
+  --voxia-field: #071017;
+  --voxia-body: #c3cbd5;
+  --voxia-faint: #93a3b5;
+  --voxia-action-hover: #e8631a;
+  --voxia-action-text: #ffad70;
+  --voxia-action-soft: #291b11;
+  --voxia-action-border: #694020;
+  --voxia-good-soft: #10281f;
+  --voxia-good-border: #1e4536;
+  --voxia-warn-soft: #2a2012;
+  --voxia-warn-border: #4a3a1c;
+  --voxia-bad-soft: #2a141b;
+  --voxia-bad-border: #4d2130;
+  --voxia-highlight: #223342;
+  --voxia-shade: #030509;
+  --voxia-surface: linear-gradient(145deg, hsl(var(--card)), hsl(var(--background)));
+  --voxia-shadow: 7px 7px 18px var(--voxia-shade), -3px -3px 10px color-mix(in srgb, var(--voxia-highlight) 45%, transparent);
+  --xhub-signal-soft: #0b242c;
+  --xhub-signal-border: #204954;
 }
 :root[data-tema="claro"] {
-  --background: 210 40% 96%; --foreground: 222 47% 8%;
-  --card: 0 0% 100%; --card-foreground: 222 47% 8%;
-  --primary: 24 100% 52%; --primary-foreground: 0 0% 100%;
-  --secondary: 210 40% 92%; --secondary-foreground: 222 47% 8%;
-  --muted: 210 30% 90%; --muted-foreground: 215 16% 40%;
-  --accent: 210 30% 88%; --accent-foreground: 222 47% 8%;
-  --border: 214 20% 85%; --input: 214 20% 85%; --ring: 24 100% 52%;
-  --senal: 192 50% 36%; --exito: 158 64% 38%; --aviso: 30 90% 42%; --critico: 0 72% 48%;
+  --background: 210 40% 96.0784%;
+  --foreground: 228.5714 84% 4.902%;
+  --card: 0 0% 100%;
+  --card-foreground: 228.5714 84% 4.902%;
+  --primary-foreground: 228.5714 84% 4.902%;
+  --secondary: 214.2857 31.8182% 91.3725%;
+  --secondary-foreground: 228.5714 84% 4.902%;
+  --muted: 214.2857 31.8182% 91.3725%;
+  --muted-foreground: 214.7368 18.8119% 39.6078%;
+  --accent: 26.6667 100% 94.7059%;
+  --accent-foreground: 23.6066 100% 35.8824%;
+  --border: 210 30.303% 87.0588%;
+  --input: 210.9677 19.4969% 68.8235%;
+  --senal: 191.5 81.0811% 29.0196%;
+  --exito: 157.57 78.102% 26.863%;
+  --aviso: 32.571 87.5% 31.373%;
+  --critico: 347.463 67.677% 38.824%;
+  --voxia-field: #fff;
+  --voxia-body: #475569;
+  --voxia-faint: #526278;
+  --voxia-action-hover: #e8631a;
+  --voxia-action-text: #b74800;
+  --voxia-action-soft: #fff0e4;
+  --voxia-action-border: #e9bea0;
+  --voxia-good-soft: #e7faf3;
+  --voxia-good-border: #c6f0df;
+  --voxia-warn-soft: #fff6e6;
+  --voxia-warn-border: #ffdfa8;
+  --voxia-bad-soft: #ffeef1;
+  --voxia-bad-border: #fcd6de;
+  --voxia-highlight: #fff;
+  --voxia-shade: #dce4ed;
+  --primary: 25.1528 100% 55.098%;
+  --ring: 23.6066 100% 35.8824%;
+  --xhub-signal-soft: #e5f6fa;
+  --xhub-signal-border: #a8d8e1;
 }
-/* Aurora del login (tomada del footer de x5s.cl): un resplandor cian→naranja que respira. */
-@keyframes aurora-breathe {
-  from { transform: translate(-50%, -50%) scale(1); opacity: 0.55; }
-  to   { transform: translate(-50%, -50%) scale(1.18); opacity: 0.85; }
-}
-@media (prefers-reduced-motion: reduce) { .aurora { animation: none !important; } }
 
-* { border-color: hsl(var(--border)); min-width: 0; }
-html, body { max-width: 100%; overflow-x: hidden; }
-/* El navegador pinta el fondo del <html> ANTES de montar el body: darle el color del
-   tema evita el destello blanco al navegar entre secciones (el "flashback"). */
-html { background: hsl(var(--background)); color-scheme: dark; }
-html[data-tema="claro"] { color-scheme: light; }
-/* Fondo formal de toda la plataforma: dos resplandores sutiles (señal cian arriba,
-   acción naranja abajo) fijos sobre el fondo del tema. Da profundidad de marca sin
-   estorbar el contenido; se adapta a día/noche por los tokens. */
-body {
-  background:
-    radial-gradient(900px 520px at 85% -10%, hsl(var(--senal) / 0.07), transparent 60%),
-    radial-gradient(820px 520px at 8% 110%, hsl(var(--primary) / 0.06), transparent 60%),
-    hsl(var(--background));
-  background-attachment: fixed;
-  color: hsl(var(--foreground));
-  font-family: Inter, system-ui, sans-serif;
+@layer base {
+  * { border-color: hsl(var(--border)); min-width: 0; }
+  html, body { max-width: 100%; }
+  html { background: hsl(var(--background)); color-scheme: dark; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  html[data-tema="claro"] { color-scheme: light; }
+  body {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: Inter, system-ui, sans-serif;
+    font-kerning: normal;
+    font-synthesis-weight: none;
+    font-size: 14px;
+    line-height: 1.65;
+  }
+  h1, h2, h3, h4 { font-family: Outfit, system-ui, sans-serif; line-height: 1.15; }
+  code, pre { font-family: 'JetBrains Mono', monospace; }
+  button, input, textarea, select { font: inherit; }
+  button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  button:focus-visible, a:focus-visible, summary:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 3px;
+  }
+  img, svg, video, canvas { max-width: 100%; }
+  .break-anywhere { overflow-wrap: anywhere; }
+  input[type="checkbox"], input[type="radio"] { accent-color: hsl(var(--primary)); }
 }
-/* Nada desborda el ancho: medios flexibles y palabras largas que no empujan el layout. */
-img, svg, video, canvas { max-width: 100%; }
-.break-anywhere, td, th { overflow-wrap: anywhere; }
+
+/* Los controles nativos comparten la misma superficie que Input. */
+main select, main textarea {
+  min-height: 46px;
+  border: 1px solid hsl(var(--input));
+  border-radius: 14px;
+  background: var(--voxia-field);
+  color: hsl(var(--foreground));
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.65;
+  outline: none;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+main textarea { resize: vertical; min-height: 100px; }
+main select:focus, main textarea:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px var(--voxia-action-soft);
+}
+main textarea::placeholder { color: var(--voxia-faint); }
+
+/* Las tablas conservan su desplazamiento local y las etiquetas completas. */
+.xhub-page thead th {
+  padding: 16px 20px;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.xhub-page td:not([colspan]) { padding: 14px 20px; }
+
+.voxia-card { background: var(--voxia-surface); box-shadow: var(--voxia-shadow); }
+.voxia-button-primary { box-shadow: 0 5px 15px hsl(var(--primary) / 18%), inset 0 1px rgb(255 255 255 / 16%); }
+.voxia-button-primary:hover { background-color: var(--voxia-action-hover); }
+.voxia-button-surface {
+  background: var(--voxia-surface);
+  box-shadow: 3px 3px 7px var(--voxia-shade), -2px -2px 5px color-mix(in srgb, var(--voxia-highlight) 40%, transparent);
+}
+.voxia-button-surface:hover { background: hsl(var(--secondary)); }
+.voxia-input:focus { border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px var(--voxia-action-soft); }
+.ph { font-size: 20px; line-height: 1; }
+svg.ph { display: inline-block; width: 1em; height: 1em; flex-shrink: 0; vertical-align: -.16em; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/app-shell";
+import { Icon } from "@/components/icon";
 import { apiFetch } from "@/lib/api";
 
 type Resumen = Record<string, boolean | number>;
@@ -28,20 +28,19 @@ export default function SaludXContact() {
   return (
     <main className="min-h-screen">
       <AppShell />
-      <div className="max-w-4xl mx-auto p-4 sm:p-8">
-        <div className="flex items-center justify-between">
-          <Link href="/superadmin" className="text-[13px] text-muted-foreground hover:text-foreground">← Clientes</Link>
-          <Link href="/superadmin/xcontact"><Button size="sm" variant="secondary">Probar una instancia →</Button></Link>
+      <div className="xhub-page xhub-platform-page xhub-fleet-page">
+        <div className="xhub-page-heading">
+          <div><Link href="/superadmin" className="xhub-eyebrow inline-flex items-center gap-2"><Icon name="arrow-left" /> PLATAFORMA · MONITOREO</Link><h1>Salud XContact</h1><p>El estado de tus conexiones, siempre a la vista.</p></div>
+          <Link href="/superadmin/xcontact" className="voxia-button-primary inline-flex items-center gap-2"><Icon name="plugs-connected" weight="regular" /> Probar una instancia</Link>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight mt-2 mb-1">Salud de la flota XContact</h1>
-        <p className="text-muted-foreground text-sm mb-5">Estado de cada instancia registrada, con su último scorecard. El estado general es el peor de la flota: una caída o una instancia sin probar lo ensucia a propósito.</p>
+        <p className="xhub-platform-description"><Icon name="info" weight="regular" /> Cada instancia muestra su último scorecard. El estado general refleja la peor condición de la flota, incluidas las instancias sin probar.</p>
 
-        {error && <div className="mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", color: "hsl(var(--critico))" }}>▲ {error}</div>}
+        {error && <div className="mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", color: "hsl(var(--critico))" }}><Icon name="warning-circle" className="xhub-inline-icon" weight="regular" /> {error}</div>}
 
         {s && (
           <>
             {/* Rollup */}
-            <Card className="mb-5"><CardContent className="pt-5">
+            <Card className="mb-5 xhub-fleet-summary"><CardContent className="pt-5">
               <div className="flex items-center gap-3 flex-wrap">
                 <Badge rol={ROL[s.rollup.general] ?? "neutro"}>{GENERAL_TXT[s.rollup.general] ?? s.rollup.general}</Badge>
                 <span className="text-[13px] text-muted-foreground">
@@ -53,9 +52,10 @@ export default function SaludXContact() {
             {s.instancias.length === 0 ? (
               <Card><CardContent className="pt-5 text-[13px] text-muted-foreground">Aún no hay instancias registradas. Andá a <Link href="/superadmin/xcontact" className="text-[hsl(var(--senal))]">Probar XContact</Link>, probá una y guardala por cliente.</CardContent></Card>
             ) : (
-              <div className="space-y-2.5">
+              <div className="xhub-fleet-grid">
                 {s.instancias.map((i) => (
-                  <Card key={i.id}><CardContent className="pt-4">
+                  <Card key={i.id} className="xhub-fleet-card"><CardContent className="pt-4">
+                    <span className="xhub-platform-glyph mb-4"><Icon name="plugs-connected" weight="regular" /></span>
                     <div className="flex items-start justify-between gap-2 flex-wrap">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -71,7 +71,7 @@ export default function SaludXContact() {
                     </div>
                     <div className="flex gap-1.5 flex-wrap mt-2">
                       {cap(i.resumen).map(([l, v]) => (
-                        <span key={l} className={"text-[10.5px] px-1.5 py-0.5 rounded " + (v ? "text-[hsl(var(--exito))]" : "text-muted-foreground")} style={v ? { background: "hsl(var(--exito)/0.1)" } : { background: "hsl(var(--secondary))" }}>{v ? "✓" : "✗"} {l}</span>
+                        <span key={l} className={"text-[10.5px] px-1.5 py-0.5 rounded " + (v ? "text-[hsl(var(--exito))]" : "text-muted-foreground")} style={v ? { background: "hsl(var(--exito)/0.1)" } : { background: "hsl(var(--secondary))" }}><Icon name={v ? "check" : "x"} className="xhub-inline-icon" /> {l}</span>
                       ))}
                       {!i.resumen && <span className="text-[11px] text-muted-foreground">sin scorecard — probá la instancia</span>}
                     </div>

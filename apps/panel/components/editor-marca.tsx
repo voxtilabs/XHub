@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { hexAHslTriplet } from "@/lib/marca";
+import { Icon } from "@/components/icon";
 
 type M = { nombre_marca: string | null; logo_url: string | null; color_primario: string | null; color_acento: string | null; correo_soporte: string | null };
 
@@ -36,7 +36,7 @@ export function EditorMarca({ clienteId }: { clienteId: string }) {
   }
 
   return (
-    <div className="mt-3 pt-3 border-t border-border grid sm:grid-cols-2 gap-4">
+    <div className="xhub-brand-editor mt-3 pt-3 border-t border-border grid sm:grid-cols-2 gap-4">
       <div className="flex flex-col gap-2.5">
         <label className="block"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Nombre de marca</span>
           <Input value={m.nombre_marca ?? ""} onChange={(e) => set("nombre_marca")(e.target.value || null)} placeholder="p.ej. Retail Andes" className="mt-1" />
@@ -45,7 +45,7 @@ export function EditorMarca({ clienteId }: { clienteId: string }) {
           <Input type="email" value={m.correo_soporte ?? ""} onChange={(e) => set("correo_soporte")(e.target.value || null)} placeholder="soporte@cliente.cl" className="mt-1" />
           <span className="block text-[10px] text-muted-foreground mt-1">Las respuestas por email salen con este remitente (SMTP único de plataforma).</span>
         </label>
-        <div className="flex gap-4">
+        <div className="flex gap-4 flex-wrap">
           <label className="block"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Primario</span>
             <div className="flex items-center gap-2 mt-1"><input type="color" value={prim} onChange={(e) => set("color_primario")(e.target.value)} className="h-9 w-12 rounded border border-border bg-transparent" /><code className="text-[11px] text-muted-foreground">{prim}</code></div>
           </label>
@@ -55,21 +55,21 @@ export function EditorMarca({ clienteId }: { clienteId: string }) {
         </div>
         <label className="block"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Logo</span>
           <div className="flex items-center gap-2 mt-1">
-            <input type="file" accept="image/png,image/svg+xml,image/jpeg,image/webp" onChange={(e) => e.target.files?.[0] && subirLogo(e.target.files[0])} className="text-[12px] file:mr-2 file:rounded-md file:border-0 file:bg-secondary file:px-2 file:py-1 file:text-xs" />
+            <input type="file" accept="image/png,image/svg+xml,image/jpeg,image/webp" onChange={(e) => e.target.files?.[0] && subirLogo(e.target.files[0])} className="min-w-0 max-w-full text-[12px] file:mr-2 file:rounded-md file:border-0 file:bg-secondary file:px-2 file:py-1 file:text-xs" />
             {m.logo_url && <button onClick={() => set("logo_url")(null)} className="text-[11px] text-muted-foreground hover:text-[hsl(var(--critico))]">quitar</button>}
           </div>
         </label>
-        <div className="flex items-center gap-2 mt-1">
-          <Button size="sm" onClick={guardar} disabled={guardando}>{guardando ? "Guardando…" : "Guardar marca"}</Button>
-          {msg && <span className="text-[12px]" style={{ color: "hsl(var(--exito))" }}>✓ {msg}</span>}
-          {err && <span className="text-[12px]" style={{ color: "hsl(var(--critico))" }}>▲ {err}</span>}
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <Button size="sm" onClick={guardar} disabled={guardando}><Icon name={guardando ? "spinner-gap" : "floppy-disk"} weight="regular" />{guardando ? "Guardando…" : "Guardar marca"}</Button>
+          {msg && <span className="text-[12px]" style={{ color: "hsl(var(--exito))" }}><Icon name="check-circle" className="xhub-inline-icon" weight="regular" /> {msg}</span>}
+          {err && <span className="text-[12px]" style={{ color: "hsl(var(--critico))" }}><Icon name="warning-circle" className="xhub-inline-icon" weight="regular" /> {err}</span>}
         </div>
       </div>
 
       {/* Vista previa del encabezado del cliente */}
       <div>
         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Vista previa</span>
-        <div className="mt-1 rounded-lg border border-border overflow-hidden">
+        <div className="xhub-brand-preview mt-1 rounded-lg border border-border overflow-hidden">
           <div className="flex h-12 items-center gap-2.5 px-3" style={{ background: "hsl(var(--background))" }}>
             {m.logo_url
               ? <img src={m.logo_url} alt="logo" className="h-7 w-auto max-w-[120px] object-contain" />

@@ -22,4 +22,4 @@ export function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/((?!_next/static|_next/image|icon.svg|favicon.ico|api|admin|cliente|v1).*)"] };
+export const config = { matcher: ["/((?!_next/static|_next/image|icon.svg|favicon.ico|voxia/|api|admin|cliente|v1).*)"] };

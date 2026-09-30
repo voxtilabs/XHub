@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { AppShell } from "@/components/app-shell";
+import { Icon } from "@/components/icon";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import { apiFetch } from "@/lib/api";
 
@@ -17,7 +18,7 @@ type Fuente = { tipo: string; externoId: string | null; ultimoDato: string | nul
 type Ficha = { persona: { id: string; nombre: string | null }; identidades: Ident[]; etiquetas: { nombre: string }[]; lineaDeTiempo: Item[]; tickets: TicketMini[]; oportunidades: OpMini[]; fuente: Fuente };
 
 const fecha = (s: string) => { try { return new Date(s).toLocaleString("es-CL", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return s; } };
-const iconoMod = (m: string) => m === "tickets" ? "🎫" : m === "crm" ? "💼" : "•";
+const iconoMod = (m: string) => m === "tickets" ? "ticket" : m === "crm" ? "kanban" : "chat-circle-dots";
 
 export default function Persona() {
   return (
@@ -52,30 +53,31 @@ function Contenido() {
   const inic = nombre.split(/[ @.]/).map((x) => x[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-8">
-      <h1 className="text-2xl font-semibold tracking-tight mb-1">Personas</h1>
-      <p className="text-muted-foreground text-sm mb-4">La ficha 360: una sola identidad por persona, con TODA su historia — tickets y oportunidades juntos.</p>
+    <div className="xhub-page xhub-crm-page crm-person-page">
+      <div className="xhub-page-heading"><div><div className="xhub-eyebrow">CONEXIONES CON HISTORIA</div><h1>Personas</h1><p>Todo el contexto. Una sola conversación.</p></div></div>
 
-      <div className="relative max-w-md mb-2">
-        <Input value={q} onChange={(e) => buscar(e.target.value)} placeholder="Buscar por nombre, email o teléfono…" className="h-10" />
+      <div className="crm-person-search relative mb-2">
+        <Icon name="magnifying-glass" weight="regular" />
+        <Input aria-label="Buscar personas" value={q} onChange={(e) => buscar(e.target.value)} placeholder="Buscar por nombre, email o teléfono…" className="h-10" />
         {(res.length > 0 || (q.length >= 2 && !buscando)) && (
           <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-card shadow-2xl max-h-72 overflow-auto">
             {res.map((r) => (
-              <button key={r.personaId} onClick={() => abrir(r.personaId)} className="block w-full text-left px-3 py-2 text-[13px] hover:bg-secondary">{r.texto}</button>
+              <button key={r.personaId} onClick={() => abrir(r.personaId)} className="crm-person-result"><Icon name="user-circle" weight="regular" /><span>{r.texto}</span><Icon name="arrow-right" weight="regular" /></button>
             ))}
             {res.length === 0 && <div className="px-3 py-2 text-[12.5px] text-muted-foreground">Sin resultados</div>}
           </div>
         )}
       </div>
 
-      {error && <div className="mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", color: "hsl(var(--critico))" }}>▲ {error}</div>}
+      {buscando && <div className="crm-loading" role="status"><Icon name="spinner-gap" />Buscando personas…</div>}
+      {error && <div role="alert" className="crm-error mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", color: "hsl(var(--critico))" }}><Icon name="warning-circle" weight="regular" /> {error}</div>}
 
       {!ficha ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground text-sm">Busca una persona para ver su ficha 360.</CardContent></Card>
+        <Card className="crm-person-welcome"><CardContent className="crm-empty"><Icon name="identification-card" weight="regular" /><h2>Conoce la historia completa</h2><p>Busca una persona para ver su ficha 360.</p><div className="crm-person-capabilities"><span><Icon name="chats-circle" weight="regular" />Historia omnicanal</span><span><Icon name="ticket" weight="regular" />Tickets conectados</span><span><Icon name="kanban" weight="regular" />Oportunidades</span></div></CardContent></Card>
       ) : (
         <>
-          <div className="flex items-center gap-4 mb-5 mt-4">
-            <div className="h-14 w-14 rounded-full bg-secondary grid place-items-center text-lg font-semibold">{inic}</div>
+          <div className="crm-person-profile">
+            <div className="crm-person-avatar">{inic}</div>
             <div className="min-w-0">
               <h2 className="text-xl font-semibold tracking-tight truncate">{nombre}</h2>
               <div className="flex gap-1.5 mt-1 flex-wrap">
@@ -90,23 +92,23 @@ function Contenido() {
             const dias = ud ? Math.floor((Date.now() - ud.getTime()) / 86400000) : null;
             const vieja = dias != null && dias > 7;
             return (
-              <div className="mb-4 p-2.5 rounded-md text-[12.5px] flex items-center gap-2 flex-wrap"
+              <div role="status" className="crm-source-notice mb-4 p-2.5 rounded-md text-[12.5px] flex items-center gap-2 flex-wrap"
                 style={{ background: vieja ? "hsl(var(--aviso)/0.1)" : "hsl(var(--secondary))", color: vieja ? "hsl(var(--aviso))" : "hsl(var(--muted-foreground))" }}>
-                <span>{vieja ? "⚠" : "⟳"}</span>
+                <Icon name={vieja ? "warning-circle" : "arrows-clockwise"} weight="regular" />
                 <span>Datos espejados de <b>XContact</b> (id {ficha.fuente.externoId}). {ud ? <>Última sincronización: {ud.toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}{vieja ? ` · desactualizados (${dias} días)` : ""}.</> : "sin fecha de sincronización."} xHub muestra su copia aunque la fuente esté caída.</span>
               </div>
             );
           })()}
 
-          <div className="grid md:grid-cols-[1fr_260px] gap-4">
+          <div className="crm-person-layout">
             {/* Historia unificada */}
             <Card><CardContent className="pt-5">
-              <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Historia (omnicanal)</div>
+              <div className="crm-section-title"><Icon name="clock-counter-clockwise" weight="regular" /><h2>Historia omnicanal</h2></div>
               {ficha.lineaDeTiempo.length === 0 ? <div className="text-[13px] text-muted-foreground">Sin interacciones registradas.</div> : (
                 <div className="space-y-0">
                   {ficha.lineaDeTiempo.map((it) => (
-                    <div key={it.seq} className="flex gap-3 py-2.5 border-t border-border first:border-t-0">
-                      <span className="text-base leading-none pt-0.5">{iconoMod(it.modulo_origen)}</span>
+                    <div key={it.seq} className="crm-timeline-row">
+                      <span className="crm-timeline-icon"><Icon name={iconoMod(it.modulo_origen)} weight="regular" /></span>
                       <div className="min-w-0 flex-1">
                         <div className="text-[13px]">{it.resumen ?? it.tipo}</div>
                         <div className="text-[10.5px] text-muted-foreground">{it.modulo_origen} · {it.tipo} · {fecha(it.ocurrio_en)}</div>
@@ -120,18 +122,18 @@ function Contenido() {
             {/* Tickets + Oportunidades de la persona */}
             <div className="flex flex-col gap-4">
               <Card><CardContent className="pt-5">
-                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Tickets ({ficha.tickets.length})</div>
+                <div className="crm-section-title"><Icon name="ticket" weight="regular" /><h2>Tickets <span>{ficha.tickets.length}</span></h2></div>
                 {ficha.tickets.length === 0 ? <div className="text-[12.5px] text-muted-foreground">—</div> : ficha.tickets.map((t) => (
-                  <Link key={t.id} href={`/tickets/${t.id}`} className="block py-1.5 border-t border-border first:border-t-0 hover:text-[hsl(var(--senal))]">
+                  <Link key={t.id} href={`/tickets/${t.id}`} className="crm-person-related block py-1.5 border-t border-border first:border-t-0 hover:text-[hsl(var(--senal))]">
                     <div className="text-[12.5px] font-medium truncate">#{t.numero} {t.asunto}</div>
                     <div className="text-[10.5px] text-muted-foreground">{t.estado} · {t.prioridad}</div>
                   </Link>
                 ))}
               </CardContent></Card>
               <Card><CardContent className="pt-5">
-                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Oportunidades ({ficha.oportunidades.length})</div>
+                <div className="crm-section-title"><Icon name="kanban" weight="regular" /><h2>Oportunidades <span>{ficha.oportunidades.length}</span></h2></div>
                 {ficha.oportunidades.length === 0 ? <div className="text-[12.5px] text-muted-foreground">—</div> : ficha.oportunidades.map((o) => (
-                  <div key={o.id} className="py-1.5 border-t border-border first:border-t-0">
+                  <div key={o.id} className="crm-person-related py-1.5 border-t border-border first:border-t-0">
                     <div className="text-[12.5px] font-medium truncate">{o.titulo}</div>
                     <div className="text-[10.5px] text-muted-foreground">${o.valor.toLocaleString("es-CL")} · {o.etapa} · {o.estado}</div>
                   </div>

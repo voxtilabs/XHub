@@ -1,0 +1,166 @@
+/* Platform and integrations use the same Horizon visual language as the inbox.
+   These styles never change permissions, requests, forms or stored data. */
+.xhub-platform-page { min-width:0; }
+.xhub-platform-page .xhub-page-heading h1 { overflow-wrap:anywhere; }
+.xhub-platform-page .xhub-section-heading { display:flex; align-items:center; gap:10px; }
+.xhub-platform-page .xhub-section-heading>.ph { flex-shrink:0; font-size:23px; }
+.xhub-platform-page .voxia-card { min-width:0; }
+.xhub-platform-page .voxia-card>div { padding:24px; }
+.xhub-platform-page input, .xhub-platform-page select { max-width:100%; }
+.xhub-platform-page select { height:42px; padding-inline:12px; }
+.xhub-platform-page input[type="checkbox"], .xhub-platform-page input[type="range"] { accent-color:#f97916; }
+.xhub-platform-page button:focus-visible, .xhub-platform-page a:focus-visible,
+.xhub-platform-page select:focus-visible { outline:2px solid #f97916; outline-offset:3px; }
+.xhub-platform-page button[aria-pressed="true"] { background:var(--voxia-action-soft); border-color:var(--voxia-action-border); color:var(--voxia-action-text); }
+.xhub-platform-glyph { display:grid; place-items:center; flex-shrink:0; width:50px; height:50px; border-radius:12px; color:var(--voxia-action-text); background:var(--voxia-action-soft); }
+.xhub-platform-glyph .ph { font-size:29px; }
+.xhub-platform-glyph[data-critical="true"] { color:hsl(var(--critico)); background:var(--voxia-bad-soft); }
+.xhub-platform-stats { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px; margin:0 0 26px; }
+.xhub-platform-stat>div { display:grid; grid-template-columns:50px minmax(0,1fr); gap:7px 14px; align-items:center; }
+.xhub-platform-stat .xhub-platform-glyph { grid-column:1; grid-row:1/4; }
+.xhub-platform-stat .xhub-platform-glyph~div { grid-column:2; min-width:0; }
+.xhub-platform-stat .xhub-platform-glyph+div { font:400 12px/1.5 Inter,sans-serif; letter-spacing:0; text-transform:none; }
+.xhub-platform-stat .text-4xl { margin:0; font:600 35px/1.1 Outfit,sans-serif; letter-spacing:-1px; }
+.xhub-platform-description { display:flex; align-items:flex-start; gap:11px; padding:16px 18px; margin-bottom:24px; border-radius:12px; border:1px solid hsl(var(--border)); background:hsl(var(--card)); color:hsl(var(--muted-foreground)); font-size:13px; line-height:1.75; }
+.xhub-platform-description>.ph { font-size:23px; flex-shrink:0; margin-top:1px; color:var(--voxia-action-text); }
+.xhub-plan-row { gap:10px 14px; min-height:52px; flex-wrap:wrap; padding:13px 16px; border:1px solid hsl(var(--border)); background:hsl(var(--secondary)/.5); }
+.xhub-plan-row>span:first-child { min-width:120px; }
+.xhub-plan-row>span:nth-child(2) { flex:1 1 300px; line-height:1.7; }
+.xhub-plan-row button { min-height:32px; }
+.xhub-plan-form { display:flex; align-items:flex-end; flex-wrap:wrap; gap:14px; padding-top:4px; }
+.xhub-plan-form>.voxia-input:first-child { flex:1 1 210px; }
+.xhub-plan-form label { color:hsl(var(--muted-foreground)); }
+.xhub-plan-form>label:has(input[type="checkbox"]) { min-height:44px; }
+.xhub-plan-form .xhub-plan-name { flex:1 1 210px; }
+.xhub-plan-name>span, .xhub-plan-number>span { display:block; margin-bottom:7px; font-size:11px; }
+.xhub-platform-clients { display:grid; gap:16px; }
+.xhub-platform-client-head>a:first-of-type { font:500 19px/1.35 Outfit,sans-serif; color:hsl(var(--foreground)); }
+.xhub-platform-client-head>a:first-of-type:hover { color:var(--voxia-action-text); }
+.xhub-platform-client-head .voxia-button-surface { font-weight:500; }
+.xhub-platform-client-head~div { line-height:1.65; }
+.xhub-client-settings-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:20px; }
+.xhub-client-settings-grid>.xhub-config-users { grid-row:span 2; }
+.xhub-client-settings-grid>:is(.xhub-config-ia,.xhub-config-model) { grid-column:1/-1; }
+.xhub-client-settings-grid>.voxia-card:last-child,
+.xhub-client-settings-grid>div:not(.voxia-card) { grid-column:1/-1; }
+.xhub-client-settings-grid .voxia-card>div>div.flex.items-center.justify-between { flex-wrap:wrap; gap:10px; }
+.xhub-client-settings-grid .rounded-pill { border-radius:8px; }
+.xhub-client-settings-grid .font-mono { overflow-wrap:anywhere; }
+.xhub-client-settings-grid .voxia-card:last-child>div>.space-y-2>div { padding:18px; border-radius:10px; }
+.xhub-client-detail-page .xhub-page-heading>span { font-size:12px; padding:7px 13px; }
+.xhub-client-detail-page .xhub-page-heading h1 { font-size:clamp(34px,4vw,58px); }
+.xhub-probe-form { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr); gap:20px; align-items:end; }
+.xhub-probe-form>label { min-width:0; }
+.xhub-probe-form>label:nth-child(4) { grid-column:1/3; }
+.xhub-probe-form .voxia-input { width:100%; }
+.xhub-probe-form>label>span, .xhub-brand-editor label>span:first-child,
+.xhub-retry-page label>span, .xhub-platform-field-label { display:block; margin-bottom:7px; font-size:12px; font-weight:500; text-transform:none; letter-spacing:0; color:hsl(var(--muted-foreground)); }
+.xhub-probe-result { display:grid; place-items:center; flex-shrink:0; width:32px; height:32px; border-radius:9px; color:hsl(var(--critico)); background:var(--voxia-bad-soft); }
+.xhub-probe-result[data-ok="true"] { color:hsl(var(--exito)); background:var(--voxia-good-soft); }
+.xhub-probe-result .ph { font-size:23px; }
+.xhub-xcontact-page .font-mono { overflow-wrap:anywhere; }
+.xhub-platform-actions button { min-height:36px; }
+.xhub-fleet-summary .voxia-card { background:hsl(var(--card)); }
+.xhub-fleet-summary>div>.flex { gap:18px; }
+.xhub-fleet-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+.xhub-fleet-card .font-mono { font-size:12px; line-height:1.7; overflow-wrap:anywhere; }
+.xhub-fleet-card .xhub-platform-glyph~div>div>div>span:first-child { font:500 18px/1.5 Outfit,sans-serif; }
+.xhub-fleet-card>div>div:last-child { margin-top:20px; }
+.xhub-fleet-card>div>div:last-child>span { padding:5px 9px; font-size:11px; border-radius:6px; }
+.xhub-retry-card { border-left:3px solid hsl(var(--critico)/.65); }
+.xhub-retry-card .font-mono { overflow-wrap:anywhere; }
+.xhub-empty-glyph { display:block; margin:2px auto 14px; font-size:38px; color:hsl(var(--exito)); }
+.xhub-platform-count { display:inline-grid; place-items:center; min-width:26px; height:26px; padding:0 6px; border-radius:7px; background:hsl(var(--secondary)); color:hsl(var(--muted-foreground)); font:500 12px/1 Inter,sans-serif; }
+.xhub-event-options { gap:8px; margin-bottom:20px; }
+.xhub-event-options>button { height:auto; min-height:36px; padding:7px 12px; border-radius:8px; font-size:12px; overflow-wrap:anywhere; text-align:left; }
+.xhub-webhook-endpoint .xhub-platform-glyph { width:42px; height:46px; }
+.xhub-webhook-endpoint .xhub-platform-glyph .ph { font-size:26px; }
+.xhub-webhook-endpoint>div>div.min-w-0 { flex-basis:260px; }
+.xhub-webhook-endpoint>div>div.min-w-0>div:first-child { white-space:normal; overflow-wrap:anywhere; }
+.xhub-webhook-endpoint button { min-height:36px; padding:6px; }
+.xhub-platform-table { border-collapse:separate; border-spacing:0; }
+.xhub-platform-table th { padding:14px 16px; }
+.xhub-platform-table th:first-child { border-radius:8px 0 0 8px; }
+.xhub-platform-table th:last-child { border-radius:0 8px 8px 0; }
+.xhub-platform-table td { border-bottom:1px solid hsl(var(--border)); }
+.xhub-platform-table tbody>tr:last-child td { border-bottom:0; }
+.xhub-platform-table tbody>tr:hover { background:hsl(var(--secondary)/.45); }
+.xhub-platform-table .font-mono { overflow-wrap:anywhere; }
+.xhub-audit-page .xhub-filter-bar { padding:20px; border:1px solid hsl(var(--border)); border-radius:12px; background:hsl(var(--card)); }
+.xhub-audit-page .xhub-filter-bar>div { flex:1 1 140px; min-width:0; }
+.xhub-audit-page .xhub-filter-bar .voxia-input { width:100%; }
+.xhub-brand-editor { gap:28px; padding-top:24px; margin-top:24px; }
+.xhub-brand-editor>div { min-width:0; }
+.xhub-brand-editor>div:first-child { gap:18px; }
+.xhub-brand-editor input[type="color"] { padding:3px; border-radius:8px; cursor:pointer; }
+.xhub-brand-editor input[type="file"] { width:100%; }
+.xhub-brand-preview { margin-top:12px; background:hsl(var(--secondary)/.3); border-radius:12px; }
+.xhub-brand-preview>div:first-child { min-height:76px; height:auto; padding:16px; flex-wrap:wrap; }
+.xhub-brand-preview>div:last-child { min-height:84px; display:flex; align-items:center; padding:22px; }
+@media(max-width:1400px) {
+  .xhub-platform-stats { gap:10px; }
+  .xhub-platform-stat>div { grid-template-columns:1fr; gap:9px; padding:19px!important; }
+  .xhub-platform-stat .xhub-platform-glyph { grid-column:1; grid-row:auto; margin-bottom:3px; width:42px; height:44px; }
+  .xhub-platform-stat .xhub-platform-glyph~div { grid-column:1; }
+}
+@media(max-width:1050px) {
+  .xhub-platform-stats { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .xhub-client-settings-grid, .xhub-fleet-grid { grid-template-columns:1fr; }
+  .xhub-client-settings-grid>.xhub-config-users { grid-row:auto; }
+  .xhub-platform-client-head>div.flex-1 { display:none; }
+  .xhub-platform-client-head>a:first-of-type { flex:1 1 calc(100% - 180px); }
+  .xhub-probe-form { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .xhub-probe-form>label:nth-child(4) { grid-column:auto; }
+}
+@media(max-width:620px) {
+  .xhub-platform-page .voxia-card>div { padding:20px; }
+  .xhub-platform-page .xhub-section-heading { font-size:18px; }
+  .xhub-platform-page .voxia-input, .xhub-platform-page select { font-size:16px; }
+  .xhub-platform-page .voxia-input::placeholder { font-size:12px; }
+  .xhub-platform-page .xhub-page-heading .voxia-button-primary { max-width:100%; font-size:13px; }
+  .xhub-platform-stats { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:20px; }
+  .xhub-platform-stat>div { padding:16px!important; }
+  .xhub-platform-stat .text-4xl { font-size:31px; }
+  .xhub-platform-stat:last-child { grid-column:1/-1; }
+  .xhub-platform-stat:last-child>div { grid-template-columns:44px minmax(0,1fr); gap:5px 14px; }
+  .xhub-platform-stat:last-child .xhub-platform-glyph { grid-column:1; grid-row:1/4; }
+  .xhub-platform-stat:last-child .xhub-platform-glyph~div { grid-column:2; }
+  .xhub-plan-form { gap:14px 12px; }
+  .xhub-plan-form>.voxia-input:first-child { flex-basis:100%; }
+  .xhub-plan-form>label { flex:1 1 40%; }
+  .xhub-plan-form>.xhub-plan-name { flex-basis:100%; }
+  .xhub-plan-form .xhub-plan-number input { width:100%; }
+  .xhub-plan-form>input[type="number"] { width:calc(50% - 6px); }
+  .xhub-plan-form>.voxia-button-surface { width:100%; }
+  .xhub-plan-row>span:first-child { flex-basis:100%; }
+  .xhub-plan-row>span:nth-child(2) { flex-basis:100%; font-size:12px; }
+  .xhub-plan-row button { margin-left:0; }
+  .xhub-platform-client-head { gap:10px; }
+  .xhub-platform-client-head .xhub-platform-glyph { width:40px; height:43px; }
+  .xhub-platform-client-head>a:first-of-type { flex-basis:calc(100% - 65px); }
+  .xhub-platform-client-head>.voxia-button-surface { flex:1 1 40%; }
+  .xhub-platform-client-head>select { width:100%; }
+  .xhub-platform-description { padding:16px; font-size:12px; }
+  .xhub-client-settings-grid { gap:16px; }
+  .xhub-client-settings-grid .voxia-card:last-child>div>.space-y-2>div { padding:14px; }
+  .xhub-probe-form { grid-template-columns:1fr; gap:16px; }
+  .xhub-xcontact-page select { width:100%; min-width:0; }
+  .xhub-xcontact-page .min-w-\[160px\] { min-width:0; flex-basis:100%; }
+  .xhub-retry-page label { min-width:0; width:100%; flex-basis:100%; }
+  .xhub-retry-page label+.voxia-button-surface { width:100%; }
+  .xhub-webhook-endpoint>div { gap:12px; }
+  .xhub-webhook-endpoint>div>div.min-w-0 { flex-basis:calc(100% - 60px); }
+  .xhub-webhook-endpoint>div>div.min-w-0>div:first-child { font-size:12px; }
+  .xhub-platform-table, .xhub-platform-table tbody { display:block; }
+  .xhub-platform-table thead { display:none; }
+  .xhub-platform-table tbody>tr { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:17px 12px; padding:20px 0; border-bottom:1px solid hsl(var(--border)); }
+  .xhub-platform-table tbody>tr:first-child { padding-top:0; }
+  .xhub-platform-table tbody>tr:last-child { padding-bottom:0; border-bottom:0; }
+  .xhub-platform-table td:not([colspan]) { display:block; height:auto; padding:0; border:0; white-space:normal; overflow-wrap:anywhere; }
+  .xhub-platform-table td[data-label]::before { content:attr(data-label); display:block; font:400 10px/1.5 Inter,sans-serif; margin-bottom:5px; color:hsl(var(--muted-foreground)); }
+  .xhub-platform-table td[colspan], .xhub-platform-table td[data-label="Evento"], .xhub-platform-table td[data-label="Actor"] { grid-column:1/-1; }
+  .xhub-brand-editor { grid-template-columns:1fr; gap:24px; }
+  .xhub-audit-page .xhub-filter-bar { padding:16px; gap:16px; }
+  .xhub-audit-page .xhub-filter-bar>div { flex-basis:100%; }
+  .xhub-audit-page .xhub-filter-bar>button { flex:1 1 100%; }
+}

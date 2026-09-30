@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AppShell } from "@/components/app-shell";
+import { Icon } from "@/components/icon";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import { useYo } from "@/lib/permisos";
 import { getBandeja, cambiarEstado, getAgentes, TRANS, ESTADOS, type Bandeja, type TicketRow, type Estado, type Prioridad } from "@/lib/tickets";
@@ -68,29 +69,39 @@ function Contenido() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-7">
-      <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+    <div className="xhub-page xhub-inbox-page xhub-live-inbox">
+      <div className="xhub-page-heading">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Bandeja</h1>
-          <div className="text-muted-foreground text-sm mt-0.5">
+          <div className="xhub-eyebrow">Centro de atención</div>
+          <h1>Bandeja</h1>
+          <p>Cada conversación, a tiempo y en su lugar.</p>
+          <div className="xhub-ticket-live-status">
             {cargando ? "cargando…" : <>{tickets.length} tickets · {data?.sinAsignar ?? 0} sin asignar · {(data?.vencidos ?? 0) > 0 ? <span className="text-[hsl(var(--critico))]">{data?.vencidos} con SLA vencido</span> : "SLA al día"}</>}
           </div>
         </div>
-        {puedeGestionar && <Button size="sm" asChild><Link href="/tickets/nuevo">+ Nuevo ticket</Link></Button>}
+        {puedeGestionar && <Button size="sm" asChild><Link href="/tickets/nuevo"><Icon name="plus" weight="regular" />Nuevo ticket</Link></Button>}
       </div>
 
-      {error && <div className="mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}>▲ {error}</div>}
+      <div className="xhub-inbox-summary" aria-label="Resumen de la bandeja">
+        <div className="xhub-inbox-metric"><span className="xhub-metric-glyph"><Icon name="chats-circle" weight="regular" /></span><div><strong>{cargando ? "—" : tickets.length}</strong><span>Tickets en bandeja</span></div></div>
+        <div className="xhub-inbox-metric"><span className="xhub-metric-glyph"><Icon name="clock" weight="regular" /></span><div><strong>{cargando ? "—" : ["nuevo", "abierto", "pendiente"].reduce((n, e) => n + (data?.porEstado[e] ?? 0), 0)}</strong><span>Por resolver</span></div></div>
+        <div className="xhub-inbox-metric"><span className="xhub-metric-glyph"><Icon name="user" weight="regular" /></span><div><strong>{cargando ? "—" : data?.sinAsignar ?? 0}</strong><span>Sin asignar</span></div></div>
+        <div className="xhub-inbox-metric" data-tone="critical"><span className="xhub-metric-glyph"><Icon name="warning-circle" weight="regular" /></span><div><strong>{cargando ? "—" : data?.vencidos ?? 0}</strong><span>Con SLA vencido</span></div></div>
+      </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+      {error && <div role="alert" className="xhub-ticket-alert mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}><Icon name="warning-circle" weight="regular" />{error}</div>}
+
+      <section className="xhub-inbox-surface" aria-label="Tickets">
+      <div className="xhub-filter-bar flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <div className="relative w-full sm:flex-1 sm:max-w-[340px]">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
+          <Icon name="magnifying-glass" weight="regular" className="absolute left-3 top-1/2 -translate-y-1/2 text-[22px] text-muted-foreground pointer-events-none" />
           <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por asunto o #…" className="h-9 pl-9 rounded-pill w-full" aria-label="Buscar tickets" />
         </div>
-        <div className="inline-flex gap-0.5 bg-secondary/60 p-0.5 rounded-md border border-border self-start sm:self-auto sm:ml-auto">
+        <div className="xhub-segmented-control inline-flex gap-0.5 bg-secondary/60 p-0.5 rounded-md border border-border self-start sm:self-auto sm:ml-auto">
           {(["lista", "tablero"] as const).map((v) => (
             <button key={v} onClick={() => setVista(v)} aria-pressed={vista === v}
               className={"inline-flex items-center gap-1.5 px-3 h-8 rounded-[0.4rem] text-[13px] font-medium capitalize " + (vista === v ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground")}>
-              {v === "lista" ? "Lista" : "Tablero"}
+              <Icon name={v === "lista" ? "list-bullets" : "kanban"} weight="regular" />{v === "lista" ? "Lista" : "Tablero"}
             </button>
           ))}
         </div>
@@ -98,16 +109,16 @@ function Contenido() {
 
       {vista === "lista" ? (
         <>
-          <div className="flex gap-2 mb-4 flex-wrap items-center">
+          <div className="xhub-ticket-filters xhub-live-filters flex gap-2 mb-4 flex-wrap items-center">
             {([["mios", "Míos"], ["sin", "Sin asignar"]] as const).map(([v, l]) => (
-              <button key={v} onClick={() => setVistaRapida(vistaRapida === v ? "todos" : v)}
+              <button key={v} onClick={() => setVistaRapida(vistaRapida === v ? "todos" : v)} aria-pressed={vistaRapida === v}
                 className={"inline-flex items-center gap-1.5 px-3 h-8 rounded-pill text-[13px] font-medium border " + (vistaRapida === v ? "bg-[hsl(var(--senal)/0.15)] border-[hsl(var(--senal)/0.5)] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
-                {l}
+                <Icon name={v === "mios" ? "user-circle" : "user"} weight="regular" />{l}
               </button>
             ))}
             <span className="w-px h-6 bg-border mx-1" />
             {FILTROS.map((x) => (
-              <button key={x} onClick={() => setFiltro(x)}
+              <button key={x} onClick={() => setFiltro(x)} aria-pressed={filtro === x}
                 className={"inline-flex items-center gap-1.5 px-3 h-8 rounded-pill text-[13px] font-medium border capitalize " + (filtro === x ? "bg-secondary border-border text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
                 {x === "todos" ? "Todos" : x}
                 <span className="tabular-nums text-[10px] rounded-pill px-1.5 py-px" style={{ background: filtro === x ? "hsl(var(--senal)/0.2)" : "hsl(var(--secondary))" }}>{cnt(x)}</span>
@@ -115,9 +126,9 @@ function Contenido() {
             ))}
           </div>
           {/* Móvil: lista de tarjetas (la tabla de 7 columnas es ilegible en 390px) */}
-          <div className="sm:hidden flex flex-col gap-2">
+          <div className="xhub-ticket-mobile-list sm:hidden flex flex-col gap-2">
             {rows.map((t) => (
-              <Link key={t.id} href={`/tickets/${t.id}`} className="block rounded-lg border border-border bg-card p-3 active:bg-secondary/50">
+              <Link key={t.id} href={`/tickets/${t.id}`} className="xhub-ticket-mobile-card block rounded-lg border border-border bg-card p-3 active:bg-secondary/50">
                 <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                   <span className="font-mono text-[11px] text-muted-foreground">#{t.numero}</span>
                   <Badge rol={priT[t.prioridad]} className="text-[9.5px] px-1.5 py-0">{t.prioridad}</Badge>
@@ -125,7 +136,7 @@ function Contenido() {
                   {t.sla_incumplido && <Badge rol="critico" className="text-[9.5px] px-1.5 py-0">SLA vencido</Badge>}
                 </div>
                 <div className="font-medium text-[14px] leading-snug">{t.asunto}</div>
-                <div className="text-[11.5px] text-muted-foreground mt-1 truncate">{nombreAgente(t) ?? "Sin asignar"} · {t.canal_origen ?? "—"}</div>
+                <div className="xhub-ticket-mobile-meta text-[11.5px] text-muted-foreground mt-1"><Icon name="user" weight="regular" />{nombreAgente(t) ?? "Sin asignar"}<span>·</span>{t.canal_origen ?? "—"}<Icon name="arrow-up-right" weight="regular" /></div>
               </Link>
             ))}
             {!cargando && rows.length === 0 && <div className="p-8 text-center text-muted-foreground text-sm">No hay tickets{busca ? " que coincidan" : " todavía"}.</div>}
@@ -135,7 +146,7 @@ function Contenido() {
           {/* Desktop: tabla */}
           <Card className="hidden sm:block">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="xhub-data-table xhub-live-ticket-table w-full text-sm">
                 <thead><tr className="text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border">
                   <th className="p-3 font-black">#</th><th className="p-3 font-black">Asunto</th><th className="p-3 font-black">Prioridad</th><th className="p-3 font-black">Estado</th><th className="p-3 font-black">Agente</th><th className="p-3 font-black">Canal</th><th className="p-3 font-black">SLA</th>
                 </tr></thead>
@@ -143,12 +154,12 @@ function Contenido() {
                   {rows.map((t) => (
                     <tr key={t.id} onClick={() => router.push(`/tickets/${t.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/40 cursor-pointer">
                       <td className="p-3 tabular-nums text-muted-foreground"><Link href={`/tickets/${t.id}`} className="block">#{t.numero}</Link></td>
-                      <td className="p-3"><Link href={`/tickets/${t.id}`} className="block"><div className="font-medium">{t.asunto}</div>{t.resumen && <div className="text-xs text-muted-foreground truncate max-w-[380px]">{t.resumen}</div>}</Link></td>
+                      <td className="p-3"><Link href={`/tickets/${t.id}`} className="block"><div className="xhub-ticket-subject font-medium">{t.asunto}</div>{t.resumen && <div className="xhub-ticket-summary text-xs text-muted-foreground truncate max-w-[380px]">{t.resumen}</div>}</Link></td>
                       <td className="p-3"><Badge rol={priT[t.prioridad]}>{t.prioridad}</Badge></td>
                       <td className="p-3"><Badge rol={estT[t.estado]}>{t.estado}</Badge></td>
                       <td className="p-3 text-[13px]">{nombreAgente(t) ?? <span className="text-[hsl(var(--critico))] text-xs font-semibold">Sin asignar</span>}</td>
-                      <td className="p-3 text-muted-foreground">{t.canal_origen ?? "—"}</td>
-                      <td className="p-3">{t.sla_incumplido ? <Badge rol="critico">vencido</Badge> : <span className="text-muted-foreground text-xs">en plazo</span>}</td>
+                      <td className="p-3 text-muted-foreground"><span className="xhub-ticket-channel"><Icon name={t.canal_origen === "email" ? "envelope" : t.canal_origen === "telefono" || t.canal_origen === "llamada" ? "phone" : t.canal_origen === "whatsapp" ? "whatsapp-logo" : "chat-circle"} weight="regular" />{t.canal_origen ?? "—"}</span></td>
+                      <td className="p-3">{t.sla_incumplido ? <Badge rol="critico"><Icon name="warning-circle" weight="regular" />vencido</Badge> : <span className="xhub-ticket-channel text-muted-foreground text-xs"><Icon name="clock" weight="regular" />en plazo</span>}</td>
                     </tr>
                   ))}
                   {!cargando && rows.length === 0 && <tr><td colSpan={7} className="p-10 text-center text-muted-foreground text-sm">No hay tickets{busca ? " que coincidan" : " todavía"}. {puedeGestionar && !busca && <Link href="/tickets/nuevo" className="text-[hsl(var(--senal))] underline">Crea el primero</Link>}</td></tr>}
@@ -159,7 +170,7 @@ function Contenido() {
           </Card>
         </>
       ) : (
-        <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="xhub-ticket-board overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
           <div className="flex gap-3 items-start w-max">
             {ESTADOS.map((est) => {
               const items = tickets.filter((t) => t.estado === est && match(t));
@@ -171,7 +182,7 @@ function Contenido() {
                   onDragOver={(e) => { if (valido) { e.preventDefault(); setSobre(est); } }}
                   onDragLeave={() => setSobre((s) => (s === est ? null : s))}
                   onDrop={(e) => { e.preventDefault(); if (dragId != null) mover(dragId, est); setSobre(null); }}
-                  className={"w-[80vw] max-w-[300px] shrink-0 sm:w-[220px] sm:max-w-none flex flex-col rounded-md border min-h-[130px] transition-colors " + (invalido ? "opacity-40 border-border " : "") + (valido ? "border-[hsl(var(--exito)/0.7)] " : "border-border ") + (valido && sobre === est ? "bg-[hsl(var(--exito)/0.1)] " : "bg-card ")}>
+                  className={"xhub-ticket-board-column w-[80vw] max-w-[300px] shrink-0 sm:w-[220px] sm:max-w-none flex flex-col rounded-md border min-h-[130px] transition-colors " + (invalido ? "opacity-40 border-border " : "") + (valido ? "border-[hsl(var(--exito)/0.7)] " : "border-border ") + (valido && sobre === est ? "bg-[hsl(var(--exito)/0.1)] " : "bg-card ")}>
                   <div className="flex items-center gap-2 px-3.5 py-3 border-b border-border">
                     <span className="h-2 w-2 rounded-full" style={{ background: `hsl(var(${estDot[est]}))` }} />
                     <span className="font-semibold text-[13px] capitalize">{est}</span>
@@ -182,7 +193,7 @@ function Contenido() {
                       <div key={t.id} draggable={puedeGestionar}
                         onDragStart={() => { setDragFrom(t.estado); setDragId(t.id); }}
                         onDragEnd={() => { setDragFrom(null); setDragId(null); setSobre(null); }}
-                        className={"rounded-[0.55rem] border bg-secondary/50 p-2.5 hover:-translate-y-px hover:shadow-lg transition " + (puedeGestionar ? "cursor-grab active:cursor-grabbing " : "") + (t.sla_incumplido ? "border-l-[3px] border-l-[hsl(var(--critico))] " : "border-border ") + (dragId === t.id ? "opacity-40 " : "")}>
+                        className={"xhub-ticket-board-card rounded-[0.55rem] border bg-secondary/50 p-2.5 hover:-translate-y-px hover:shadow-lg transition " + (puedeGestionar ? "cursor-grab active:cursor-grabbing " : "") + (t.sla_incumplido ? "border-l-[3px] border-l-[hsl(var(--critico))] " : "border-border ") + (dragId === t.id ? "opacity-40 " : "")}>
                         <div className="flex items-center gap-2 mb-1.5">
                           <Link href={`/tickets/${t.id}`} className="font-mono text-[10.5px] text-muted-foreground hover:text-foreground">#{t.numero}</Link>
                           <Badge rol={priT[t.prioridad]} className="ml-auto text-[9.5px] px-1.5 py-0">{t.prioridad}</Badge>
@@ -199,9 +210,10 @@ function Contenido() {
           </div>
         </div>
       )}
+      </section>
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-pill border border-border bg-secondary text-sm shadow-2xl">
+        <div role="status" className="xhub-ticket-toast fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-pill border border-border bg-secondary text-sm shadow-2xl">
           <span className="h-2 w-2 rounded-full flex-none" style={{ background: `hsl(var(${toast.ok ? "--exito" : "--critico"}))` }} />
           <span>{toast.msg}</span>
         </div>

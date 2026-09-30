@@ -1,14 +1,14 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-const badgeVariants = cva("inline-flex items-center rounded-pill border px-2.5 py-0.5 text-xs font-semibold",
+const badgeVariants = cva("inline-flex items-center gap-2 rounded-pill border px-3 py-1 text-[11px] font-medium leading-5",
   { variants: { rol: {
-      exito: "border-transparent text-[hsl(var(--exito))]",
-      senal: "border-transparent text-[hsl(var(--senal))]",
-      accion: "border-transparent text-primary",
-      aviso: "border-transparent text-[hsl(var(--aviso))]",
-      critico: "border-transparent text-[hsl(var(--critico))]",
-      neutro: "border-border text-muted-foreground",
+      exito: "border-[var(--voxia-good-border)] bg-[var(--voxia-good-soft)] text-[hsl(var(--exito))]",
+      senal: "border-[var(--xhub-signal-border)] bg-[var(--xhub-signal-soft)] text-[hsl(var(--senal))]",
+      accion: "border-[var(--voxia-action-border)] bg-[var(--voxia-action-soft)] text-[var(--voxia-action-text)]",
+      aviso: "border-[var(--voxia-warn-border)] bg-[var(--voxia-warn-soft)] text-[hsl(var(--aviso))]",
+      critico: "border-[var(--voxia-bad-border)] bg-[var(--voxia-bad-soft)] text-[hsl(var(--critico))]",
+      neutro: "border-border bg-background text-muted-foreground",
     } }, defaultVariants: { rol: "neutro" } });
 export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
 function Badge({ className, rol, ...props }: BadgeProps) { return <div className={cn(badgeVariants({ rol }), className)} {...props} />; }
