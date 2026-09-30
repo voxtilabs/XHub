@@ -13,6 +13,7 @@ import { consumoDelDia } from "@xhub/cuotas";
 import { fijarConfigTriage, configTriage } from "@xhub/modulo-tickets";
 import { conCliente } from "@xhub/db";
 import { auth } from "../auth.js";
+import { probarXContact } from "../xcontact-probe.js";
 import { firmarSoporte, leerCookieSoporte, cookieSoporte, cookieSoporteVacia } from "../soporte.js";
 import * as E from "../esquemas.js";
 
@@ -158,6 +159,13 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       });
       await auditar({ clienteId: id, actorTipo: "plataforma", accion: "plan.aplicado", recurso: "cliente", recursoId: id, resultado: "ok", metadata: { plan: res.plan } });
       return { ok: true, ...res };
+    });
+
+    // Probador de conectividad XContact: test de una instancia antes de conectarla.
+    admin.post("/xcontact/probe", async (req) => {
+      const b = req.body as { host?: string; usuario?: string; password?: string };
+      if (!b?.host?.trim() || !b?.usuario?.trim()) throw new ErrorApi("VALIDACION", "Faltan host y usuario");
+      return probarXContact({ host: b.host.trim(), usuario: b.usuario.trim(), password: b.password || "" });
     });
 
     // PANORAMA: el pulso de TODA la plataforma de un vistazo (vista 360 del superadmin).
