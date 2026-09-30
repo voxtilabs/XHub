@@ -8,7 +8,8 @@ import { AppShell } from "@/components/app-shell";
 import { apiFetch } from "@/lib/api";
 
 type Resumen = Record<string, boolean | number>;
-type Instancia = { id: string; nombre: string; host: string; version_api: string; estado_salud: string; ultima_prueba: string | null; resumen: Resumen | null; cliente_id: string | null; cliente: string | null };
+type Instancia = { id: string; nombre: string; host: string; version_api: string; estado_salud: string; ultima_prueba: string | null; resumen: Resumen | null; cliente_id: string | null; cliente: string | null;
+  sondeo_activo?: boolean; ultimo_sondeo?: string | null; deriva?: number | null; deriva_reparada_en?: string | null; muertos?: number; fallos_consecutivos?: number; breaker_abierto?: boolean; ultima_causa?: string | null };
 type Salud = { rollup: { total: number; operativas: number; parciales: number; caidas: number; sinProbar: number; general: string }; instancias: Instancia[] };
 
 const ROL: Record<string, "exito" | "aviso" | "critico" | "neutro"> = { operativa: "exito", parcial: "aviso", degradada: "aviso", caida: "critico", sin_probar: "neutro", sin_instancias: "neutro" };
@@ -75,11 +76,21 @@ export default function SaludXContact() {
                       ))}
                       {!i.resumen && <span className="text-[11px] text-muted-foreground">sin scorecard — probá la instancia</span>}
                     </div>
+                    {/* Capa de sincronización (#59/#61/#53): última sync, muertos, deriva, breaker. */}
+                    <div className="flex gap-x-4 gap-y-1 flex-wrap mt-2 pt-2 border-t border-border text-[11.5px] text-muted-foreground tabular-nums">
+                      <span>sondeo: <b className={i.sondeo_activo ? "text-[hsl(var(--exito))]" : ""}>{i.sondeo_activo ? "activo" : "apagado"}</b></span>
+                      <span>última sync: {i.ultimo_sondeo ? i.ultimo_sondeo.slice(0, 16).replace("T", " ") : "—"}</span>
+                      <span>deriva: <b className={i.deriva ? "text-[hsl(var(--aviso))]" : ""}>{i.deriva ?? "—"}</b></span>
+                      <span>muertos: <b className={i.muertos ? "text-[hsl(var(--critico))]" : ""}>{i.muertos ?? 0}</b></span>
+                      {i.breaker_abierto && <span className="text-[hsl(var(--critico))]">⛒ cortacircuitos abierto</span>}
+                      {!i.breaker_abierto && (i.fallos_consecutivos ?? 0) > 0 && <span className="text-[hsl(var(--aviso))]">{i.fallos_consecutivos} fallo(s) seguidos</span>}
+                    </div>
+                    {i.ultima_causa && <div className="text-[11.5px] mt-1" style={{ color: "hsl(var(--critico))" }}>▲ {i.ultima_causa}</div>}
                   </CardContent></Card>
                 ))}
               </div>
             )}
-            <p className="text-[12px] text-muted-foreground mt-4">Pendiente de la capa de sincronización (#59): última sync exitosa, latencia p95, cola de muertos y deriva. Hoy el tablero refleja el último <b>probe</b> de cada instancia.</p>
+            <p className="text-[12px] text-muted-foreground mt-4">El tablero une el último <b>probe</b> de cada instancia con su capa de sincronización: última sync, cola de muertos, deriva y estado del cortacircuitos. <code className="font-mono">sin_probar</code> ensucia el estado general a propósito — no saber no es estar bien.</p>
           </>
         )}
       </div>
