@@ -1,4 +1,5 @@
 "use client";
+import { Icon } from "@/components/icon";
 import type { ReactNode } from "react";
 import { useYo } from "@/lib/permisos";
 
@@ -9,7 +10,7 @@ import { useYo } from "@/lib/permisos";
  */
 export function RequierePermiso({ permiso, children }: { permiso: string; children: ReactNode }) {
   const { yo, cargando, puede } = useYo();
-  if (cargando) return <div className="max-w-3xl mx-auto p-10 text-sm text-muted-foreground font-mono">Cargando permisos…</div>;
+  if (cargando) return <div className="max-w-3xl mx-auto p-10 flex items-center gap-3 text-sm text-muted-foreground font-mono"><Icon name="spinner-gap" className="animate-spin text-xl" />Cargando permisos…</div>;
   // Sin identidad de cliente (p.ej. plataforma sin sesión de cliente): no gateamos aquí.
   if (!yo) return <>{children}</>;
   if (puede(permiso)) return <>{children}</>;
@@ -17,7 +18,7 @@ export function RequierePermiso({ permiso, children }: { permiso: string; childr
     <div className="max-w-lg mx-auto p-6">
       <div className="rounded-lg border border-border bg-card p-6 text-center">
         <div className="mx-auto mb-3 h-11 w-11 rounded-full grid place-items-center" style={{ background: "hsl(var(--aviso)/0.12)" }}>
-          <svg className="h-5 w-5" style={{ color: "hsl(var(--aviso))" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <Icon name="lock-key" className="text-xl text-[hsl(var(--aviso))]" />
         </div>
         <div className="font-medium">No tienes acceso a esta sección</div>
         <p className="text-[13px] text-muted-foreground mt-1.5">

@@ -1,15 +1,22 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import "./voxia-layout.css";
+import "./workspace.css";
+import "./horizon-workspace.css";
+import "./login-horizon.css";
+import type { Metadata, Viewport } from "next";
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
 export const metadata: Metadata = { title: "xHub · Panel", description: "Panel de control central de X5 Soluciones" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;900&display=swap" rel="stylesheet" />
+        <link rel="preload" href="/voxia/fonts/inter-400.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/voxia/fonts/outfit-650.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/voxia/fonts/mono-500.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         {/* Fija el tema ANTES de pintar y marca el color-scheme para que el navegador
             no muestre un flash blanco al navegar (el bug del "flashback"). */}
-        <script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('xhub_tema')||'oscuro';document.documentElement.setAttribute('data-tema',t);document.documentElement.style.colorScheme=(t==='claro'?'light':'dark')}catch(e){}" }} />
+        <script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('xhub_tema')||'claro';document.documentElement.setAttribute('data-tema',t);document.documentElement.style.colorScheme=(t==='claro'?'light':'dark')}catch(e){document.documentElement.setAttribute('data-tema','claro')}" }} />
+        <script dangerouslySetInnerHTML={{ __html: "try{document.documentElement.setAttribute('data-login-tema',localStorage.getItem('xhub_login_tema')==='oscuro'?'oscuro':'claro')}catch(e){}" }} />
       </head>
       <body>{children}</body>
     </html>

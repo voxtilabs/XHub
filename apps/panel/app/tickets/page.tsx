@@ -1,4 +1,5 @@
 "use client";
+import { Icon } from "@/components/icon";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -76,7 +77,7 @@ export default function Bandeja() {
       const cierra = hacia === "resuelto" || hacia === "cerrado";
       return { ...x, estado: hacia, sla: cierra ? "—" : x.slaPct == null ? "reabierto" : x.sla, vencido: cierra ? false : x.vencido, slaPct: cierra ? null : x.slaPct == null ? 30 : x.slaPct };
     }));
-    setToast({ ok: true, msg: `Ticket #${id}: ${de} → ${hacia} · cambiarEstado() validó la transición` });
+    setToast({ ok: true, msg: `Ticket #${id}: ${de} → ${hacia}` });
   }
 
   const rows = tickets.filter((t) => (filtro === "todos" || t.estado === filtro) && match(t));
@@ -86,28 +87,45 @@ export default function Bandeja() {
       <AppShell />
 
       <RequierePermiso permiso="bandeja.ver">
-      <div className="max-w-6xl mx-auto p-4 sm:p-7">
-        <div className="flex items-center justify-between mb-5">
+      <div className="xhub-page xhub-inbox-page">
+        <div className="xhub-page-heading">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Bandeja</h1>
-            <div className="text-muted-foreground text-sm mt-0.5">3 sin asignar · <span className="text-[hsl(var(--critico))]">1 con SLA vencido</span></div>
+            <div className="xhub-eyebrow">CENTRO DE ATENCIÓN</div>
+            <h1>Bandeja</h1>
+            <p>Cada conversación, a tiempo y en su lugar.</p>
           </div>
-          <Button size="sm" onClick={() => (location.href = "/tickets/nuevo")}>+ Nuevo ticket</Button>
+          <Button size="sm" onClick={() => (location.href = "/tickets/nuevo")}><Icon name="plus" weight="regular" /> Nuevo ticket</Button>
         </div>
 
+        <div className="xhub-inbox-summary">
+          <div className="xhub-inbox-metric"><span className="xhub-metric-glyph"><Icon name="chats-circle" weight="regular" /></span><div><strong>{tickets.length}</strong><span>Tickets en bandeja</span></div></div>
+          <div className="xhub-inbox-metric"><span className="xhub-metric-glyph"><Icon name="clock" weight="regular" /></span><div><strong>{tickets.filter(t => t.estado !== "resuelto" && t.estado !== "cerrado").length}</strong><span>Por resolver</span></div></div>
+          <div className="xhub-inbox-metric"><span className="xhub-metric-glyph"><Icon name="user" weight="regular" /></span><div><strong>{tickets.filter(t => !t.agente).length}</strong><span>Sin asignar</span></div></div>
+          <div className="xhub-inbox-metric" data-tone="critical"><span className="xhub-metric-glyph"><Icon name="warning-circle" weight="regular" /></span><div><strong>{tickets.filter(t => t.vencido).length}</strong><span>Con SLA vencido</span></div></div>
+        </div>
+
+        <div className="xhub-inbox-surface">
         {/* barra de herramientas — apila en móvil, en fila desde sm */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+        <div className="xhub-filter-bar flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
           <div className="relative w-full sm:flex-1 sm:max-w-[340px]">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
+            <Icon name="magnifying-glass" weight="regular" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-muted-foreground pointer-events-none" />
             <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por asunto, persona o #…" className="h-9 pl-9 rounded-pill w-full" aria-label="Buscar tickets" />
           </div>
-          <div className="inline-flex gap-0.5 bg-secondary/60 p-0.5 rounded-md border border-border self-start sm:self-auto sm:ml-auto">
+          {vista === "lista" && <div className="xhub-ticket-filters flex flex-wrap" aria-label="Filtrar por estado">
+            {FILTROS.map((x) => (
+              <button key={x} onClick={() => setFiltro(x)} aria-pressed={filtro === x}
+                className={"inline-flex items-center gap-1.5 px-3 h-8 rounded-pill text-[13px] font-medium border capitalize " + (filtro === x ? "bg-[var(--voxia-action-soft)] border-[var(--voxia-action-border)] text-[var(--voxia-action-text)]" : "border-transparent text-muted-foreground hover:text-foreground")}>
+                {x === "todos" ? "Todos" : x}<span className="tabular-nums text-[10px] rounded-pill px-1.5 py-px" style={{ background: filtro === x ? "var(--voxia-action-border)" : "hsl(var(--secondary))" }}>{cnt(x)}</span>
+              </button>
+            ))}
+          </div>}
+          <div className="xhub-segmented-control inline-flex gap-0.5 bg-secondary/60 p-0.5 rounded-md border border-border self-start sm:self-auto sm:ml-auto">
             {(["lista", "tablero"] as const).map((v) => (
               <button key={v} onClick={() => setVista(v)} aria-pressed={vista === v}
-                className={"inline-flex items-center gap-1.5 px-3 h-8 rounded-[0.4rem] text-[13px] font-medium capitalize " + (vista === v ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground")}>
+                className={"inline-flex items-center gap-1.5 px-3 h-8 rounded-[0.4rem] text-[13px] font-medium capitalize " + (vista === v ? "bg-[var(--voxia-action-soft)] text-[var(--voxia-action-text)]" : "text-muted-foreground hover:text-foreground")}>
                 {v === "lista"
-                  ? <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
-                  : <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><rect x="3" y="4" width="5" height="16" rx="1.3" /><rect x="10" y="4" width="5" height="11" rx="1.3" /><rect x="17" y="4" width="4" height="14" rx="1.3" /></svg>}
+                  ? <Icon name="list-bullets" weight="regular" className="text-base" />
+                  : <Icon name="kanban" weight="regular" className="text-base" />}
                 {v === "lista" ? "Lista" : "Tablero"}
               </button>
             ))}
@@ -116,32 +134,23 @@ export default function Bandeja() {
 
         {vista === "lista" ? (
           <>
-            <div className="flex gap-2 mb-4 flex-wrap">
-              {FILTROS.map((x) => (
-                <button key={x} onClick={() => setFiltro(x)}
-                  className={"inline-flex items-center gap-1.5 px-3 h-8 rounded-pill text-[13px] font-medium border capitalize " + (filtro === x ? "bg-secondary border-border text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
-                  {x === "todos" ? "Todos" : x}
-                  <span className="tabular-nums text-[10px] rounded-pill px-1.5 py-px" style={{ background: filtro === x ? "hsl(var(--senal)/0.2)" : "hsl(var(--secondary))" }}>{cnt(x)}</span>
-                </button>
-              ))}
-            </div>
             <Card>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead><tr className="text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border">
-                    <th className="p-3 font-black">#</th><th className="p-3 font-black">Asunto</th><th className="p-3 font-black">Prioridad</th>
-                    <th className="p-3 font-black">Estado</th><th className="p-3 font-black">Agente</th><th className="p-3 font-black">Equipo</th><th className="p-3 font-black">SLA</th>
+                <table className="xhub-data-table w-full text-sm">
+                  <thead><tr className="text-left text-[10px] font-medium uppercase tracking-widest text-muted-foreground border-b border-border">
+                    <th className="p-3 font-medium">#</th><th className="p-3 font-medium">Asunto</th><th className="p-3 font-medium">Prioridad</th>
+                    <th className="p-3 font-medium">Estado</th><th className="p-3 font-medium">Agente</th><th className="p-3 font-medium">Equipo</th><th className="p-3 font-medium">SLA</th>
                   </tr></thead>
                   <tbody>
                     {rows.map((t) => (
                       <tr key={t.n} className="border-b border-border last:border-0 hover:bg-secondary/40 cursor-pointer" onClick={() => (location.href = "/tickets/detalle")}>
                         <td className="p-3 tabular-nums text-muted-foreground">#{t.n}</td>
-                        <td className="p-3"><div className="font-medium">{t.asunto}</div><div className="text-xs text-muted-foreground">{t.persona} · {t.canal}</div></td>
-                        <td className="p-3"><Badge rol={priT[t.prioridad]}>{t.prioridad}</Badge></td>
-                        <td className="p-3"><Badge rol={estT[t.estado]}>{t.estado}</Badge></td>
-                        <td className="p-3">{t.agente ?? <span className="text-[hsl(var(--critico))] text-xs font-semibold">Sin asignar</span>}</td>
-                        <td className="p-3 text-muted-foreground">{t.equipo}</td>
-                        <td className="p-3"><SlaCelda t={t} /></td>
+                        <td className="p-3"><a href="/tickets/detalle" className="xhub-ticket-subject" onClick={e => e.stopPropagation()}>{t.asunto}</a><div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Icon name={t.canal === "whatsapp" ? "whatsapp-logo" : t.canal === "email" ? "envelope" : t.canal === "llamada" ? "phone" : "chat-circle"} weight="regular" />{t.persona} · {t.canal}</div></td>
+                        <td className="p-3" data-label="Prioridad"><Badge rol={priT[t.prioridad]}>{t.prioridad}</Badge></td>
+                        <td className="p-3" data-label="Estado"><Badge rol={estT[t.estado]}>{t.estado}</Badge></td>
+                        <td className="p-3" data-label="Agente">{t.agente ?? <span className="text-[hsl(var(--critico))] text-xs font-semibold">Sin asignar</span>}</td>
+                        <td className="p-3 text-muted-foreground" data-label="Equipo">{t.equipo}</td>
+                        <td className="p-3" data-label="Tiempo de atención"><SlaCelda t={t} /></td>
                       </tr>
                     ))}
                     {rows.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground text-xs font-mono">Sin tickets que coincidan.</td></tr>}
@@ -153,10 +162,10 @@ export default function Bandeja() {
         ) : (
           <>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono mb-3">
-              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" /></svg>
-              Arrastra una tarjeta — solo se iluminan los estados a los que la máquina de transiciones permite mover.
+              <Icon name="arrows-out-cardinal" className="text-base shrink-0" />
+              Arrastra un ticket a uno de los estados disponibles para actualizarlo.
             </div>
-            <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div className="xhub-board overflow-x-auto pb-3">
               <div className="flex gap-3 items-start w-max">
               {ESTADOS.map((est) => {
                 const items = tickets.filter((t) => t.estado === est && match(t));
@@ -208,16 +217,17 @@ export default function Bandeja() {
             </div>
           </>
         )}
+        </div>
 
-        <div className="flex gap-2 items-start mt-5 p-3 rounded-md bg-[hsl(var(--senal)/0.08)] border border-border text-[12.5px] text-muted-foreground">
-          <span>▸</span>
-          <span>La bandeja respeta la <b className="text-[hsl(var(--senal))]">jerarquía</b>: un agente ve lo suyo, un supervisor su equipo, un admin todo. El <b className="text-[hsl(var(--senal))]">SLA se calcula en horario hábil</b> — un ticket de las 17:30 con 1 h vence el lunes 9:30. Mover en el tablero llama a <b className="text-[hsl(var(--senal))]">cambiarEstado()</b>, que rechaza los saltos inválidos igual que el servidor.</span>
+        <div className="xhub-context-note">
+          <Icon name="info" className="text-lg mt-0.5 shrink-0" />
+          <span>Los tiempos de atención se calculan en horario hábil. Aquí ves los tickets disponibles para tu rol y equipo.</span>
         </div>
       </div>
 
       </RequierePermiso>
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-pill border border-border bg-secondary text-sm shadow-2xl">
+        <div role="status" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex max-w-[calc(100%-32px)] items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-secondary text-sm shadow-2xl">
           <span className="h-2 w-2 rounded-full flex-none" style={{ background: `hsl(var(${toast.ok ? "--exito" : "--critico"}))`, boxShadow: `0 0 8px hsl(var(${toast.ok ? "--exito" : "--critico"}))` }} />
           <span>{toast.msg}</span>
         </div>
@@ -232,7 +242,7 @@ function SlaCelda({ t }: { t: Ticket }) {
   const col = t.slaPct >= 80 ? "--critico" : t.slaPct >= 60 ? "--aviso" : "--senal";
   return (
     <div className="flex flex-col gap-1">
-      <span className="tabular-nums text-xs text-muted-foreground">{t.sla}</span>
+      <span className="inline-flex items-center gap-1.5 tabular-nums text-xs text-muted-foreground"><Icon name="clock" weight="regular" />{t.sla}</span>
       <div className="h-1.5 w-[92px] rounded-pill overflow-hidden bg-secondary">
         <span className="block h-full rounded-pill" style={{ width: `${t.slaPct}%`, background: `hsl(var(${col}))` }} />
       </div>
