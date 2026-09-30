@@ -11,7 +11,7 @@ import {
   listarLlaves, actualizarScopesLlave, revocarLlave,
   reconciliarPersona, registrarInteraccion,
   asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
-  configIA, fijarModeloDefault, fijarModeloCliente,
+  configIA, fijarModeloDefault, fijarModeloCliente, fijarContextoCliente,
 } from "@xhub/modulo-nucleo";
 import { leerContactosV5, leerTagsV5 } from "@xhub/modulo-conector";
 import { fetchXContact } from "../fetch-xcontact.js";
@@ -304,9 +304,10 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
     });
     admin.put("/clientes/:id/ia-modelo", async (req) => {
       const { id } = req.params as { id: string };
-      const b = req.body as { modelo?: string | null };
-      await conPlataforma((c) => fijarModeloCliente(c, id, b?.modelo ?? null));
-      return { ok: true, modelo: b?.modelo ?? null };
+      const b = (req.body ?? {}) as { modelo?: string | null; contexto?: string | null };
+      if ("modelo" in b) await conPlataforma((c) => fijarModeloCliente(c, id, b.modelo ?? null));
+      if ("contexto" in b) await conPlataforma((c) => fijarContextoCliente(c, id, b.contexto ?? null));
+      return { ok: true };
     });
 
     // ── Tablero de salud de la flota XContact (#66) ─────────────────────────────

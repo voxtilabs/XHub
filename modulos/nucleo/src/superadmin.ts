@@ -71,17 +71,17 @@ export async function contarUsuariosCliente(c: PoolClient, clienteId: string): P
   return r.rows[0].n as number;
 }
 
-export interface ClienteAdmin { id: string; nombre: string; estado: string; modulos: string[]; ia_modelo?: string | null; }
+export interface ClienteAdmin { id: string; nombre: string; estado: string; modulos: string[]; ia_modelo?: string | null; ia_contexto?: string | null; }
 
-/** Lista de clientes para el superadmin, con sus módulos encendidos. */
+/** Lista de clientes para el superadmin, con sus módulos encendidos + config de IA. */
 export async function listarClientesAdmin(c: PoolClient): Promise<ClienteAdmin[]> {
   const r = await c.query(`
-    select cl.id, cl.nombre, cl.estado, cl.ia_modelo,
+    select cl.id, cl.nombre, cl.estado, cl.ia_modelo, cl.ia_contexto,
       coalesce(array_agg(e.modulo) filter (where e.encendido), '{}') as modulos
     from plataforma.clientes cl
     left join plataforma.entitlements e on e.cliente_id=cl.id and e.encendido=true
-    group by cl.id, cl.nombre, cl.estado, cl.ia_modelo order by cl.creado_en desc`);
-  return r.rows.map((x) => ({ id: x.id, nombre: x.nombre, estado: x.estado, modulos: x.modulos }));
+    group by cl.id, cl.nombre, cl.estado, cl.ia_modelo, cl.ia_contexto order by cl.creado_en desc`);
+  return r.rows.map((x) => ({ id: x.id, nombre: x.nombre, estado: x.estado, modulos: x.modulos, ia_modelo: x.ia_modelo, ia_contexto: x.ia_contexto }));
 }
 
 // ── Modelo de IA: default de plataforma + override por cliente (#llave-por-env) ──
@@ -100,4 +100,12 @@ export async function fijarModeloDefault(c: PoolClient, modelo: string | null): 
 }
 export async function fijarModeloCliente(c: PoolClient, clienteId: string, modelo: string | null): Promise<void> {
   await c.query("update plataforma.clientes set ia_modelo=$2 where id=$1", [clienteId, modelo?.trim() || null]);
+}
+
+export async function contextoIADe(c: PoolClient, clienteId: string): Promise<string | null> {
+  const r = await c.query("select ia_contexto from plataforma.clientes where id=$1", [clienteId]);
+  return (r.rows[0]?.ia_contexto as string) || null;
+}
+export async function fijarContextoCliente(c: PoolClient, clienteId: string, contexto: string | null): Promise<void> {
+  await c.query("update plataforma.clientes set ia_contexto=$2 where id=$1", [clienteId, contexto?.trim() || null]);
 }

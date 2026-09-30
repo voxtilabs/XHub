@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
 import { AppShell } from "@/components/app-shell";
 
-type Cliente = { id: string; nombre: string; estado: string; modulos: string[]; ia_modelo?: string | null };
+type Cliente = { id: string; nombre: string; estado: string; modulos: string[]; ia_modelo?: string | null; ia_contexto?: string | null };
 type IAConfig = { modeloDefault: string | null; proveedor: string; modeloEnv: string | null; iaActiva: boolean };
 type ScopeDef = { scope: string; modulo: string; descripcion: string };
 type Llave = { id: string; nombre: string; prefijo: string; scopes: string[]; creada_en: string; ultimo_uso: string | null; revocada_en: string | null };
@@ -47,6 +47,7 @@ export default function ClienteDetalle() {
   const [iaCfg, setIaCfg] = useState<IAConfig | null>(null);
   const [modeloDefault, setModeloDefault] = useState("");
   const [modeloCliente, setModeloCliente] = useState("");
+  const [contextoCliente, setContextoCliente] = useState("");
   const [usuarios, setUsuarios] = useState<Usuarios | null>(null);
   const [lim, setLim] = useState("");
   const [nu, setNu] = useState({ email: "", nombre: "", password: "" });
@@ -56,7 +57,7 @@ export default function ClienteDetalle() {
     try {
       const lista = await apiFetch<{ datos: Cliente[] }>("/admin/clientes");
       const yo = lista.datos.find((x) => x.id === cid) ?? null;
-      setCli(yo); setModeloCliente(yo?.ia_modelo ?? "");
+      setCli(yo); setModeloCliente(yo?.ia_modelo ?? ""); setContextoCliente(yo?.ia_contexto ?? "");
       const ia = await apiFetch<IAConfig>("/admin/ia/config"); setIaCfg(ia); setModeloDefault(ia.modeloDefault ?? "");
       const co = await apiFetch<Consumo>(`/admin/clientes/${cid}/consumo`); setConsumo(co); setCuota(String(co.cuotaMensual));
       setTriage(await apiFetch<Triage>(`/admin/clientes/${cid}/triage`));
@@ -87,6 +88,7 @@ export default function ClienteDetalle() {
   const guardarTriage = (t: Triage) => accion(async () => { await apiFetch(`/admin/clientes/${id}/triage`, { method: "PUT", body: JSON.stringify(t) }); setTriage(t); }, "Triage guardado");
   const guardarModeloDefault = () => accion(async () => { await apiFetch("/admin/ia/config", { method: "PUT", body: JSON.stringify({ modeloDefault: modeloDefault.trim() || null }) }); setIaCfg((c) => c && { ...c, modeloDefault: modeloDefault.trim() || null }); }, "Modelo por defecto guardado");
   const guardarModeloCliente = () => accion(async () => { await apiFetch(`/admin/clientes/${id}/ia-modelo`, { method: "PUT", body: JSON.stringify({ modelo: modeloCliente.trim() || null }) }); setCli((c) => c && { ...c, ia_modelo: modeloCliente.trim() || null }); }, "Modelo del cliente guardado");
+  const guardarContextoCliente = () => accion(async () => { await apiFetch(`/admin/clientes/${id}/ia-modelo`, { method: "PUT", body: JSON.stringify({ contexto: contextoCliente.trim() || null }) }); setCli((c) => c && { ...c, ia_contexto: contextoCliente.trim() || null }); }, "Contexto de IA guardado");
   const nuevaLlave = () => accion(async () => { const r = await apiFetch<{ token: string; scopes: string[] }>(`/admin/clientes/${id}/llaves`, { method: "POST", body: JSON.stringify({ nombre: "Panel " + new Date().toISOString().slice(0, 10) }) }); setLlave(r.token); setLlaveScopes(r.scopes ?? []); await recargarLlaves(); }, "Llave creada");
   const abrirEdicion = (l: Llave) => { setEditando(l.id); setEditScopes(l.scopes); };
   const toggleScope = (s: string) => setEditScopes((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
@@ -275,7 +277,17 @@ export default function ClienteDetalle() {
               <label className="flex flex-col flex-1 min-w-[200px]"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Modelo de {cli?.nombre ?? "este cliente"} (override)</span><Input value={modeloCliente} onChange={(e) => setModeloCliente(e.target.value)} placeholder={`(usa el default: ${modeloDefault || iaCfg?.modeloEnv || "—"})`} className="mt-1 font-mono text-[12px]" /></label>
               <Button variant="secondary" size="sm" onClick={guardarModeloCliente}>Guardar cliente</Button>
             </div>
-            <p className="text-[11px] text-muted-foreground">Ej. económicos en OpenRouter: <code>google/gemma-3-12b-it</code>, <code>google/gemma-3-4b-it</code>, <code>meta-llama/llama-3.1-8b-instruct</code>. Dejá vacío el del cliente para heredar el default.</p>
+            <p className="text-[11px] text-muted-foreground">Ej. económicos en OpenRouter: <code>meta-llama/llama-3.1-8b-instruct</code>, <code>openai/gpt-4o-mini</code>, <code>google/gemma-3-12b-it</code>. Dejá vacío el del cliente para heredar el default.</p>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Contexto para la IA (rubro, tono, datos del cliente)</span>
+                <Button variant="secondary" size="sm" onClick={guardarContextoCliente}>Guardar contexto</Button>
+              </div>
+              <textarea value={contextoCliente} onChange={(e) => setContextoCliente(e.target.value)} rows={4}
+                placeholder="Ej.: Somos una inmobiliaria en Santiago. Tono cercano y formal. No prometas fechas de entrega. Los reclamos por postventa se derivan al área de mantención."
+                className="w-full mt-1 rounded-md border border-border bg-background px-3 py-2 text-[13px] resize-y" />
+              <p className="text-[11px] text-muted-foreground mt-1">Se antepone a los prompts de <b>resumen</b> y <b>sugerencia</b> de este cliente, para que la IA conozca su negocio.</p>
+            </div>
           </div>
         </CardContent></Card>
 
