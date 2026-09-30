@@ -13,7 +13,7 @@ import {
   asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
   configIA, fijarModeloDefault, fijarModeloCliente, fijarContextoCliente,
 } from "@xhub/modulo-nucleo";
-import { sincronizarContactosInstancia, type NucleoContactos, type DepsSondeo } from "@xhub/modulo-conector";
+import { sincronizarContactosInstancia, reconciliarContactosInstancia, type NucleoContactos, type DepsSondeo } from "@xhub/modulo-conector";
 import { fetchXContact } from "../fetch-xcontact.js";
 import { consumoDelDia } from "@xhub/cuotas";
 import { fijarConfigTriage, configTriage } from "@xhub/modulo-tickets";
@@ -84,6 +84,8 @@ const nucleoContactos: NucleoContactos = {
     await c.query("update crm_oportunidades set persona_id=$1 where persona_id=$2", [nuevo, viejo]);
     await c.query("update crm_leads set persona_id=$1 where persona_id=$2", [nuevo, viejo]);
   },
+  contarImportados: async (c, host) => Number((await c.query(
+    "select count(*)::int n from nucleo.interacciones where tipo='contacto.importado' and dedupe_id like $1", [`xc:${host}:%`])).rows[0].n),
 };
 const depsSondeoApi: DepsSondeo = { conCliente, conPlataforma, fetchImpl: fetchXContact, nucleo: nucleoContactos };
 
@@ -312,8 +314,12 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
         const inst = (await c.query(
           `select i.id, i.nombre, i.host, i.version_api, i.estado_salud,
                   i.ultima_prueba::text as ultima_prueba, i.resumen,
+                  i.sondeo_activo, i.ultimo_sondeo::text as ultimo_sondeo,
+                  sd.deriva as deriva, sd.detectada_en::text as deriva_en, sd.reparada_en::text as deriva_reparada_en,
+                  (select count(*)::int from plataforma.conector_muertos m where m.instancia_id=i.id and m.resuelto_en is null) as muertos,
                   cl.id as cliente_id, cl.nombre as cliente
              from plataforma.instancias_xcontact i
+             left join plataforma.sync_deriva sd on sd.instancia_id = i.id and sd.tipo='contactos'
              left join plataforma.clientes cl on cl.id = i.cliente_id
             order by cl.nombre nulls first, i.creada_en desc`)).rows;
         const cuenta = (e: string) => inst.filter((x) => x.estado_salud === e).length;
@@ -348,9 +354,12 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
         `select i.id, i.nombre, i.host, i.version_api, i.usuario, i.credencial_ref, i.estado_salud,
                 i.ultima_prueba::text as ultima_prueba, i.resumen, i.creada_en::text as creada_en,
                 i.sondeo_activo, i.intervalo_sondeo_seg, i.ultimo_sondeo::text as ultimo_sondeo,
-                sc.cursor as sync_cursor, sc.ultimo_sync::text as sync_ultimo, sc.vueltas as sync_vueltas
+                sc.cursor as sync_cursor, sc.ultimo_sync::text as sync_ultimo, sc.vueltas as sync_vueltas,
+                sd.deriva as deriva, sd.conteo_local as deriva_local, sd.conteo_remoto as deriva_remoto,
+                sd.detectada_en::text as deriva_en, sd.reparada_en::text as deriva_reparada_en
            from plataforma.instancias_xcontact i
            left join plataforma.sync_cursor sc on sc.instancia_id = i.id and sc.tipo='contactos'
+           left join plataforma.sync_deriva sd on sd.instancia_id = i.id and sd.tipo='contactos'
           where i.cliente_id=$1 order by i.creada_en desc`, [id])).rows }));
     });
 
@@ -382,6 +391,20 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
          returning id, nombre, host, version_api, usuario, credencial_ref, estado_salud, ultima_prueba::text as ultima_prueba, resumen, creada_en::text as creada_en`,
         [id, nombre, host.replace(/^https?:\/\//, "").replace(/\/.*/, ""), b.versionApi || "v5", b.usuario || null, b.credencialRef || null, estado, b.resumen ? JSON.stringify(b.resumen) : null]));
       return r.rows[0];
+    });
+
+    // Reconciliación manual (#61): compara conteo remoto vs local, guarda la deriva y,
+    // si el espejo quedó atrás, rearma el cursor para que el próximo sondeo rellene.
+    admin.post("/clientes/:id/xcontact/instancias/:iid/reconciliar", async (req) => {
+      const { id, iid } = req.params as { id: string; iid: string };
+      const b = req.body as { password?: string } | undefined;
+      const inst = await conPlataforma((c) => c.query(
+        "select host, usuario, credencial_ref from plataforma.instancias_xcontact where id=$2 and cliente_id=$1", [id, iid]));
+      if (!inst.rowCount) throw new ErrorApi("NO_ENCONTRADO", "Instancia no encontrada");
+      const { host, usuario, credencial_ref } = inst.rows[0] as { host: string; usuario: string; credencial_ref: string | null };
+      const clave = b?.password || (credencial_ref ? process.env[credencial_ref] : "") || "";
+      if (!usuario || !clave) throw new ErrorApi("VALIDACION", "Falta la contraseña (body o env var referenciada)");
+      return reconciliarContactosInstancia(depsSondeoApi, { id: iid, clienteId: id, host, usuario, clave });
     });
 
     // Actualizar el estado/scorecard de una instancia (tras re-probar).

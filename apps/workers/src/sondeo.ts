@@ -3,7 +3,7 @@ import {
   reconciliarPersona, registrarInteraccion,
   asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
 } from "@xhub/modulo-nucleo";
-import { sincronizarContactosInstancia, type NucleoContactos, type DepsSondeo } from "@xhub/modulo-conector";
+import { sincronizarContactosInstancia, reconciliarContactosInstancia, type NucleoContactos, type DepsSondeo } from "@xhub/modulo-conector";
 import { fetchXContact } from "./fetch-xcontact.js";
 
 /**
@@ -26,6 +26,8 @@ const nucleoContactos: NucleoContactos = {
     await c.query("update crm_oportunidades set persona_id=$1 where persona_id=$2", [nuevo, viejo]);
     await c.query("update crm_leads set persona_id=$1 where persona_id=$2", [nuevo, viejo]);
   },
+  contarImportados: async (c, host) => Number((await c.query(
+    "select count(*)::int n from nucleo.interacciones where tipo='contacto.importado' and dedupe_id like $1", [`xc:${host}:%`])).rows[0].n),
 };
 const deps: DepsSondeo = { conCliente, conPlataforma, fetchImpl: fetchXContact, nucleo: nucleoContactos };
 
@@ -90,4 +92,45 @@ export async function tickSondeo(): Promise<ResumenTick> {
     }
   }
   return { debidas: debidas.length, sincronizadas, contactos, fallidas };
+}
+
+// ── Reconciliación de baja frecuencia (#61) ──────────────────────────────────
+const RECON_INTERVAL_SEG = numEnv(process.env.RECON_INTERVAL_SEG, 21600); // 6h por defecto
+export interface ResumenRecon { debidas: number; conDeriva: number; reparadas: number; fallidas: number }
+
+async function reconUna(f: FilaInstancia): Promise<{ ok: boolean; deriva: number }> {
+  const clave = f.credencial_ref ? process.env[f.credencial_ref] : "";
+  if (!f.usuario || !clave) return { ok: false, deriva: 0 };
+  try {
+    const r = await conTimeout(reconciliarContactosInstancia(
+      deps, { id: f.id, clienteId: f.cliente_id, host: f.host, usuario: f.usuario, clave }), TIMEOUT_MS * 3);
+    return { ok: true, deriva: r.deriva };
+  } catch (e) {
+    process.stderr.write(`[recon] instancia ${f.id} falló: ${(e as Error).message}\n`);
+    return { ok: false, deriva: 0 };
+  }
+}
+
+/** Un tick de reconciliación: barre las instancias con sondeo activo cuya última
+ *  reconciliación es vieja. Aislada por instancia igual que el sondeo. */
+export async function tickReconciliacion(): Promise<ResumenRecon> {
+  const debidas = await conPlataforma(async (c) => (await c.query(
+    `select i.id, i.cliente_id, i.host, i.usuario, i.credencial_ref, null::text as cursor
+       from plataforma.instancias_xcontact i
+       left join plataforma.sync_deriva sd on sd.instancia_id = i.id and sd.tipo='contactos'
+      where i.sondeo_activo = true and i.cliente_id is not null
+        and (sd.detectada_en is null or sd.detectada_en < now() - ($1 || ' seconds')::interval)
+      order by sd.detectada_en asc nulls first
+      limit 20`, [RECON_INTERVAL_SEG])).rows as FilaInstancia[]);
+  if (debidas.length === 0) return { debidas: 0, conDeriva: 0, reparadas: 0, fallidas: 0 };
+  let conDeriva = 0, reparadas = 0, fallidas = 0;
+  const paso = Math.max(1, CONCURRENCIA);
+  for (let i = 0; i < debidas.length; i += paso) {
+    const res = await Promise.allSettled(debidas.slice(i, i + paso).map(reconUna));
+    for (const x of res) {
+      if (x.status === "fulfilled" && x.value.ok) { if (x.value.deriva > 0) { conDeriva++; reparadas++; } }
+      else fallidas++;
+    }
+  }
+  return { debidas: debidas.length, conDeriva, reparadas, fallidas };
 }
