@@ -18,6 +18,7 @@ create index if not exists ix_adjuntos_objeto on nucleo.adjuntos (cliente_id, ob
 
 alter table nucleo.adjuntos enable row level security;
 alter table nucleo.adjuntos force row level security;
+drop policy if exists aislar_adjuntos on nucleo.adjuntos;  -- idempotente ante re-corridas
 create policy aislar_adjuntos on nucleo.adjuntos
   using (cliente_id = nullif(current_setting('app.cliente_id', true), '')::uuid)
   with check (cliente_id = nullif(current_setting('app.cliente_id', true), '')::uuid);
