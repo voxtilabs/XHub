@@ -12,7 +12,7 @@ type Check = { nombre: string; detalle: string; ms: number; ok: boolean; nota?: 
 type Resultado = { host: string; checks: Check[]; resumen: Record<string, boolean> };
 
 export default function XContactProbe() {
-  const [f, setF] = useState({ host: "x5.xcontact.cl", usuario: "voxtilabs", password: "" });
+  const [f, setF] = useState({ host: "x5.xcontact.cl", usuario: "voxtilabs", password: "", apiKey: "" });
   const [res, setRes] = useState<Resultado | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [probando, setProbando] = useState(false);
@@ -36,6 +36,7 @@ export default function XContactProbe() {
           <label className="flex flex-col flex-1 min-w-[160px]"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Host XContact</span><Input value={f.host} onChange={(e) => setF({ ...f, host: e.target.value })} placeholder="x5.xcontact.cl" className="mt-1" /></label>
           <label className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Supervisor</span><Input value={f.usuario} onChange={(e) => setF({ ...f, usuario: e.target.value })} className="mt-1 w-36" /></label>
           <label className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Contraseña</span><Input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} className="mt-1 w-40" /></label>
+          <label className="flex flex-col flex-1 min-w-[180px]"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">API key REST (v4/v2)</span><Input value={f.apiKey} onChange={(e) => setF({ ...f, apiKey: e.target.value })} placeholder="opcional — para probar lectura v4" className="mt-1" /></label>
           <Button onClick={probar} disabled={probando || f.host.trim().length < 3}>{probando ? "Probando…" : "Probar"}</Button>
         </CardContent></Card>
 
@@ -44,7 +45,7 @@ export default function XContactProbe() {
         {R && (
           <>
             <div className="flex gap-2 flex-wrap mb-4">
-              {([["Alcanzable", R.alcanzable], ["Login", R.login], ["REST v4", R.restV4], ["REST v5", R.restV5], ["AMI", R.ami], ["Lee datos", R.lecturaDatos]] as const).map(([l, v]) => (
+              {([["Alcanzable", R.alcanzable], ["Login", R.login], ["REST v4", R.restV4], ["API key REST", R.apiKeyRest], ["REST v5", R.restV5], ["AMI", R.ami], ["Lee datos", R.lecturaDatos]] as const).map(([l, v]) => (
                 <Badge key={l} rol={v ? "exito" : "critico"}>{v ? "✓" : "✗"} {l}</Badge>
               ))}
             </div>

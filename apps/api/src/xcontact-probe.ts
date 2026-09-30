@@ -26,19 +26,25 @@ function pedir(url: string, o: { method?: string; headers?: Record<string, strin
 }
 
 export type CheckXC = { nombre: string; detalle: string; ms: number; ok: boolean; nota?: string };
-export async function probarXContact(inp: { host: string; usuario: string; password: string }): Promise<{ host: string; checks: CheckXC[]; resumen: Record<string, boolean> }> {
+export async function probarXContact(inp: { host: string; usuario: string; password: string; apiKey?: string }): Promise<{ host: string; checks: CheckXC[]; resumen: Record<string, boolean> }> {
   const host = String(inp.host).replace(/^https?:\/\//, "").replace(/\/.*/, "").replace(/:\d+$/, "");
+  const apiKey = (inp.apiKey || "").trim();
   const checks: CheckXC[] = [];
 
   // 1) Login supervisor (v5) — el que usa la consola: {username,password}
   const login = await pedir(`https://${host}:8011/api/v5/auth/supervisor`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: inp.usuario, password: inp.password }) });
   let token: string | null = null;
-  try { const j = JSON.parse(login.text); token = j?.supervisor?.token ?? j?.token ?? null; } catch { /* */ }
+  try { const j = JSON.parse(login.text); token = j?.access_token ?? j?.supervisor?.token ?? j?.token ?? null; } catch { /* */ }
   checks.push({ nombre: "Login supervisor (v5 auth)", detalle: `POST :8011/api/v5/auth/supervisor → ${login.status || login.error}`, ms: login.ms, ok: !!token, nota: token ? "token obtenido" : "sin token" });
 
-  // 2) REST v4 presente (:8004)
-  const v4 = await pedir(`https://${host}:8004/api/v4/agente`);
-  checks.push({ nombre: "REST v4 (:8004)", detalle: `GET /api/v4/agente → ${v4.status || v4.error}`, ms: v4.ms, ok: v4.status === 401 || v4.status === 200, nota: v4.status === 401 ? "existe (pide api-key)" : v4.status === 404 ? "no está" : String(v4.status) });
+  // 2) REST v4/v2 (:8004) — con la api_key REST probamos AUTENTICACIÓN y lectura real
+  const v4url = `https://${host}:8004/api/v2/campanhas`;
+  const v4 = await pedir(v4url, apiKey ? { headers: { authorization: apiKey } } : {});
+  const v4ok = apiKey ? v4.status === 200 : (v4.status === 401 || v4.status === 200);
+  checks.push({ nombre: "REST v4/v2 (:8004)", detalle: `GET /api/v2/campanhas → ${v4.status || v4.error}`, ms: v4.ms, ok: v4ok,
+    nota: apiKey
+      ? (v4.status === 200 ? "api_key OK, lee datos" : v4.status === 401 ? "api_key rechazada (401)" : v4.status === 404 ? "ruta no está" : String(v4.status))
+      : (v4.status === 401 ? "existe (falta api_key)" : v4.status === 404 ? "no está" : String(v4.status)) });
 
   // 3) REST v5 presente (:8011)
   const v5 = await pedir(`https://${host}:8011/api/v5/clientes`);
@@ -60,6 +66,7 @@ export async function probarXContact(inp: { host: string; usuario: string; passw
     alcanzable: checks.some((c) => c.ok),
     login: !!token,
     restV4: checks.find((c) => c.nombre.startsWith("REST v4"))?.ok ?? false,
+    apiKeyRest: apiKey ? ((checks.find((c) => c.nombre.startsWith("REST v4"))?.detalle ?? "").includes("→ 200")) : false,
     restV5: checks.find((c) => c.nombre.startsWith("REST v5"))?.ok ?? false,
     ami: checks.find((c) => c.nombre.startsWith("Bridge"))?.ok ?? false,
     lecturaDatos: checks.find((c) => c.nombre.startsWith("Lectura"))?.ok ?? false,

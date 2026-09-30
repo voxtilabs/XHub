@@ -8,6 +8,7 @@ import {
   fijarCuota, cuotaDe, listarClientesAdmin,
   fijarLimiteUsuarios, limiteUsuariosDe, contarUsuariosCliente, listarUsuariosCliente,
   resumenUsoIA, CATALOGO_SCOPES, SCOPES_VALIDOS, entitlementsDe,
+  listarLlaves, actualizarScopesLlave, revocarLlave,
 } from "@xhub/modulo-nucleo";
 import { consumoDelDia } from "@xhub/cuotas";
 import { fijarConfigTriage, configTriage } from "@xhub/modulo-tickets";
@@ -86,6 +87,31 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       }
       const creada = await conPlataforma((c) => crearLlave(c, id, b.nombre, scopes));
       return { ...creada, scopes };
+    });
+
+    // Listar las llaves del cliente (sin el token: solo prefijo, scopes, uso).
+    admin.get("/clientes/:id/llaves", async (req) => {
+      const { id } = req.params as { id: string };
+      return conPlataforma(async (c) => ({ datos: await listarLlaves(c, id) }));
+    });
+
+    // Editar los scopes de una llave existente (valida contra el catálogo).
+    admin.put("/clientes/:id/llaves/:llaveId/scopes", async (req) => {
+      const { id, llaveId } = req.params as { id: string; llaveId: string };
+      const b = req.body as { scopes?: unknown };
+      const scopes = Array.isArray(b?.scopes) ? b.scopes.filter((s): s is string => typeof s === "string") : [];
+      const invalidos = scopes.filter((s) => !SCOPES_VALIDOS.has(s));
+      if (invalidos.length) throw new ErrorApi("VALIDACION", `Scopes inexistentes: ${invalidos.join(", ")}`, { invalidos, validos: [...SCOPES_VALIDOS] });
+      const r = await conPlataforma((c) => actualizarScopesLlave(c, id, llaveId, scopes));
+      if (!r) throw new ErrorApi("NO_ENCONTRADO", "Llave no encontrada o revocada");
+      return r;
+    });
+
+    // Revocar una llave.
+    admin.delete("/clientes/:id/llaves/:llaveId", async (req) => {
+      const { llaveId } = req.params as { llaveId: string };
+      await conPlataforma((c) => revocarLlave(c, llaveId));
+      return { ok: true };
     });
 
     // Crear un ADMIN DE CLIENTE (rol admin_cliente, atado a este cliente). El registro
@@ -177,9 +203,9 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
 
     // Probador de conectividad XContact: test de una instancia antes de conectarla.
     admin.post("/xcontact/probe", async (req) => {
-      const b = req.body as { host?: string; usuario?: string; password?: string };
+      const b = req.body as { host?: string; usuario?: string; password?: string; apiKey?: string };
       if (!b?.host?.trim() || !b?.usuario?.trim()) throw new ErrorApi("VALIDACION", "Faltan host y usuario");
-      return probarXContact({ host: b.host.trim(), usuario: b.usuario.trim(), password: b.password || "" });
+      return probarXContact({ host: b.host.trim(), usuario: b.usuario.trim(), password: b.password || "", apiKey: b.apiKey || "" });
     });
 
     // PANORAMA: el pulso de TODA la plataforma de un vistazo (vista 360 del superadmin).

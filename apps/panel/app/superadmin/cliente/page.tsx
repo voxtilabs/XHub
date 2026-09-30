@@ -8,6 +8,8 @@ import { apiFetch } from "@/lib/api";
 import { AppShell } from "@/components/app-shell";
 
 type Cliente = { id: string; nombre: string; estado: string; modulos: string[] };
+type ScopeDef = { scope: string; modulo: string; descripcion: string };
+type Llave = { id: string; nombre: string; prefijo: string; scopes: string[]; creada_en: string; ultimo_uso: string | null; revocada_en: string | null };
 type Consumo = { total: number; cuotaMensual: number; dia: string };
 type Triage = { modo: "automatico" | "sugerir" | "manual"; umbral: number };
 type UsuarioCliente = { id: string; email: string; nombre: string; rol: string; creadoEn: string };
@@ -37,6 +39,10 @@ export default function ClienteDetalle() {
   const [msg, setMsg] = useState<string | null>(null);
   const [llave, setLlave] = useState<string | null>(null);
   const [llaveScopes, setLlaveScopes] = useState<string[]>([]);
+  const [scopesCat, setScopesCat] = useState<ScopeDef[]>([]);
+  const [llaves, setLlaves] = useState<Llave[]>([]);
+  const [editando, setEditando] = useState<string | null>(null);
+  const [editScopes, setEditScopes] = useState<string[]>([]);
   const [usuarios, setUsuarios] = useState<Usuarios | null>(null);
   const [lim, setLim] = useState("");
   const [nu, setNu] = useState({ email: "", nombre: "", password: "" });
@@ -50,8 +56,11 @@ export default function ClienteDetalle() {
       setTriage(await apiFetch<Triage>(`/admin/clientes/${cid}/triage`));
       const us = await apiFetch<Usuarios>(`/admin/clientes/${cid}/usuarios`); setUsuarios(us); setLim(String(us.limite));
       setIa(await apiFetch<ResumenIA>(`/admin/clientes/${cid}/ia?dias=30`));
+      setScopesCat((await apiFetch<{ datos: ScopeDef[] }>("/admin/scopes")).datos);
+      setLlaves((await apiFetch<{ datos: Llave[] }>(`/admin/clientes/${cid}/llaves`)).datos);
     } catch (e) { setError((e as Error).message); }
   }
+  const recargarLlaves = async () => { try { setLlaves((await apiFetch<{ datos: Llave[] }>(`/admin/clientes/${id}/llaves`)).datos); } catch { /* noop */ } };
   async function recargarUsuarios(cid: string) {
     try { const us = await apiFetch<Usuarios>(`/admin/clientes/${cid}/usuarios`); setUsuarios(us); setLim(String(us.limite)); } catch { /* noop */ }
   }
@@ -70,7 +79,11 @@ export default function ClienteDetalle() {
   const toggle = (mod: string) => accion(async () => { const on = !cli!.modulos.includes(mod); await apiFetch(`/admin/clientes/${id}/modulos/${mod}`, { method: "PUT", body: JSON.stringify({ encendido: on }) }); setCli((c) => c && { ...c, modulos: on ? [...c.modulos, mod] : c.modulos.filter((m) => m !== mod) }); }, "Módulo actualizado");
   const guardarCuota = () => accion(async () => { const n = Number(cuota); await apiFetch(`/admin/clientes/${id}/cuota`, { method: "PUT", body: JSON.stringify({ limiteMensual: n }) }); setConsumo((c) => c && { ...c, cuotaMensual: n }); }, "Cuota fijada");
   const guardarTriage = (t: Triage) => accion(async () => { await apiFetch(`/admin/clientes/${id}/triage`, { method: "PUT", body: JSON.stringify(t) }); setTriage(t); }, "Triage guardado");
-  const nuevaLlave = () => accion(async () => { const r = await apiFetch<{ token: string; scopes: string[] }>(`/admin/clientes/${id}/llaves`, { method: "POST", body: JSON.stringify({ nombre: "Panel " + new Date().toISOString().slice(0, 10) }) }); setLlave(r.token); setLlaveScopes(r.scopes ?? []); }, "Llave creada");
+  const nuevaLlave = () => accion(async () => { const r = await apiFetch<{ token: string; scopes: string[] }>(`/admin/clientes/${id}/llaves`, { method: "POST", body: JSON.stringify({ nombre: "Panel " + new Date().toISOString().slice(0, 10) }) }); setLlave(r.token); setLlaveScopes(r.scopes ?? []); await recargarLlaves(); }, "Llave creada");
+  const abrirEdicion = (l: Llave) => { setEditando(l.id); setEditScopes(l.scopes); };
+  const toggleScope = (s: string) => setEditScopes((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+  const guardarScopes = (l: Llave) => accion(async () => { await apiFetch(`/admin/clientes/${id}/llaves/${l.id}/scopes`, { method: "PUT", body: JSON.stringify({ scopes: editScopes }) }); setEditando(null); await recargarLlaves(); }, "Scopes actualizados");
+  const revocarLlave = (l: Llave) => accion(async () => { await apiFetch(`/admin/clientes/${id}/llaves/${l.id}`, { method: "DELETE" }); await recargarLlaves(); }, "Llave revocada");
   const guardarLimite = () => accion(async () => { const n = Number(lim); await apiFetch(`/admin/clientes/${id}/limite-usuarios`, { method: "PUT", body: JSON.stringify({ limite: n }) }); setUsuarios((u) => u && { ...u, limite: n }); }, "Tope de usuarios fijado");
   const crearUsuario = () => accion(async () => {
     await apiFetch(`/admin/clientes/${id}/usuarios`, { method: "POST", body: JSON.stringify(nu) });
@@ -238,7 +251,63 @@ export default function ClienteDetalle() {
           )}
         </CardContent></Card>
 
-        <Button variant="secondary" onClick={nuevaLlave}>+ Nueva llave de API</Button>
+        {/* Llaves de API — listar, crear, editar scopes, revocar */}
+        <Card><CardContent className="pt-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs font-black uppercase tracking-widest text-muted-foreground">Llaves de API</div>
+            <Button size="sm" variant="secondary" onClick={nuevaLlave}>+ Nueva llave</Button>
+          </div>
+          {llaves.length === 0 ? (
+            <div className="text-[13px] text-muted-foreground">Sin llaves. Al crear una recibe todos los scopes de los módulos activos del cliente; podés restringirla acá.</div>
+          ) : (
+            <div className="space-y-2">
+              {llaves.map((l) => (
+                <div key={l.id} className={"rounded-md border border-border p-3 " + (l.revocada_en ? "opacity-50" : "")}>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="min-w-0">
+                      <span className="font-mono text-[12.5px]">{l.prefijo}…</span>
+                      <span className="text-[11px] text-muted-foreground ml-2">{l.nombre}</span>
+                      {l.revocada_en && <span className="text-[10px] text-[hsl(var(--critico))] ml-2 uppercase font-bold">revocada</span>}
+                    </div>
+                    {!l.revocada_en && (
+                      <div className="flex gap-3">
+                        {editando === l.id ? (
+                          <>
+                            <button onClick={() => guardarScopes(l)} className="text-[12px] text-[hsl(var(--senal))] hover:underline">guardar</button>
+                            <button onClick={() => setEditando(null)} className="text-[12px] text-muted-foreground hover:underline">cancelar</button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => abrirEdicion(l)} className="text-[12px] text-[hsl(var(--senal))] hover:underline">editar scopes</button>
+                            <button onClick={() => revocarLlave(l)} className="text-[12px] text-muted-foreground hover:text-[hsl(var(--critico))]">revocar</button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {editando === l.id ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {scopesCat.map((s) => (
+                        <button key={s.scope} onClick={() => toggleScope(s.scope)} title={s.descripcion}
+                          className={"text-[11px] font-mono px-2 py-1 rounded border " + (editScopes.includes(s.scope) ? "border-[hsl(var(--senal))] text-foreground" : "border-border text-muted-foreground")}
+                          style={editScopes.includes(s.scope) ? { background: "hsl(var(--senal)/0.1)" } : undefined}>
+                          {editScopes.includes(s.scope) ? "✓ " : ""}{s.scope}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {l.scopes.length === 0
+                        ? <span className="text-[11px] text-muted-foreground">sin scopes declarados — hereda todos los del cliente</span>
+                        : l.scopes.map((s) => <span key={s} className="text-[10.5px] font-mono px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{s}</span>)}
+                    </div>
+                  )}
+                  {l.ultimo_uso && <div className="text-[10px] text-muted-foreground mt-1.5">último uso: {l.ultimo_uso.slice(0, 16).replace("T", " ")}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent></Card>
       </div>
     </main>
   );
