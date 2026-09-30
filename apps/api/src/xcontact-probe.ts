@@ -26,50 +26,80 @@ function pedir(url: string, o: { method?: string; headers?: Record<string, strin
 }
 
 export type CheckXC = { nombre: string; detalle: string; ms: number; ok: boolean; nota?: string };
-export async function probarXContact(inp: { host: string; usuario: string; password: string; apiKey?: string }): Promise<{ host: string; checks: CheckXC[]; resumen: Record<string, boolean> }> {
+/** Cuenta cuántos de un conjunto de reads v5 responden 200, con el detalle por recurso. */
+function nota200(r: Resp): string { return r.status === 200 ? "200 OK" : r.status === 500 ? "500 (bug conocido)" : r.status === 404 ? "404 no está" : r.status === 401 ? "401 auth" : String(r.status || r.error); }
+
+export async function probarXContact(inp: { host: string; usuario: string; password: string; apiKey?: string }): Promise<{ host: string; checks: CheckXC[]; resumen: Record<string, boolean | number> }> {
   const host = String(inp.host).replace(/^https?:\/\//, "").replace(/\/.*/, "").replace(/:\d+$/, "");
   const apiKey = (inp.apiKey || "").trim();
   const checks: CheckXC[] = [];
 
-  // 1) Login supervisor (v5) — el que usa la consola: {username,password}
+  // ── 1) Login supervisor (v5) ────────────────────────────────────────────────
   const login = await pedir(`https://${host}:8011/api/v5/auth/supervisor`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: inp.usuario, password: inp.password }) });
-  let token: string | null = null;
-  try { const j = JSON.parse(login.text); token = j?.access_token ?? j?.supervisor?.token ?? j?.token ?? null; } catch { /* */ }
-  checks.push({ nombre: "Login supervisor (v5 auth)", detalle: `POST :8011/api/v5/auth/supervisor → ${login.status || login.error}`, ms: login.ms, ok: !!token, nota: token ? "token obtenido" : "sin token" });
+  let token: string | null = null; let refresh = false; let expira = "";
+  try { const j = JSON.parse(login.text); token = j?.access_token ?? j?.supervisor?.token ?? j?.token ?? null; refresh = !!j?.refresh_token; expira = j?.expiresIn ?? j?.expires_in ?? ""; } catch { /* */ }
+  checks.push({ nombre: "Login supervisor (v5)", detalle: `POST :8011/api/v5/auth/supervisor → ${login.status || login.error}`, ms: login.ms, ok: !!token, nota: token ? `token ok${expira ? ` (vence ${expira})` : ""}` : "sin token" });
+  if (token) checks.push({ nombre: "Refresh token (v5)", detalle: refresh ? "presente" : "ausente", ms: 0, ok: refresh, nota: refresh ? "renovación sin re-login" : "habrá que re-loguear al vencer" });
 
-  // 2) REST v4/v2 (:8004) — con la api_key REST probamos AUTENTICACIÓN y lectura real
-  const v4url = `https://${host}:8004/api/v2/campanhas`;
-  const v4 = await pedir(v4url, apiKey ? { headers: { authorization: apiKey } } : {});
-  const v4ok = apiKey ? v4.status === 200 : (v4.status === 401 || v4.status === 200);
-  checks.push({ nombre: "REST v4/v2 (:8004)", detalle: `GET /api/v2/campanhas → ${v4.status || v4.error}`, ms: v4.ms, ok: v4ok,
-    nota: apiKey
-      ? (v4.status === 200 ? "api_key OK, lee datos" : v4.status === 401 ? "api_key rechazada (401)" : v4.status === 404 ? "ruta no está" : String(v4.status))
-      : (v4.status === 401 ? "existe (falta api_key)" : v4.status === 404 ? "no está" : String(v4.status)) });
+  const bearer = token ? { authorization: `Bearer ${token}` } : undefined;
 
-  // 3) REST v5 presente (:8011)
-  const v5 = await pedir(`https://${host}:8011/api/v5/clientes`);
-  checks.push({ nombre: "REST v5 (:8011)", detalle: `GET /api/v5/clientes → ${v5.status || v5.error}`, ms: v5.ms, ok: v5.status === 401 || v5.status === 200, nota: v5.status === 401 ? "existe (auth)" : v5.status === 404 ? "no está" : String(v5.status) });
-
-  // 4) Bridge AMI (:3003)
-  const ami = await pedir(`https://${host}:3003/`);
-  checks.push({ nombre: "Bridge AMI (:3003)", detalle: `GET / → ${ami.status || ami.error}`, ms: ami.ms, ok: ami.status > 0, nota: ami.status > 0 ? "alcanzable" : "sin respuesta" });
-
-  // 5) Lectura de datos AMI (requiere presencia socket.io — informativo)
-  if (token) {
-    const r = await pedir(`https://${host}:3003/ami/getFilasSupervisor`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ fila: null }) });
-    let leyo = false, msg = "";
-    try { const j = JSON.parse(r.text); leyo = Array.isArray(j.filas); msg = j.message || ""; } catch { /* */ }
-    checks.push({ nombre: "Lectura AMI (filas)", detalle: `POST :3003/ami/getFilasSupervisor → ${r.status}`, ms: r.ms, ok: leyo, nota: leyo ? "leyó filas" : (msg || "requiere presencia socket.io") });
+  // ── 2) Lecturas v5 (:8011) — colas, IVR, contactos, config ──────────────────
+  let leeColas = false, leeContactosV5 = false, v5ok = 0;
+  if (bearer) {
+    const recursos: [string, string][] = [
+      ["Colas (filas)", "filas"], ["IVR (ura)", "ura"], ["Contactos (clientes)", "clientes"],
+      ["Pausas", "pausas"], ["Anexos (ramais)", "ramais"], ["Troncales (troncos)", "troncos"],
+      ["Horarios", "horarios"], ["Etiquetas (tags)", "tags"], ["Agentes", "agentes"],
+    ];
+    const resultados = await Promise.all(recursos.map(([, p]) => pedir(`https://${host}:8011/api/v5/${p}`, { headers: bearer })));
+    resultados.forEach((r, i) => {
+      const ok = r.status === 200;
+      if (ok) v5ok++;
+      if (recursos[i][1] === "filas") leeColas = ok;
+      if (recursos[i][1] === "clientes") leeContactosV5 = ok;
+      checks.push({ nombre: `v5 · ${recursos[i][0]}`, detalle: `GET /api/v5/${recursos[i][1]} → ${r.status || r.error}`, ms: r.ms, ok, nota: nota200(r) });
+    });
   }
 
-  const resumen = {
+  // ── 3) REST v4/v2/v3 (:8004) — el dominio grande: contactos, campañas, agentes ──
+  const swag = await pedir(`https://${host}:8004/swagger.json`);
+  let rutasV4 = 0; try { rutasV4 = Object.keys(JSON.parse(swag.text).paths || {}).length; } catch { /* */ }
+  checks.push({ nombre: "Swagger REST (:8004)", detalle: `GET /swagger.json → ${swag.status || swag.error}`, ms: swag.ms, ok: swag.status === 200, nota: swag.status === 200 ? `${rutasV4 || "?"} rutas v2–v4` : "no expone swagger" });
+
+  let leeCampanas = false, leeContactosV4 = false;
+  const v4hdr = apiKey ? { headers: { authorization: apiKey } } : {};
+  const [camp, cont] = await Promise.all([
+    pedir(`https://${host}:8004/api/v2/campanhas`, v4hdr),
+    pedir(`https://${host}:8004/api/v2/clientes`, v4hdr),
+  ]);
+  leeCampanas = camp.status === 200; leeContactosV4 = cont.status === 200;
+  const notaKey = (r: Resp) => apiKey ? (r.status === 200 ? "api_key OK, lee datos" : r.status === 401 ? "api_key rechazada" : nota200(r)) : (r.status === 401 ? "existe (falta api_key)" : nota200(r));
+  checks.push({ nombre: "REST v4 · Campañas", detalle: `GET /api/v2/campanhas → ${camp.status || camp.error}`, ms: camp.ms, ok: apiKey ? leeCampanas : (camp.status === 401 || camp.status === 200), nota: notaKey(camp) });
+  checks.push({ nombre: "REST v4 · Contactos", detalle: `GET /api/v2/clientes → ${cont.status || cont.error}`, ms: cont.ms, ok: apiKey ? leeContactosV4 : (cont.status === 401 || cont.status === 200), nota: notaKey(cont) });
+
+  // ── 4) Bridge AMI (:3003) — tiempo real ─────────────────────────────────────
+  const ami = await pedir(`https://${host}:3003/`);
+  checks.push({ nombre: "Bridge AMI (:3003)", detalle: `GET / → ${ami.status || ami.error}`, ms: ami.ms, ok: ami.status > 0, nota: ami.status > 0 ? "alcanzable" : "sin respuesta" });
+  if (token) {
+    const r = await pedir(`https://${host}:3003/ami/getFilasSupervisor`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ fila: null }) });
+    let leyo = false, msg = ""; try { const j = JSON.parse(r.text); leyo = Array.isArray(j.filas); msg = j.message || ""; } catch { /* */ }
+    checks.push({ nombre: "AMI · Lectura en vivo", detalle: `POST :3003/ami/getFilasSupervisor → ${r.status}`, ms: r.ms, ok: leyo, nota: leyo ? "leyó filas" : (msg || "requiere presencia socket.io") });
+  }
+
+  // ── Scorecard de capacidades: ¿qué podríamos sincronizar hoy? ────────────────
+  const resumen: Record<string, boolean | number> = {
     alcanzable: checks.some((c) => c.ok),
     login: !!token,
-    restV4: checks.find((c) => c.nombre.startsWith("REST v4"))?.ok ?? false,
-    apiKeyRest: apiKey ? ((checks.find((c) => c.nombre.startsWith("REST v4"))?.detalle ?? "").includes("→ 200")) : false,
-    restV5: checks.find((c) => c.nombre.startsWith("REST v5"))?.ok ?? false,
-    ami: checks.find((c) => c.nombre.startsWith("Bridge"))?.ok ?? false,
-    lecturaDatos: checks.find((c) => c.nombre.startsWith("Lectura"))?.ok ?? false,
+    refresh,
+    lecturasV5: v5ok,
+    puedeLeerColas: leeColas,
+    puedeLeerContactos: leeContactosV5 || leeContactosV4,
+    puedeLeerCampanas: leeCampanas,
+    apiKeyRest: apiKey ? (leeCampanas || leeContactosV4) : false,
+    swaggerV4: swag.status === 200,
+    ami: ami.status > 0,
+    checksOk: checks.filter((c) => c.ok).length,
+    checksTotal: checks.length,
   };
   return { host, checks, resumen };
 }

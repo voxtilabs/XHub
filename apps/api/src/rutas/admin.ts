@@ -208,6 +208,57 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       return probarXContact({ host: b.host.trim(), usuario: b.usuario.trim(), password: b.password || "", apiKey: b.apiKey || "" });
     });
 
+    // ── Registro de instancias de XContact por cliente (#57) ────────────────────
+    // Deriva el estado de salud del último scorecard del probe.
+    const estadoInstancia = (r: { alcanzable?: boolean; login?: boolean; puedeLeerColas?: boolean; puedeLeerContactos?: boolean } | null): string => {
+      if (!r || !r.alcanzable) return "caida";
+      if (r.login && (r.puedeLeerColas || r.puedeLeerContactos)) return "operativa";
+      if (r.login) return "parcial";
+      return "degradada";
+    };
+
+    admin.get("/clientes/:id/xcontact/instancias", async (req) => {
+      const { id } = req.params as { id: string };
+      return conPlataforma(async (c) => ({ datos: (await c.query(
+        `select id, nombre, host, version_api, usuario, credencial_ref, estado_salud,
+                ultima_prueba::text as ultima_prueba, resumen, creada_en::text as creada_en
+           from plataforma.instancias_xcontact where cliente_id=$1 order by creada_en desc`, [id])).rows }));
+    });
+
+    admin.post("/clientes/:id/xcontact/instancias", async (req) => {
+      const { id } = req.params as { id: string };
+      const b = req.body as { nombre?: string; host?: string; versionApi?: string; usuario?: string; credencialRef?: string; resumen?: Record<string, unknown> };
+      const nombre = b?.nombre?.trim(); const host = b?.host?.trim();
+      if (!nombre || !host) throw new ErrorApi("VALIDACION", "Faltan nombre y host");
+      // NUNCA se guarda el secreto: solo host, usuario y la REFERENCIA de la credencial.
+      const estado = b.resumen ? estadoInstancia(b.resumen as never) : "sin_probar";
+      const r = await conPlataforma((c) => c.query(
+        `insert into plataforma.instancias_xcontact (cliente_id, nombre, host, version_api, usuario, credencial_ref, estado_salud, ultima_prueba, resumen)
+           values ($1,$2,$3,$4,$5,$6,$7, case when $8::jsonb is null then null else now() end, $8)
+         returning id, nombre, host, version_api, usuario, credencial_ref, estado_salud, ultima_prueba::text as ultima_prueba, resumen, creada_en::text as creada_en`,
+        [id, nombre, host.replace(/^https?:\/\//, "").replace(/\/.*/, ""), b.versionApi || "v5", b.usuario || null, b.credencialRef || null, estado, b.resumen ? JSON.stringify(b.resumen) : null]));
+      return r.rows[0];
+    });
+
+    // Actualizar el estado/scorecard de una instancia (tras re-probar).
+    admin.put("/clientes/:id/xcontact/instancias/:iid/salud", async (req) => {
+      const { id, iid } = req.params as { id: string; iid: string };
+      const b = req.body as { resumen?: Record<string, unknown> };
+      const estado = estadoInstancia((b?.resumen as never) ?? null);
+      const r = await conPlataforma((c) => c.query(
+        `update plataforma.instancias_xcontact set estado_salud=$3, resumen=$4, ultima_prueba=now(), actualizada_en=now()
+           where id=$2 and cliente_id=$1 returning id, estado_salud, ultima_prueba::text as ultima_prueba`,
+        [id, iid, estado, b?.resumen ? JSON.stringify(b.resumen) : null]));
+      if (!r.rowCount) throw new ErrorApi("NO_ENCONTRADO", "Instancia no encontrada");
+      return r.rows[0];
+    });
+
+    admin.delete("/clientes/:id/xcontact/instancias/:iid", async (req) => {
+      const { id, iid } = req.params as { id: string; iid: string };
+      await conPlataforma((c) => c.query("delete from plataforma.instancias_xcontact where id=$2 and cliente_id=$1", [id, iid]));
+      return { ok: true };
+    });
+
     // PANORAMA: el pulso de TODA la plataforma de un vistazo (vista 360 del superadmin).
     // Agrega por cliente los tickets (abiertos, SLA vencidos, total) recorriendo cada
     // tenant con conCliente (RLS), y el consumo de IA agregado de los últimos 30 días.

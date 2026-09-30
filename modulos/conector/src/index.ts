@@ -5,3 +5,4 @@ export * from "./eventos.js";
 export * from "./cliente.js";
 export * from "./proveedor-fixtures.js";
 export * from "./ingesta.js";
+export * from "./auth.js";
