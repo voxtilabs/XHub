@@ -15,6 +15,7 @@ import { registrarConsolaTickets } from "./rutas/consola.js";
 import { registrarCorreoEntrante } from "./rutas/correo-entrante.js";
 import { registrarConsolaCrm } from "./rutas/crm.js";
 import { generarOpenApi } from "./openapi.js";
+import { registrarIdempotencia } from "./idempotencia.js";
 
 const orígenesPanel = (process.env.XHUB_CORS_ORIGENES || "http://localhost:3000")
   .split(",").map((s) => s.trim()).filter(Boolean);
@@ -120,6 +121,7 @@ export function crearApp(): FastifyInstance {
   // Rutas /v1 protegidas por el guard, ejecutadas conCliente (RLS)
   app.register(async (v1) => {
     v1.addHook("onRequest", guard);
+    registrarIdempotencia(v1); // Idempotency-Key en POST (tras el guard: usa req.ctx)
     registrarRutasTickets(v1);
     registrarRutasPersonas(v1);
     registrarRutasCrm(v1);
