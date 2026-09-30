@@ -90,6 +90,19 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-}
       XHUB_COOKIE_DOMINIO: ${XHUB_COOKIE_DOMINIO:-}
+      # IA por env (la llave del proveedor vive SOLO acá). Global + por tarea.
+      IA_API_KEY: ${IA_API_KEY:-}
+      IA_API_BASE: ${IA_API_BASE:-}
+      IA_MODELO: ${IA_MODELO:-}
+      IA_RESUMEN_API_KEY: ${IA_RESUMEN_API_KEY:-}
+      IA_RESUMEN_API_BASE: ${IA_RESUMEN_API_BASE:-}
+      IA_RESUMEN_MODELO: ${IA_RESUMEN_MODELO:-}
+      IA_RESPUESTA_API_KEY: ${IA_RESPUESTA_API_KEY:-}
+      IA_RESPUESTA_API_BASE: ${IA_RESPUESTA_API_BASE:-}
+      IA_RESPUESTA_MODELO: ${IA_RESPUESTA_MODELO:-}
+      IA_DECISION_API_KEY: ${IA_DECISION_API_KEY:-}
+      IA_DECISION_API_BASE: ${IA_DECISION_API_BASE:-}
+      IA_DECISION_MODELO: ${IA_DECISION_MODELO:-}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -103,6 +116,12 @@ services:
       XHUB_ENV: ${XHUB_ENV:-staging}
       DATABASE_URL: postgres://${POSTGRES_USER:-xhub}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-xhub}
       REDIS_URL: redis://redis:6379
+      IA_API_KEY: ${IA_API_KEY:-}
+      IA_API_BASE: ${IA_API_BASE:-}
+      IA_MODELO: ${IA_MODELO:-}
+      IA_DECISION_API_KEY: ${IA_DECISION_API_KEY:-}
+      IA_DECISION_API_BASE: ${IA_DECISION_API_BASE:-}
+      IA_DECISION_MODELO: ${IA_DECISION_MODELO:-}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
