@@ -1,4 +1,5 @@
-import { conCliente, conPlataforma } from "@xhub/db";
+import { conCliente, conPlataforma, auditar } from "@xhub/db";
+import { resolverCredencial } from "@xhub/core";
 import {
   reconciliarPersona, registrarInteraccion,
   asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
@@ -31,7 +32,7 @@ const nucleoContactos: NucleoContactos = {
 };
 const deps: DepsSondeo = { conCliente, conPlataforma, fetchImpl: fetchXContact, nucleo: nucleoContactos };
 
-interface FilaInstancia { id: string; cliente_id: string; host: string; usuario: string; credencial_ref: string | null; cursor: string | null }
+interface FilaInstancia { id: string; cliente_id: string; host: string; usuario: string; credencial_ref: string | null; credencial_cifrada: string | null; cursor: string | null }
 export interface ResumenTick { debidas: number; sincronizadas: number; contactos: number; fallidas: number }
 
 // process.env vacío ("" de `${VAR:-}` en compose) NO es undefined: Number("")=0 haría
@@ -58,7 +59,9 @@ function causaLegible(m: string): string {
 }
 
 async function sondearUna(f: FilaInstancia): Promise<{ ok: boolean; contactos: number }> {
-  const clave = f.credencial_ref ? process.env[f.credencial_ref] : "";
+  let clave = "", fuente = "ninguna";
+  try { const r = resolverCredencial(f); clave = r.clave; fuente = r.fuente; } catch { /* sobre inabrible: se trata como sin credencial */ }
+  if (fuente === "cifrada") await auditar({ clienteId: f.cliente_id, actorTipo: "sistema", accion: "credencial.descifrada", recurso: "instancia", recursoId: f.id, resultado: "ok", metadata: { operacion: "sondeo" } }).catch(() => {});
   if (!f.usuario || !clave) {
     // Sin credencial no se puede sondear: degradada con causa, pero NO frena a las demás.
     await conPlataforma((c) => c.query(
@@ -90,7 +93,7 @@ async function sondearUna(f: FilaInstancia): Promise<{ ok: boolean; contactos: n
 /** Un tick: sincroniza las instancias cuyo intervalo venció. Concurrencia acotada + aislamiento. */
 export async function tickSondeo(): Promise<ResumenTick> {
   const debidas = await conPlataforma(async (c) => (await c.query(
-    `select i.id, i.cliente_id, i.host, i.usuario, i.credencial_ref, sc.cursor
+    `select i.id, i.cliente_id, i.host, i.usuario, i.credencial_ref, i.credencial_cifrada, sc.cursor
        from plataforma.instancias_xcontact i
        left join plataforma.sync_cursor sc on sc.instancia_id = i.id and sc.tipo='contactos'
       where i.sondeo_activo = true and i.cliente_id is not null
@@ -119,7 +122,7 @@ const RECON_INTERVAL_SEG = numEnv(process.env.RECON_INTERVAL_SEG, 21600); // 6h 
 export interface ResumenRecon { debidas: number; conDeriva: number; reparadas: number; fallidas: number }
 
 async function reconUna(f: FilaInstancia): Promise<{ ok: boolean; deriva: number }> {
-  const clave = f.credencial_ref ? process.env[f.credencial_ref] : "";
+  let clave = ""; try { clave = resolverCredencial(f).clave; } catch { /* sobre inabrible */ }
   if (!f.usuario || !clave) return { ok: false, deriva: 0 };
   try {
     const r = await conTimeout(reconciliarContactosInstancia(
@@ -135,7 +138,7 @@ async function reconUna(f: FilaInstancia): Promise<{ ok: boolean; deriva: number
  *  reconciliación es vieja. Aislada por instancia igual que el sondeo. */
 export async function tickReconciliacion(): Promise<ResumenRecon> {
   const debidas = await conPlataforma(async (c) => (await c.query(
-    `select i.id, i.cliente_id, i.host, i.usuario, i.credencial_ref, null::text as cursor
+    `select i.id, i.cliente_id, i.host, i.usuario, i.credencial_ref, i.credencial_cifrada, null::text as cursor
        from plataforma.instancias_xcontact i
        left join plataforma.sync_deriva sd on sd.instancia_id = i.id and sd.tipo='contactos'
       where i.sondeo_activo = true and i.cliente_id is not null

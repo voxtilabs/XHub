@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { createHmac } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
-import { ErrorApi } from "@xhub/core";
+import { ErrorApi, cifrarSecreto, resolverCredencial, reenvolverConActual, esCifrado } from "@xhub/core";
 import { conPlataforma, listarAuditoria, verificarCadena, auditar, type FiltroAudit } from "@xhub/db";
 import {
   resolverAdmin, crearCliente, cambiarEstado, fijarEntitlement, crearLlave,
@@ -96,11 +96,13 @@ const depsSondeoApi: DepsSondeo = { conCliente, conPlataforma, fetchImpl: fetchX
  */
 async function ejecutarSyncContactos(clienteId: string, iid: string, password: string | undefined, limitePedido: number | undefined): Promise<Record<string, number>> {
   const inst = await conPlataforma((c) => c.query(
-    "select host, usuario, credencial_ref from plataforma.instancias_xcontact where id=$2 and cliente_id=$1", [clienteId, iid]));
+    "select host, usuario, credencial_ref, credencial_cifrada from plataforma.instancias_xcontact where id=$2 and cliente_id=$1", [clienteId, iid]));
   if (!inst.rowCount) throw new ErrorApi("NO_ENCONTRADO", "Instancia no encontrada");
-  const { host, usuario, credencial_ref } = inst.rows[0] as { host: string; usuario: string; credencial_ref: string | null };
-  const clave = password || (credencial_ref ? process.env[credencial_ref] : "") || "";
-  if (!usuario || !clave) throw new ErrorApi("VALIDACION", "Falta la contraseña (en el body o en la env var referenciada)");
+  const { host, usuario } = inst.rows[0] as { host: string; usuario: string };
+  const { clave, fuente } = resolverCredencial(inst.rows[0], password);
+  if (!usuario || !clave) throw new ErrorApi("VALIDACION", "Falta la contraseña (body, bóveda cifrada o env var referenciada)");
+  // Cada descifrado de un secreto de la bóveda se audita: instancia, momento, operación.
+  if (fuente === "cifrada") await auditar({ clienteId, actorTipo: "sistema", accion: "credencial.descifrada", recurso: "instancia", recursoId: iid, resultado: "ok", metadata: { operacion: "sync" } });
 
   // Cursor guardado: parte desde el último id externo procesado (sondeo incremental #59).
   const cur = await conPlataforma((c) => c.query(
@@ -353,6 +355,7 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       const { id } = req.params as { id: string };
       return conPlataforma(async (c) => ({ datos: (await c.query(
         `select i.id, i.nombre, i.host, i.version_api, i.usuario, i.credencial_ref, i.externo_id, i.estado_salud,
+                (i.credencial_cifrada is not null) as credencial_en_boveda,
                 i.ultima_prueba::text as ultima_prueba, i.resumen, i.creada_en::text as creada_en,
                 i.sondeo_activo, i.intervalo_sondeo_seg, i.ultimo_sondeo::text as ultimo_sondeo,
                 i.fallos_consecutivos, i.corte_hasta::text as corte_hasta, (i.corte_hasta is not null and i.corte_hasta > now()) as breaker_abierto, i.ultima_causa,
@@ -363,6 +366,25 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
            left join plataforma.sync_cursor sc on sc.instancia_id = i.id and sc.tipo='contactos'
            left join plataforma.sync_deriva sd on sd.instancia_id = i.id and sd.tipo='contactos'
           where i.cliente_id=$1 order by i.creada_en desc`, [id])).rows }));
+    });
+
+    // Rotación de la CLAVE MAESTRA (#139): re-envuelve cada credencial cifrada con la
+    // maestra actual (requiere XHUB_MASTER_KEY = nueva y XHUB_MASTER_KEY_ANTERIOR = vieja).
+    // No expone ningún secreto; cada re-envoltura se hace en memoria y se vuelve a guardar.
+    admin.post("/xcontact/rotar-credenciales", async (req) => {
+      const filas = await conPlataforma((c) => c.query(
+        "select id, cliente_id, credencial_cifrada from plataforma.instancias_xcontact where credencial_cifrada is not null"));
+      let rotadas = 0, fallidas = 0;
+      for (const f of filas.rows as { id: string; cliente_id: string | null; credencial_cifrada: string }[]) {
+        try {
+          if (!esCifrado(f.credencial_cifrada)) continue;
+          const nuevo = reenvolverConActual(f.credencial_cifrada);
+          await conPlataforma((c) => c.query("update plataforma.instancias_xcontact set credencial_cifrada=$2 where id=$1", [f.id, nuevo]));
+          await auditar({ clienteId: f.cliente_id ?? undefined, actorTipo: "plataforma", accion: "credencial.rotada", recurso: "instancia", recursoId: f.id, resultado: "ok" });
+          rotadas++;
+        } catch { fallidas++; }
+      }
+      return { rotadas, fallidas, total: filas.rowCount };
     });
 
     // Activar/ajustar el SONDEO incremental por instancia (#59). El scheduler de workers
@@ -394,14 +416,17 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
         const chk = await validarAccesoV5({ host: hostLimpio, usuario: b.usuario, clave, fetchImpl: fetchXContact });
         if (!chk.ok) throw new ErrorApi("VALIDACION", `La instancia no valida: ${chk.motivo}`);
       }
-      // NUNCA se guarda el secreto: solo host, usuario y la REFERENCIA de la credencial.
+      // Bóveda (#139): si viene la contraseña y NO se usa una env var, se guarda CIFRADA
+      // en sobre (el secreto NUNCA en claro en la base). Si se pasa credencialRef, se
+      // respeta el modo por env var (instancias configuradas a mano).
+      const cifrada = (b?.password && !b?.credencialRef) ? cifrarSecreto(b.password) : null;
       const estado = b.resumen ? estadoInstancia(b.resumen as never) : "sin_probar";
       const r = await conPlataforma((c) => c.query(
-        `insert into plataforma.instancias_xcontact (cliente_id, nombre, host, version_api, usuario, credencial_ref, externo_id, estado_salud, ultima_prueba, resumen)
-           values ($1,$2,$3,$4,$5,$6,$7,$8, case when $9::jsonb is null then null else now() end, $9)
-         returning id, nombre, host, version_api, usuario, credencial_ref, externo_id, estado_salud, ultima_prueba::text as ultima_prueba, resumen, creada_en::text as creada_en`,
-        [id, nombre, hostLimpio, b.versionApi || "v5", b.usuario || null, b.credencialRef || null, b.externoId || null, estado, b.resumen ? JSON.stringify(b.resumen) : null]));
-      return r.rows[0];
+        `insert into plataforma.instancias_xcontact (cliente_id, nombre, host, version_api, usuario, credencial_ref, credencial_cifrada, externo_id, estado_salud, ultima_prueba, resumen)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9, case when $10::jsonb is null then null else now() end, $10)
+         returning id, nombre, host, version_api, usuario, credencial_ref, externo_id, estado_salud, (credencial_cifrada is not null) as credencial_en_boveda, ultima_prueba::text as ultima_prueba, resumen, creada_en::text as creada_en`,
+        [id, nombre, hostLimpio, b.versionApi || "v5", b.usuario || null, b.credencialRef || null, cifrada, b.externoId || null, estado, b.resumen ? JSON.stringify(b.resumen) : null]));
+      return r.rows[0]; // NB: la respuesta expone credencial_en_boveda (booleano), jamás el secreto
     });
 
     // Reconciliación manual (#61): compara conteo remoto vs local, guarda la deriva y,
@@ -410,11 +435,12 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       const { id, iid } = req.params as { id: string; iid: string };
       const b = req.body as { password?: string } | undefined;
       const inst = await conPlataforma((c) => c.query(
-        "select host, usuario, credencial_ref from plataforma.instancias_xcontact where id=$2 and cliente_id=$1", [id, iid]));
+        "select host, usuario, credencial_ref, credencial_cifrada from plataforma.instancias_xcontact where id=$2 and cliente_id=$1", [id, iid]));
       if (!inst.rowCount) throw new ErrorApi("NO_ENCONTRADO", "Instancia no encontrada");
-      const { host, usuario, credencial_ref } = inst.rows[0] as { host: string; usuario: string; credencial_ref: string | null };
-      const clave = b?.password || (credencial_ref ? process.env[credencial_ref] : "") || "";
-      if (!usuario || !clave) throw new ErrorApi("VALIDACION", "Falta la contraseña (body o env var referenciada)");
+      const { host, usuario } = inst.rows[0] as { host: string; usuario: string };
+      const { clave, fuente } = resolverCredencial(inst.rows[0], b?.password);
+      if (!usuario || !clave) throw new ErrorApi("VALIDACION", "Falta la contraseña (body, bóveda o env var referenciada)");
+      if (fuente === "cifrada") await auditar({ clienteId: id, actorTipo: "sistema", accion: "credencial.descifrada", recurso: "instancia", recursoId: iid, resultado: "ok", metadata: { operacion: "reconciliar" } });
       return reconciliarContactosInstancia(depsSondeoApi, { id: iid, clienteId: id, host, usuario, clave });
     });
 

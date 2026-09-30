@@ -107,6 +107,9 @@ services:
       # instancia nombra su env var; para la flota dada de alta desde el panel, #139
       # (bóveda cifrada) reemplaza esto.
       XCONTACT_X5_PASS: ${XCONTACT_X5_PASS:-}
+      # Bóveda de credenciales (#139): clave maestra del cifrado en sobre (32 bytes base64).
+      XHUB_MASTER_KEY: ${XHUB_MASTER_KEY:-}
+      XHUB_MASTER_KEY_ANTERIOR: ${XHUB_MASTER_KEY_ANTERIOR:-}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -128,6 +131,9 @@ services:
       IA_DECISION_MODELO: ${IA_DECISION_MODELO:-}
       # Credencial XContact para el SONDEO del scheduler (credencial_ref de la instancia).
       XCONTACT_X5_PASS: ${XCONTACT_X5_PASS:-}
+      # Bóveda de credenciales (#139): clave maestra del cifrado en sobre (32 bytes base64).
+      XHUB_MASTER_KEY: ${XHUB_MASTER_KEY:-}
+      XHUB_MASTER_KEY_ANTERIOR: ${XHUB_MASTER_KEY_ANTERIOR:-}
       # Ajustes del sondeo (opcionales, con default en código).
       SONDEO_TICK_MS: ${SONDEO_TICK_MS:-}
       SONDEO_CONCURRENCIA: ${SONDEO_CONCURRENCIA:-}

@@ -4,3 +4,4 @@ export * from "./permisos.js";
 export * from "./errores.js";
 export * from "./cursor.js";
 export * from "./guard.js";
+export * from "./cripto.js";
