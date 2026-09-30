@@ -43,11 +43,14 @@ function proveedorDe(base: string): string {
 export function leerConfigIA(tarea?: string, env = process.env): ConfigIA {
   const p = tarea ? `IA_${tarea.toUpperCase()}_` : "IA_";
   const g = "IA_";
-  const clave = env[`${p}API_KEY`] ?? env[`${g}API_KEY`] ?? "";
+  // Una variable en "" (p.ej. `${VAR:-}` del compose) cuenta como AUSENTE: así la
+  // config por tarea cae a la global sin romperse. `??` no bastaba (no cae en "").
+  const val = (k: string): string | undefined => { const v = env[k]; return v && v.trim() ? v : undefined; };
+  const clave = val(`${p}API_KEY`) ?? val(`${g}API_KEY`) ?? "";
   return {
     activa: Boolean(clave),
-    base: env[`${p}API_BASE`] ?? env[`${g}API_BASE`] ?? "https://integrate.api.nvidia.com/v1",
-    modelo: env[`${p}MODELO`] ?? env[`${g}MODELO`] ?? "z-ai/glm-5.3-flash",
+    base: val(`${p}API_BASE`) ?? val(`${g}API_BASE`) ?? "https://integrate.api.nvidia.com/v1",
+    modelo: val(`${p}MODELO`) ?? val(`${g}MODELO`) ?? "z-ai/glm-5.3-flash",
     clave,
     tarea: (tarea ?? "general").toLowerCase(),
   };
