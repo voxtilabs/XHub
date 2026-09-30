@@ -41,6 +41,18 @@ export function traducirFecha(bruto: string, zona = "America/Santiago"): string 
   return new Date(tentativa.getTime() - off * 60000).toISOString();
 }
 
+/**
+ * El DÍA DEL NEGOCIO de un instante, como texto `AAAA-MM-DD` en la zona del negocio
+ * (Chile). Una sola definición de «hoy»: una interacción de las 22:30 en Chile cae en
+ * SU día, no en el de UTC del día siguiente (ley de la casa #3 / issue #50).
+ */
+export function diaDelNegocio(instante: string | Date, zona = "America/Santiago"): string {
+  const d = typeof instante === "string" ? new Date(instante) : instante;
+  if (Number.isNaN(d.getTime())) throw new Error(`Instante ilegible: "${String(instante)}"`);
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: zona, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(d).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
 function offsetZona(fecha: Date, zona: string): number {
   // minutos que hay que restar a UTC para obtener la hora local (Chile: 180 o 240)
   const dtf = new Intl.DateTimeFormat("en-US", { timeZone: zona, hour12: false,

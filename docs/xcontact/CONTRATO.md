@@ -92,3 +92,17 @@ usar credencial de **integración**, no de una persona. La demo es `admin`/`admi
   retirar. Seremos la generación N+1; no contar con que cambien nada de su lado.
 - ⚠️ `GET /v4/chats/encerrarAllAtendimentosAguardando` (verbo de acción sobre un GET):
   el conector usa **lista blanca** de lecturas, nunca negra.
+
+## Taxonomía de errores del proveedor (#51)
+
+`clasificarError(status, cuerpo)` (`modulos/conector/src/resiliencia.ts`) mapea cada fallo a UNA categoría, y `esReintentable(cat)` decide la reacción. Ante un 403, un 500 y un cuerpo inesperado el conector reacciona distinto y registra la causa:
+
+| Categoría | Cuándo | Reacción |
+|---|---|---|
+| `transitorio` | `429`, `5xx`, o red caída recuperable | **Reintentar** con retroceso; alimenta el cortacircuitos |
+| `permiso` | `401`, `403` | **No** reintentar; renovar bearer (401) o avisar falta de scope (403, #9) |
+| `contrato` | `422` con SQL/`vCliente`/«no references» filtrado | **No** reintentar; abrir issue de **deriva** del contrato ajeno |
+| `dato` | `400`/`422` de validación | **No** reintentar; registrar el dato rechazado |
+| `caida` | sin status / status 0 | Abrir el **cortacircuitos** de esa instancia |
+
+Verificado en `modulos/conector/test/resiliencia.test.ts` ("clasificar errores de XContact y decidir reintento").

@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { traducirEstadoLlamada, traducirFecha, telefonoE164, desenvolver } from "../src/mapeo.js";
+import { traducirEstadoLlamada, traducirFecha, telefonoE164, desenvolver, diaDelNegocio } from "../src/mapeo.js";
 
 test("estados de llamada traducen del portugués al vocabulario nuestro", () => {
   expect(traducirEstadoLlamada("Atendida")).toBe("atendida");
@@ -42,4 +42,10 @@ test("mapearLlamada traduce un registro de XContact al vocabulario nuestro", asy
 test("mapearLlamada LANZA si falta lo esencial (no inventa datos)", async () => {
   const { mapearLlamada } = await import("../src/mapeo.js");
   expect(() => mapearLlamada({ numero: "912345678" } as any)).toThrow(/confirmar el contrato/);
+});
+
+test("día del negocio: 22:30 en Chile cae en su día, no en el de UTC del día siguiente (#50)", () => {
+  const iso = traducirFecha("2026-9-23 22:30:00");   // 22:30 hora Chile
+  expect(diaDelNegocio(iso)).toBe("2026-09-23");      // el día del negocio es el 23
+  expect(iso.slice(0, 10)).toBe("2026-09-24");        // pero el instante ISO ya cruzó a UTC del 24
 });
