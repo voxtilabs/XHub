@@ -7,3 +7,4 @@ export * from "./proveedor-fixtures.js";
 export * from "./ingesta.js";
 export * from "./auth.js";
 export * from "./xcontact-v5.js";
+export * from "./paginacion.js";
