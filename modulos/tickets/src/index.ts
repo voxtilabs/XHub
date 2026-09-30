@@ -4,7 +4,7 @@ import type { DefinicionModulo, NucleoApi } from "@xhub/sdk-modulo";
 import { politicaSla, sumarMinutosHabiles } from "./sla.js";
 import { type Agente, filtroVisibilidad, permisosDe } from "./roles.js";
 import { analizarUrgencia } from "./urgencia.js";
-import { resumirConversacionIA, sugerirRespuestaIA } from "@xhub/ia";
+import { resumirConversacionIA, sugerirRespuestaIA, leerConfigIA } from "@xhub/ia";
 import { clasificar, decidir, configTriage, type MensajeConv } from "./triage.js";
 
 export type EstadoTicket = "nuevo" | "abierto" | "pendiente" | "resuelto" | "cerrado";
@@ -89,14 +89,14 @@ export function crearModuloTickets(nucleo: NucleoApi) {
       const cid = await clienteDe(c);
       await c.query("insert into tickets_mensajes (cliente_id, ticket_id, autor_tipo, autor_id, cuerpo, interno) values ($1,$2,$3,$4,$5,$6)", [cid, ticketId, args.autorTipo, args.autorId ?? null, args.cuerpo, args.interno ?? false]);
     },
-    async resumirConversacion(c: PoolClient, ticketId: string, resumen?: string): Promise<string> {
+    async resumirConversacion(c: PoolClient, ticketId: string, resumen?: string, modelo?: string | null): Promise<string> {
       const cid = await clienteDe(c);
       let texto = resumen;
       if (!texto) {
         const m = await c.query("select autor_tipo, cuerpo from tickets_mensajes where cliente_id=$1 and ticket_id=$2 and interno=false order by seq asc", [cid, ticketId]);
         const n = m.rowCount ?? 0;
         // IA-first (GLM si la llave está configurada), con fallback determinista.
-        const ia = n > 0 ? await resumirConversacionIA(m.rows.map((x) => ({ autor: x.autor_tipo, texto: x.cuerpo }))) : null;
+        const ia = n > 0 ? await resumirConversacionIA(m.rows.map((x) => ({ autor: x.autor_tipo, texto: x.cuerpo })), modelo ? { ...leerConfigIA("RESUMEN"), modelo } : undefined) : null;
         texto = ia ?? (n === 0 ? "Sin mensajes aún." : `${n} mensaje(s). Motivo inicial: ${m.rows[0]?.cuerpo?.slice(0, 120) ?? ""}`);
       }
       await c.query("update tickets set resumen=$2, actualizado_en=now() where id=$1 and cliente_id=$3", [ticketId, texto, cid]);
@@ -183,7 +183,7 @@ export function crearModuloTickets(nucleo: NucleoApi) {
      * del ticket + contexto de reincidencia. Devuelve null si la IA está apagada.
      * El agente decide si la usa: es una sugerencia, no un envío automático.
      */
-    async sugerirRespuesta(c: PoolClient, ticketId: string): Promise<string | null> {
+    async sugerirRespuesta(c: PoolClient, ticketId: string, modelo?: string | null): Promise<string | null> {
       const cid = await clienteDe(c);
       const m = await c.query("select autor_tipo, cuerpo from tickets_mensajes where cliente_id=$1 and ticket_id=$2 and interno=false order by seq asc", [cid, ticketId]);
       if ((m.rowCount ?? 0) === 0) return null;
@@ -193,7 +193,7 @@ export function crearModuloTickets(nucleo: NucleoApi) {
         if (t.rows[0].prioridad === "urgente") contexto.push("Ticket de prioridad urgente");
         if (t.rows[0].canal_origen) contexto.push(`Llegó por ${t.rows[0].canal_origen}`);
       }
-      return sugerirRespuestaIA(m.rows.map((x) => ({ autor: x.autor_tipo, texto: x.cuerpo })), contexto);
+      return sugerirRespuestaIA(m.rows.map((x) => ({ autor: x.autor_tipo, texto: x.cuerpo })), contexto, modelo ? { ...leerConfigIA("RESPUESTA"), modelo } : undefined);
     },
     async listarBandeja(c: PoolClient, filtro: { estado?: EstadoTicket; asignadoA?: string } = {}, cursor?: string, limite = 25) {
       const cid = await clienteDe(c);

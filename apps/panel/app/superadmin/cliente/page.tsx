@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
 import { AppShell } from "@/components/app-shell";
 
-type Cliente = { id: string; nombre: string; estado: string; modulos: string[] };
+type Cliente = { id: string; nombre: string; estado: string; modulos: string[]; ia_modelo?: string | null };
+type IAConfig = { modeloDefault: string | null; proveedor: string; modeloEnv: string | null; iaActiva: boolean };
 type ScopeDef = { scope: string; modulo: string; descripcion: string };
 type Llave = { id: string; nombre: string; prefijo: string; scopes: string[]; creada_en: string; ultimo_uso: string | null; revocada_en: string | null };
 type Consumo = { total: number; cuotaMensual: number; dia: string };
@@ -43,6 +44,9 @@ export default function ClienteDetalle() {
   const [llaves, setLlaves] = useState<Llave[]>([]);
   const [editando, setEditando] = useState<string | null>(null);
   const [editScopes, setEditScopes] = useState<string[]>([]);
+  const [iaCfg, setIaCfg] = useState<IAConfig | null>(null);
+  const [modeloDefault, setModeloDefault] = useState("");
+  const [modeloCliente, setModeloCliente] = useState("");
   const [usuarios, setUsuarios] = useState<Usuarios | null>(null);
   const [lim, setLim] = useState("");
   const [nu, setNu] = useState({ email: "", nombre: "", password: "" });
@@ -51,7 +55,9 @@ export default function ClienteDetalle() {
   async function cargar(cid: string) {
     try {
       const lista = await apiFetch<{ datos: Cliente[] }>("/admin/clientes");
-      setCli(lista.datos.find((x) => x.id === cid) ?? null);
+      const yo = lista.datos.find((x) => x.id === cid) ?? null;
+      setCli(yo); setModeloCliente(yo?.ia_modelo ?? "");
+      const ia = await apiFetch<IAConfig>("/admin/ia/config"); setIaCfg(ia); setModeloDefault(ia.modeloDefault ?? "");
       const co = await apiFetch<Consumo>(`/admin/clientes/${cid}/consumo`); setConsumo(co); setCuota(String(co.cuotaMensual));
       setTriage(await apiFetch<Triage>(`/admin/clientes/${cid}/triage`));
       const us = await apiFetch<Usuarios>(`/admin/clientes/${cid}/usuarios`); setUsuarios(us); setLim(String(us.limite));
@@ -79,6 +85,8 @@ export default function ClienteDetalle() {
   const toggle = (mod: string) => accion(async () => { const on = !cli!.modulos.includes(mod); await apiFetch(`/admin/clientes/${id}/modulos/${mod}`, { method: "PUT", body: JSON.stringify({ encendido: on }) }); setCli((c) => c && { ...c, modulos: on ? [...c.modulos, mod] : c.modulos.filter((m) => m !== mod) }); }, "Módulo actualizado");
   const guardarCuota = () => accion(async () => { const n = Number(cuota); await apiFetch(`/admin/clientes/${id}/cuota`, { method: "PUT", body: JSON.stringify({ limiteMensual: n }) }); setConsumo((c) => c && { ...c, cuotaMensual: n }); }, "Cuota fijada");
   const guardarTriage = (t: Triage) => accion(async () => { await apiFetch(`/admin/clientes/${id}/triage`, { method: "PUT", body: JSON.stringify(t) }); setTriage(t); }, "Triage guardado");
+  const guardarModeloDefault = () => accion(async () => { await apiFetch("/admin/ia/config", { method: "PUT", body: JSON.stringify({ modeloDefault: modeloDefault.trim() || null }) }); setIaCfg((c) => c && { ...c, modeloDefault: modeloDefault.trim() || null }); }, "Modelo por defecto guardado");
+  const guardarModeloCliente = () => accion(async () => { await apiFetch(`/admin/clientes/${id}/ia-modelo`, { method: "PUT", body: JSON.stringify({ modelo: modeloCliente.trim() || null }) }); setCli((c) => c && { ...c, ia_modelo: modeloCliente.trim() || null }); }, "Modelo del cliente guardado");
   const nuevaLlave = () => accion(async () => { const r = await apiFetch<{ token: string; scopes: string[] }>(`/admin/clientes/${id}/llaves`, { method: "POST", body: JSON.stringify({ nombre: "Panel " + new Date().toISOString().slice(0, 10) }) }); setLlave(r.token); setLlaveScopes(r.scopes ?? []); await recargarLlaves(); }, "Llave creada");
   const abrirEdicion = (l: Llave) => { setEditando(l.id); setEditScopes(l.scopes); };
   const toggleScope = (s: string) => setEditScopes((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
@@ -249,6 +257,26 @@ export default function ClienteDetalle() {
               </div>
             </>
           )}
+        </CardContent></Card>
+
+        {/* IA — proveedor + modelo por defecto y override por cliente */}
+        <Card><CardContent className="pt-5">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-xs font-black uppercase tracking-widest text-muted-foreground">Inteligencia artificial</div>
+            {iaCfg && <Badge rol={iaCfg.iaActiva ? "exito" : "neutro"}>{iaCfg.iaActiva ? `${iaCfg.proveedor} activo` : "IA apagada"}</Badge>}
+          </div>
+          <p className="text-[12px] text-muted-foreground mb-3">La llave del proveedor vive en el entorno (nunca acá). Solo se configura el <b>modelo</b>. Sin modelo del cliente, se usa el por defecto{iaCfg?.modeloEnv ? ` (env: ${iaCfg.modeloEnv})` : ""}.</p>
+          <div className="space-y-3">
+            <div className="flex items-end gap-2 flex-wrap">
+              <label className="flex flex-col flex-1 min-w-[200px]"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Modelo por defecto (toda la plataforma)</span><Input value={modeloDefault} onChange={(e) => setModeloDefault(e.target.value)} placeholder={iaCfg?.modeloEnv ?? "google/gemma-3-12b-it"} className="mt-1 font-mono text-[12px]" /></label>
+              <Button variant="secondary" size="sm" onClick={guardarModeloDefault}>Guardar default</Button>
+            </div>
+            <div className="flex items-end gap-2 flex-wrap">
+              <label className="flex flex-col flex-1 min-w-[200px]"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Modelo de {cli?.nombre ?? "este cliente"} (override)</span><Input value={modeloCliente} onChange={(e) => setModeloCliente(e.target.value)} placeholder={`(usa el default: ${modeloDefault || iaCfg?.modeloEnv || "—"})`} className="mt-1 font-mono text-[12px]" /></label>
+              <Button variant="secondary" size="sm" onClick={guardarModeloCliente}>Guardar cliente</Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Ej. económicos en OpenRouter: <code>google/gemma-3-12b-it</code>, <code>google/gemma-3-4b-it</code>, <code>meta-llama/llama-3.1-8b-instruct</code>. Dejá vacío el del cliente para heredar el default.</p>
+          </div>
         </CardContent></Card>
 
         {/* Llaves de API — listar, crear, editar scopes, revocar */}

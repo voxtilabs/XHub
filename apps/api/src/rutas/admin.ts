@@ -11,8 +11,9 @@ import {
   listarLlaves, actualizarScopesLlave, revocarLlave,
   asegurarPersonaPorIdentidad, registrarInteraccion,
   asegurarIdentidad, asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
+  configIA, fijarModeloDefault, fijarModeloCliente,
 } from "@xhub/modulo-nucleo";
-import { leerContactosV5 } from "@xhub/modulo-conector";
+import { leerContactosV5, leerTagsV5 } from "@xhub/modulo-conector";
 import { fetchXContact } from "../fetch-xcontact.js";
 import { consumoDelDia } from "@xhub/cuotas";
 import { fijarConfigTriage, configTriage } from "@xhub/modulo-tickets";
@@ -77,12 +78,17 @@ async function ejecutarSyncContactos(clienteId: string, iid: string, password: s
   const clave = password || (credencial_ref ? process.env[credencial_ref] : "") || "";
   if (!usuario || !clave) throw new ErrorApi("VALIDACION", "Falta la contraseña (en el body o en la env var referenciada)");
 
-  // 1) Leer y normalizar (toda la HTTP acá, antes de abrir transacción — ley 7).
-  const contactos = await leerContactosV5({ host, usuario, clave, fetchImpl: fetchXContact, limite: Math.min(200, Math.max(1, Number(limitePedido) || 25)) });
+  // 1) Leer y normalizar (toda la HTTP acá, antes de abrir transacción — ley 7):
+  //    contactos + catálogo de etiquetas (tags) de la instancia.
+  const opsLect = { host, usuario, clave, fetchImpl: fetchXContact };
+  const contactos = await leerContactosV5({ ...opsLect, limite: Math.min(200, Math.max(1, Number(limitePedido) || 25)) });
+  const tagsXC = await leerTagsV5(opsLect).catch(() => []); // el catálogo es opcional; no romper el sync si falla
 
   // 2) Escribir en el núcleo del cliente (RLS por conCliente). Idempotente.
   const r = await conCliente(clienteId, async (c) => {
-    let personas = 0, interacciones = 0, identidades = 0, etiquetados = 0, campos = 0;
+    let personas = 0, interacciones = 0, identidades = 0, etiquetados = 0, campos = 0, etiquetasCatalogo = 0;
+    // Exportar el catálogo de etiquetas de XContact como etiquetas del cliente.
+    for (const t of tagsXC) { await asegurarEtiqueta(c, t.nombre); etiquetasCatalogo++; }
     for (const k of contactos) {
       const p = await asegurarPersonaPorIdentidad(c, k.canal as never, k.identidad, k.nombre ?? undefined);
       if (!p) continue;
@@ -101,7 +107,7 @@ async function ejecutarSyncContactos(clienteId: string, iid: string, password: s
       });
       if ((it as { id?: string })?.id) interacciones++;
     }
-    return { personas, interacciones, identidades, etiquetados, campos };
+    return { personas, interacciones, identidades, etiquetados, campos, etiquetasCatalogo };
   });
 
   // 3) Sellar la última sincronización y marcar la instancia operativa.
@@ -276,6 +282,26 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       const b = req.body as { host?: string; usuario?: string; password?: string; apiKey?: string };
       if (!b?.host?.trim() || !b?.usuario?.trim()) throw new ErrorApi("VALIDACION", "Faltan host y usuario");
       return probarXContact({ host: b.host.trim(), usuario: b.usuario.trim(), password: b.password || "", apiKey: b.apiKey || "" });
+    });
+
+    // ── Config de IA: modelo por defecto (plataforma) + override por cliente ────
+    admin.get("/ia/config", async () => conPlataforma(async (c) => ({
+      ...(await configIA(c)),
+      // Proveedor y default de env (informativo; la llave nunca se expone).
+      proveedor: (process.env.IA_API_BASE || "").includes("openrouter") ? "OpenRouter" : (process.env.IA_API_BASE || "—"),
+      modeloEnv: process.env.IA_MODELO || null,
+      iaActiva: Boolean(process.env.IA_API_KEY),
+    })));
+    admin.put("/ia/config", async (req) => {
+      const b = req.body as { modeloDefault?: string | null };
+      await conPlataforma((c) => fijarModeloDefault(c, b?.modeloDefault ?? null));
+      return { ok: true, modeloDefault: b?.modeloDefault ?? null };
+    });
+    admin.put("/clientes/:id/ia-modelo", async (req) => {
+      const { id } = req.params as { id: string };
+      const b = req.body as { modelo?: string | null };
+      await conPlataforma((c) => fijarModeloCliente(c, id, b?.modelo ?? null));
+      return { ok: true, modelo: b?.modelo ?? null };
     });
 
     // ── Tablero de salud de la flota XContact (#66) ─────────────────────────────

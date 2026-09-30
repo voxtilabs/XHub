@@ -36,3 +36,9 @@ test("grupos → etiquetas; campos adicionales → campos; sin duplicar identida
 test("fila sin identidad alguna se descarta", () => {
   expect(mapearContactoV5({ id: "", numero: "" })).toBeNull();
 });
+
+import { mapearTagV5 } from "../src/xcontact-v5.js";
+test("mapea una tag v5 (nome + cor) y descarta las sin nombre", () => {
+  expect(mapearTagV5({ id: 1, nome: "Cotizacion", cor: "#ff0000" })).toEqual({ nombre: "Cotizacion", color: "#ff0000" });
+  expect(mapearTagV5({ id: 2, nome: "  " })).toBeNull();
+});

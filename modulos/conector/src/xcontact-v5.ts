@@ -66,10 +66,15 @@ export function mapearContactoV5(row: Record<string, unknown>): ContactoNormaliz
   return { externoId, nombre, canal: primaria.canal, identidad: primaria.valor, identidades, etiquetas, campos };
 }
 
+/** Autenticador v5 listo para una instancia (login single-flight + refresh). */
+function autenticadorV5(o: OpcionesLecturaV5) {
+  const f = o.fetchImpl ?? fetch;
+  return { f, auth: new AutenticadorXContact({ authUrl: `https://${o.host}:8011/api/v5/auth/supervisor`, usuario: o.usuario, clave: o.clave, fetchImpl: f }) };
+}
+
 /** Lee y normaliza los contactos v5 de una instancia. Toda la HTTP ocurre aquí (fuera de transacción). */
 export async function leerContactosV5(o: OpcionesLecturaV5): Promise<ContactoNormalizado[]> {
-  const f = o.fetchImpl ?? fetch;
-  const auth = new AutenticadorXContact({ authUrl: `https://${o.host}:8011/api/v5/auth/supervisor`, usuario: o.usuario, clave: o.clave, fetchImpl: f });
+  const { f, auth } = autenticadorV5(o);
   const token = await auth.token();
   const r = await f(`https://${o.host}:8011/api/v5/clientes`, { headers: { authorization: `Bearer ${token}` } });
   if (!r.ok) throw new Error(`XContact v5 /clientes → ${r.status}`);
@@ -82,4 +87,25 @@ export async function leerContactosV5(o: OpcionesLecturaV5): Promise<ContactoNor
     if (m) out.push(m);
   }
   return out;
+}
+
+export interface EtiquetaXContact { nombre: string; color: string | null; }
+
+/** Fila v5 de /tags → etiqueta normalizada. null si no tiene nombre. */
+export function mapearTagV5(row: Record<string, unknown>): EtiquetaXContact | null {
+  const nombre = (typeof row.nome === "string" && row.nome.trim()) ? row.nome.trim()
+    : (typeof row.nombre === "string" && row.nombre.trim()) ? row.nombre.trim() : null;
+  if (!nombre) return null;
+  return { nombre, color: (typeof row.cor === "string" && row.cor.trim()) ? row.cor.trim() : null };
+}
+
+/** Lee el CATÁLOGO de etiquetas (tags) de la instancia v5 (:8011/api/v5/tags). */
+export async function leerTagsV5(o: OpcionesLecturaV5): Promise<EtiquetaXContact[]> {
+  const { f, auth } = autenticadorV5(o);
+  const token = await auth.token();
+  const r = await f(`https://${o.host}:8011/api/v5/tags`, { headers: { authorization: `Bearer ${token}` } });
+  if (!r.ok) throw new Error(`XContact v5 /tags → ${r.status}`);
+  const j = JSON.parse(await r.text()) as { data?: unknown[] } | unknown[];
+  const rows = (Array.isArray(j) ? j : j.data ?? []) as Record<string, unknown>[];
+  return rows.map(mapearTagV5).filter((x): x is EtiquetaXContact => !!x);
 }
