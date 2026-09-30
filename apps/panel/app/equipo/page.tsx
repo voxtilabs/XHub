@@ -19,6 +19,7 @@ export default function Equipo() {
   const [msg, setMsg] = useState<string | null>(null);
   const [nu, setNu] = useState({ email: "", nombre: "", password: "" });
   const [creando, setCreando] = useState(false);
+  const [claveTmp, setClaveTmp] = useState<{ id: string; clave: string } | null>(null);
 
   async function cargar() {
     setError(null);
@@ -38,12 +39,32 @@ export default function Equipo() {
     try { await fn(); flash(ok); } catch (e) { setError((e as Error).message); }
   }
 
-  const togglePermiso = (u: Usuario, clave: string) => accion(async () => {
-    const tiene = u.permisos.includes(clave);
-    const permisos = tiene ? u.permisos.filter((x) => x !== clave) : [...u.permisos, clave];
+  const fijarPermisos = (u: Usuario, permisos: string[]) => accion(async () => {
+    const previo = u.permisos;
     setData((d) => d && { ...d, usuarios: d.usuarios.map((x) => x.id === u.id ? { ...x, permisos } : x) });
-    await apiFetch(`/cliente/usuarios/${u.id}/permisos`, { method: "PUT", body: JSON.stringify({ permisos }) });
-  }, "Permisos actualizados");
+    try { await apiFetch(`/cliente/usuarios/${u.id}/permisos`, { method: "PUT", body: JSON.stringify({ permisos }) }); }
+    catch (e) { setData((d) => d && { ...d, usuarios: d.usuarios.map((x) => x.id === u.id ? { ...x, permisos: previo } : x) }); throw e; }
+  }, "Permisos guardados");
+  const togglePermiso = (u: Usuario, clave: string) => {
+    const permisos = u.permisos.includes(clave) ? u.permisos.filter((x) => x !== clave) : [...u.permisos, clave];
+    return fijarPermisos(u, permisos);
+  };
+  const resetClave = (u: Usuario) => accion(async () => {
+    const r = await apiFetch<{ clave: string }>(`/cliente/usuarios/${u.id}/reset-clave`, { method: "PUT" });
+    setClaveTmp({ id: u.id, clave: r.clave });
+  }, "Clave temporal generada");
+  const eliminarUsuario = (u: Usuario) => accion(async () => {
+    if (!confirm(`¿Eliminar a ${u.nombre || u.email}? No se puede deshacer.`)) return;
+    await apiFetch(`/cliente/usuarios/${u.id}`, { method: "DELETE" });
+    setData((d) => d && { ...d, usados: d.usados - 1, usuarios: d.usuarios.filter((x) => x.id !== u.id) });
+  }, "Usuario eliminado");
+  const PLANTILLAS: { n: string; permisos: string[] }[] = [
+    { n: "Agente soporte", permisos: ["bandeja.ver", "bandeja.gestionar", "ficha360.ver", "personas.buscar"] },
+    { n: "Vendedor CRM", permisos: ["crm.ver", "crm.gestionar", "ficha360.ver", "personas.buscar"] },
+    { n: "Solo lectura", permisos: ["bandeja.ver", "crm.ver", "ficha360.ver"] },
+    { n: "Todo", permisos: catalogo.map((p) => p.clave) },
+    { n: "Ninguno", permisos: [] },
+  ];
 
   const crear = () => accion(async () => {
     setCreando(true);
@@ -111,6 +132,24 @@ export default function Equipo() {
                 })}
               </div></details>
             )}
+            {u.rol !== "admin_cliente" && (
+              <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+                <span className="text-[10.5px] uppercase tracking-widest text-muted-foreground mr-1">Plantilla:</span>
+                {PLANTILLAS.map((pl) => (
+                  <button key={pl.n} type="button" onClick={() => fijarPermisos(u, pl.permisos)}
+                    className="text-[11px] px-2 py-0.5 rounded-pill border border-border text-muted-foreground hover:text-foreground hover:border-[hsl(var(--senal))]">{pl.n}</button>
+                ))}
+              </div>
+            )}
+            {claveTmp?.id === u.id && (
+              <div className="mt-2 p-2 rounded-md text-[12px]" style={{ background: "hsl(var(--senal)/0.1)" }}>
+                Clave temporal (mostrala UNA vez): <b className="font-mono">{claveTmp.clave}</b> — pedile que la cambie al entrar.
+              </div>
+            )}
+            <div className="mt-2 flex gap-3 justify-end">
+              <button type="button" onClick={() => resetClave(u)} className="text-[12px] text-[hsl(var(--senal))] hover:underline">↺ resetear clave</button>
+              {u.rol !== "admin_cliente" && <button type="button" onClick={() => eliminarUsuario(u)} className="text-[12px] text-muted-foreground hover:text-[hsl(var(--critico))]">eliminar</button>}
+            </div>
           </CardContent></Card>
         ))}
         </div>

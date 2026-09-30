@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
+import { randomBytes } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi } from "@xhub/core";
 import { conPlataforma } from "@xhub/db";
@@ -95,6 +96,34 @@ export function registrarRutasCliente(app: FastifyInstance): void {
       await exigirMismoCliente(clienteId, id);
       const permisos = await conPlataforma((c) => fijarPermisos(c, id, b.permisos));
       return { id, permisos };
+    });
+
+    // Resetear la clave de un usuario del equipo → genera una temporal, se muestra UNA vez.
+    cli.put("/usuarios/:id/reset-clave", async (req) => {
+      const { clienteId } = ctx(req);
+      const { id } = req.params as { id: string };
+      await exigirMismoCliente(clienteId, id);
+      const nueva = randomBytes(9).toString("base64url");
+      const context = await auth.$context;
+      const hash = await context.password.hash(nueva);
+      const r = await conPlataforma((c) => c.query(`update "account" set password=$2, "updatedAt"=now() where "userId"=$1 and "providerId"='credential'`, [id, hash]));
+      if (!r.rowCount) throw new ErrorApi("NO_ENCONTRADO", "Ese usuario no tiene credencial de acceso");
+      return { clave: nueva };
+    });
+
+    // Eliminar un usuario del equipo (no a uno mismo). Limpia permisos + credencial + cuenta.
+    cli.delete("/usuarios/:id", async (req) => {
+      const { clienteId, usuarioId } = ctx(req);
+      const { id } = req.params as { id: string };
+      if (id === usuarioId) throw new ErrorApi("VALIDACION", "No puedes eliminarte a ti mismo");
+      await exigirMismoCliente(clienteId, id);
+      await conPlataforma(async (c) => {
+        await fijarPermisos(c, id, []);
+        await c.query(`delete from "account" where "userId"=$1`, [id]);
+        await c.query(`delete from "session" where "userId"=$1`, [id]);
+        await c.query(`delete from "user" where id=$1 and "clienteId"=$2`, [id, clienteId]);
+      });
+      return { ok: true };
     });
   }, { prefix: "/cliente" });
 
