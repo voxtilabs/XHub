@@ -42,3 +42,9 @@ test("mapea una tag v5 (nome + cor) y descarta las sin nombre", () => {
   expect(mapearTagV5({ id: 1, nome: "Cotizacion", cor: "#ff0000" })).toEqual({ nombre: "Cotizacion", color: "#ff0000" });
   expect(mapearTagV5({ id: 2, nome: "  " })).toBeNull();
 });
+
+test("facebookID → identidad messenger; isBusiness → etiqueta Empresa", () => {
+  const c = mapearContactoV5({ id: 30, numero: "911111111", facebookID: "fb_9988", isBusiness: true })!;
+  expect(c.identidades).toEqual(expect.arrayContaining([{ canal: "messenger", valor: "fb_9988" }]));
+  expect(c.etiquetas).toContain("Empresa");
+});

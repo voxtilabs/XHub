@@ -8,7 +8,7 @@ import { telefonoE164 } from "./mapeo.js";
  * → RUT → id externo) para colgar la persona de la espina dorsal. El conector es la
  * ÚNICA pieza que conoce el vocabulario en portugués (nome/numero/documento).
  */
-export type CanalId = "telefono" | "email" | "rut" | "xcontact";
+export type CanalId = "telefono" | "email" | "rut" | "xcontact" | "messenger" | "webchat" | "instagram";
 export interface ContactoNormalizado {
   externoId: string;
   nombre: string | null;
@@ -53,12 +53,16 @@ export function mapearContactoV5(row: Record<string, unknown>): ContactoNormaliz
   // Teléfonos y emails adicionales del contacto (reconciliación multi-canal).
   for (const n of lista(row.clienteNumerosAdicionais)) push("telefono", telefonoE164(String(n.numero ?? n.telefone ?? n.fone ?? "")));
   for (const e of lista(row.clienteEmailsAdicionais)) push("email", emailValido(e.email ?? e.endereco));
+  // Facebook Messenger: otra identidad de canal para reconciliar con chats/webchat.
+  const fb = primerTexto(row, "facebookID", "facebookId");
+  if (fb) push("messenger", fb);
 
   // La identidad PRIMARIA (para colgar la persona): la primera no-xcontact, o xcontact.
   const primaria = identidades.find((i) => i.canal !== "xcontact") ?? identidades[0];
   if (!primaria) return null;
 
   const etiquetas = lista(row.clienteGrupos).map((g) => primerTexto(g, "nome", "nombre")).filter((x): x is string => !!x);
+  if (row.isBusiness === true) etiquetas.push("Empresa"); // isBusiness → etiqueta
   const campos = lista(row.clienteCamposAdicionais)
     .map((k) => ({ nombre: primerTexto(k, "nome", "nombre", "campo", "label") ?? "", valor: primerTexto(k, "valor", "value", "conteudo") ?? "" }))
     .filter((k) => k.nombre && k.valor);
