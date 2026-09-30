@@ -5,7 +5,9 @@ import { ErrorApi } from "@xhub/core";
 import { conCliente, conPlataforma, emitir } from "@xhub/db";
 import { permisosDe, CATALOGO_PERMISOS, listarUsuariosCliente, buscarPersonas, fichaDePersona, modeloIADe, contextoIADe,
   crearRegla, activarRegla, aplicarReglas, aQuienAfectaria, listarReglas, type EjecutorAccion,
-  listarEntregas, reintentarEntrega } from "@xhub/modulo-nucleo";
+  listarEntregas, reintentarEntrega,
+  crearLlave, listarLlaves, actualizarScopesLlave, entitlementsDe, cuotaDe, CATALOGO_SCOPES } from "@xhub/modulo-nucleo";
+import { consumoDelDia } from "@xhub/cuotas";
 import { crearModuloTickets, contextoOmnicanal, reincidencia } from "@xhub/modulo-tickets";
 import { nucleo } from "../nucleo.js";
 import { asegurarPipeline } from "./crm.js";
@@ -415,6 +417,75 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
       const { id } = req.params as { id: string };
       await conCliente(ctx.clienteId, (c) => c.query("delete from plataforma.webhooks where id=$1 and cliente_id=$2", [id, ctx.clienteId]));
       return { ok: true };
+    });
+
+    // ── Portal de desarrollador (#94): llaves de API + scopes + consumo ─────────
+    // Self-service del admin de cliente. Los scopes son un TECHO: solo se ofrecen y
+    // aceptan los del catálogo cuyo módulo esté encendido para este cliente (nucleo
+    // siempre). Así una llave nunca puede exceder los entitlements del cliente.
+    const scopesDelCliente = async (clienteId: string): Promise<{ scope: string; modulo: string; descripcion: string }[]> => {
+      const ent = await conPlataforma((c) => entitlementsDe(c, clienteId));
+      return CATALOGO_SCOPES.filter((s) => s.modulo === "nucleo" || ent.has(s.modulo));
+    };
+
+    r.get("/llaves", async (req) => {
+      const ctx = await guard(req);
+      if (!ctx.esAdmin) throw new ErrorApi("SIN_PERMISO", "Solo el administrador del cliente gestiona las llaves de API");
+      const [datos, scopesDisponibles] = await Promise.all([
+        conPlataforma((c) => listarLlaves(c, ctx.clienteId)),
+        scopesDelCliente(ctx.clienteId),
+      ]);
+      return { datos, scopesDisponibles };
+    });
+
+    r.post("/llaves", async (req) => {
+      const ctx = await guard(req);
+      if (!ctx.esAdmin) throw new ErrorApi("SIN_PERMISO", "Solo el administrador del cliente");
+      const b = req.body as { nombre?: string; scopes?: string[] };
+      if (!b?.nombre?.trim()) throw new ErrorApi("VALIDACION", "Ponle un nombre a la llave");
+      const permitidos = new Set((await scopesDelCliente(ctx.clienteId)).map((s) => s.scope));
+      const scopes = Array.isArray(b.scopes) ? b.scopes.filter((s) => typeof s === "string") : [];
+      const fuera = scopes.filter((s) => !permitidos.has(s));
+      if (fuera.length) throw new ErrorApi("VALIDACION", `Scopes no disponibles para tu plan: ${fuera.join(", ")}`);
+      const llave = await conPlataforma((c) => crearLlave(c, ctx.clienteId, b.nombre!.trim(), scopes));
+      return { id: llave.id, prefijo: llave.prefijo, token: llave.token, scopes }; // token: se muestra 1 vez
+    });
+
+    r.put("/llaves/:id/scopes", async (req) => {
+      const ctx = await guard(req);
+      if (!ctx.esAdmin) throw new ErrorApi("SIN_PERMISO", "Solo el administrador del cliente");
+      const { id } = req.params as { id: string };
+      const b = req.body as { scopes?: string[] };
+      const permitidos = new Set((await scopesDelCliente(ctx.clienteId)).map((s) => s.scope));
+      const scopes = Array.isArray(b?.scopes) ? b.scopes.filter((s) => typeof s === "string") : [];
+      const fuera = scopes.filter((s) => !permitidos.has(s));
+      if (fuera.length) throw new ErrorApi("VALIDACION", `Scopes no disponibles para tu plan: ${fuera.join(", ")}`);
+      const llave = await conPlataforma((c) => actualizarScopesLlave(c, ctx.clienteId, id, scopes));
+      if (!llave) throw new ErrorApi("NO_ENCONTRADO", "Esa llave no existe o está revocada");
+      return llave;
+    });
+
+    r.delete("/llaves/:id", async (req) => {
+      const ctx = await guard(req);
+      if (!ctx.esAdmin) throw new ErrorApi("SIN_PERMISO", "Solo el administrador del cliente");
+      const { id } = req.params as { id: string };
+      // Revocación acotada al cliente (revocarLlave global no filtra por cliente).
+      const r2 = await conPlataforma((c) => c.query(
+        "update plataforma.api_keys set revocada_en=now() where id=$1 and cliente_id=$2 and revocada_en is null returning id",
+        [id, ctx.clienteId]));
+      if (!r2.rowCount) throw new ErrorApi("NO_ENCONTRADO", "Esa llave no existe o ya estaba revocada");
+      return { ok: true };
+    });
+
+    // Consumo del cliente (vivo desde Redis) + su cuota mensual. Alimenta el medidor.
+    r.get("/consumo", async (req) => {
+      const ctx = await guard(req);
+      if (!ctx.esAdmin) throw new ErrorApi("SIN_PERMISO", "Solo el administrador del cliente ve el consumo");
+      const [uso, cuotaMensual] = await Promise.all([
+        consumoDelDia(ctx.clienteId),
+        conPlataforma((c) => cuotaDe(c, ctx.clienteId)),
+      ]);
+      return { ...uso, cuotaMensual };
     });
 
     // ── PUENTE xTickets ↔ xCRM ────────────────────────────────────────────────
