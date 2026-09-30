@@ -26,6 +26,16 @@ export async function crearEtiqueta(c: PoolClient, nombre: string, colorRol: Col
   }
 }
 
+/** Get-or-create de una etiqueta por nombre (idempotente, para la ingesta). */
+export async function asegurarEtiqueta(c: PoolClient, nombre: string, colorRol: ColorRol = "neutro"): Promise<string> {
+  const cid = await clienteDe(c);
+  const n = nombre.trim();
+  const ex = await c.query("select id from nucleo.etiquetas where cliente_id=$1 and nombre=$2", [cid, n]);
+  if (ex.rowCount) return ex.rows[0].id;
+  const r = await c.query("insert into nucleo.etiquetas (cliente_id, nombre, color_rol) values ($1,$2,$3) returning id", [cid, n, colorRol]);
+  return r.rows[0].id;
+}
+
 export async function aplicarEtiqueta(c: PoolClient, personaId: string, etiquetaId: string): Promise<void> {
   const cid = await clienteDe(c);
   const p = await resolverRaiz(c, personaId);
@@ -49,6 +59,16 @@ export async function definirCampo(c: PoolClient, objetoTipo: string, nombre: st
   const r = await c.query(
     "insert into nucleo.campos_def (cliente_id, objeto_tipo, nombre, tipo) values ($1,$2,$3,$4) returning id",
     [cid, objetoTipo, nombre.trim(), tipo]);
+  return r.rows[0].id;
+}
+
+/** Get-or-create de una definición de campo por (objetoTipo, nombre). Idempotente. */
+export async function asegurarCampo(c: PoolClient, objetoTipo: string, nombre: string, tipo: TipoCampo): Promise<string> {
+  const cid = await clienteDe(c);
+  const n = nombre.trim();
+  const ex = await c.query("select id from nucleo.campos_def where cliente_id=$1 and objeto_tipo=$2 and nombre=$3", [cid, objetoTipo, n]);
+  if (ex.rowCount) return ex.rows[0].id;
+  const r = await c.query("insert into nucleo.campos_def (cliente_id, objeto_tipo, nombre, tipo) values ($1,$2,$3,$4) returning id", [cid, objetoTipo, n, tipo]);
   return r.rows[0].id;
 }
 

@@ -8,14 +8,15 @@ import { telefonoE164 } from "./mapeo.js";
  * → RUT → id externo) para colgar la persona de la espina dorsal. El conector es la
  * ÚNICA pieza que conoce el vocabulario en portugués (nome/numero/documento).
  */
+export type CanalId = "telefono" | "email" | "rut" | "xcontact";
 export interface ContactoNormalizado {
   externoId: string;
   nombre: string | null;
-  canal: "telefono" | "email" | "rut" | "xcontact";
-  identidad: string;
-  telefono: string | null;
-  email: string | null;
-  documento: string | null;
+  canal: CanalId;               // canal de la identidad PRIMARIA (para colgar la persona)
+  identidad: string;            // valor de la identidad primaria
+  identidades: { canal: CanalId; valor: string }[]; // TODAS: xcontact (siempre) + tel/email/rut + adicionales
+  etiquetas: string[];          // nombres de grupos de XContact
+  campos: { nombre: string; valor: string }[]; // campos adicionales
 }
 
 export interface OpcionesLecturaV5 {
@@ -26,20 +27,43 @@ export interface OpcionesLecturaV5 {
   limite?: number;            // tope de contactos por corrida
 }
 
-/** Fila v5 de /clientes → contacto normalizado. null si no hay identidad usable. */
+const emailValido = (s: unknown): string | null => (typeof s === "string" && s.includes("@")) ? s.trim().toLowerCase() : null;
+const lista = (v: unknown): Record<string, unknown>[] => Array.isArray(v) ? v as Record<string, unknown>[] : [];
+const primerTexto = (o: Record<string, unknown>, ...claves: string[]): string | null => {
+  for (const k of claves) { const v = o[k]; if (typeof v === "string" && v.trim()) return v.trim(); }
+  return null;
+};
+
+/**
+ * Fila v5 de /clientes → contacto normalizado. Emparejamiento SOLO por identidad
+ * (teléfono normalizado, email, RUT, id externo), nunca por nombre. La identidad
+ * `xcontact` (id externo) va SIEMPRE, para reconciliar aunque cambie el teléfono.
+ */
 export function mapearContactoV5(row: Record<string, unknown>): ContactoNormalizado | null {
   const externoId = row.id != null ? String(row.id) : "";
-  const nombre = (typeof row.nome === "string" && row.nome.trim()) ? row.nome.trim() : null;
+  const nombre = primerTexto(row, "nome");
   const tel = telefonoE164(String(row.numero ?? ""));
-  const email = (typeof row.email === "string" && row.email.includes("@")) ? row.email.trim().toLowerCase() : null;
-  const documento = (typeof row.documento === "string" && row.documento.trim()) ? row.documento.trim() : null;
-  let canal: ContactoNormalizado["canal"]; let identidad: string;
-  if (tel) { canal = "telefono"; identidad = tel; }
-  else if (email) { canal = "email"; identidad = email; }
-  else if (documento) { canal = "rut"; identidad = documento; }
-  else if (externoId) { canal = "xcontact"; identidad = externoId; }
-  else return null;
-  return { externoId, nombre, canal, identidad, telefono: tel, email, documento };
+  const email = emailValido(row.email);
+  const documento = primerTexto(row, "documento");
+
+  const identidades: { canal: CanalId; valor: string }[] = [];
+  const push = (canal: CanalId, valor: string | null) => { if (valor && !identidades.some((i) => i.canal === canal && i.valor === valor)) identidades.push({ canal, valor }); };
+  push("telefono", tel); push("email", email); push("rut", documento);
+  if (externoId) push("xcontact", externoId); // la identidad externa SIEMPRE
+  // Teléfonos y emails adicionales del contacto (reconciliación multi-canal).
+  for (const n of lista(row.clienteNumerosAdicionais)) push("telefono", telefonoE164(String(n.numero ?? n.telefone ?? n.fone ?? "")));
+  for (const e of lista(row.clienteEmailsAdicionais)) push("email", emailValido(e.email ?? e.endereco));
+
+  // La identidad PRIMARIA (para colgar la persona): la primera no-xcontact, o xcontact.
+  const primaria = identidades.find((i) => i.canal !== "xcontact") ?? identidades[0];
+  if (!primaria) return null;
+
+  const etiquetas = lista(row.clienteGrupos).map((g) => primerTexto(g, "nome", "nombre")).filter((x): x is string => !!x);
+  const campos = lista(row.clienteCamposAdicionais)
+    .map((k) => ({ nombre: primerTexto(k, "nome", "nombre", "campo", "label") ?? "", valor: primerTexto(k, "valor", "value", "conteudo") ?? "" }))
+    .filter((k) => k.nombre && k.valor);
+
+  return { externoId, nombre, canal: primaria.canal, identidad: primaria.valor, identidades, etiquetas, campos };
 }
 
 /** Lee y normaliza los contactos v5 de una instancia. Toda la HTTP ocurre aquí (fuera de transacción). */
