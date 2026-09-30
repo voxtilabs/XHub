@@ -20,7 +20,10 @@ async function dormir(ms: number): Promise<void> { return new Promise((r) => set
 
 // El sondeo de XContact se evalúa cada SONDEO_TICK_MS (no en cada vuelta del bucle);
 // tickSondeo solo toca las instancias cuyo intervalo ya venció, así que es barato.
-const SONDEO_TICK_MS = Number(process.env.SONDEO_TICK_MS ?? 10000);
+// Vacío ("" de `${VAR:-}` en compose) no es undefined: Number("")=0 dispararía el
+// sondeo en cada vuelta. Tratamos vacío/no-positivo como ausente.
+const nTick = Number(process.env.SONDEO_TICK_MS);
+const SONDEO_TICK_MS = Number.isFinite(nTick) && nTick > 0 ? nTick : 10000;
 let proximoSondeo = 0;
 
 async function bucle(): Promise<void> {

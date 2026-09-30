@@ -32,9 +32,12 @@ const deps: DepsSondeo = { conCliente, conPlataforma, fetchImpl: fetchXContact, 
 interface FilaInstancia { id: string; cliente_id: string; host: string; usuario: string; credencial_ref: string | null; cursor: string | null }
 export interface ResumenTick { debidas: number; sincronizadas: number; contactos: number; fallidas: number }
 
-const CONCURRENCIA = Number(process.env.SONDEO_CONCURRENCIA ?? 4);
-const LOTE_INSTANCIA = Number(process.env.SONDEO_LOTE ?? 100);   // contactos por corrida/instancia
-const TIMEOUT_MS = Number(process.env.SONDEO_TIMEOUT_MS ?? 30000);
+// process.env vacío ("" de `${VAR:-}` en compose) NO es undefined: Number("")=0 haría
+// un `i += 0` infinito y colgaría al worker. Tratamos vacío/no-positivo como ausente.
+const numEnv = (v: string | undefined, def: number): number => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : def; };
+const CONCURRENCIA = numEnv(process.env.SONDEO_CONCURRENCIA, 4);
+const LOTE_INSTANCIA = numEnv(process.env.SONDEO_LOTE, 100);   // contactos por corrida/instancia
+const TIMEOUT_MS = numEnv(process.env.SONDEO_TIMEOUT_MS, 30000);
 
 const conTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
   Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error("timeout de sondeo de instancia")), ms))]);
@@ -77,8 +80,9 @@ export async function tickSondeo(): Promise<ResumenTick> {
 
   let sincronizadas = 0, contactos = 0, fallidas = 0;
   // Lotes de concurrencia acotada: una instancia enferma ocupa solo su cupo (#136).
-  for (let i = 0; i < debidas.length; i += CONCURRENCIA) {
-    const lote = debidas.slice(i, i + CONCURRENCIA);
+  const paso = Math.max(1, CONCURRENCIA); // nunca 0 (evita bucle infinito)
+  for (let i = 0; i < debidas.length; i += paso) {
+    const lote = debidas.slice(i, i + paso);
     const res = await Promise.allSettled(lote.map(sondearUna));
     for (const x of res) {
       if (x.status === "fulfilled" && x.value.ok) { sincronizadas++; contactos += x.value.contactos; }
