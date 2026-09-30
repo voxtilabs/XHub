@@ -3,7 +3,7 @@ import cors from "@fastify/cors";
 import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi, aCuerpo } from "@xhub/core";
 import { conCliente, conPlataforma, baseViva } from "@xhub/db";
-import { rateLimit, consumirCuota } from "@xhub/cuotas";
+import { rateLimit, consumirCuota, registrarUso } from "@xhub/cuotas";
 import { autenticarApi, cuotaDe, type ContextoApi } from "@xhub/modulo-nucleo";
 import { auth } from "./auth.js";
 import { registrarRutasTickets } from "./rutas/tickets.js";
@@ -118,6 +118,10 @@ export function crearApp(): FastifyInstance {
     reply.header("x-cuota-limite", String(limite));
     reply.header("x-cuota-restante", String(cuota.restante));
     if (!cuota.permitido) throw new ErrorApi("CUOTA_EXCEDIDA", "Cuota mensual de API agotada");
+    // Tablero de consumo diario (#78): cuenta por ruta-patrón, no por :id, para no
+    // explotar la cardinalidad. Fire-and-forget: una métrica NUNCA rompe la request.
+    const ruta = ((req as { routeOptions?: { url?: string } }).routeOptions?.url) || req.url.split("?")[0];
+    void registrarUso(ctx.clienteId, ruta).catch(() => {});
   };
 
   // Rutas /v1 protegidas por el guard, ejecutadas conCliente (RLS)
