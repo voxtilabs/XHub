@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { createHmac } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
-import { ErrorApi, cifrarSecreto, resolverCredencial, reenvolverConActual, esCifrado } from "@xhub/core";
+import { ErrorApi, cifrarSecreto, resolverCredencial, reenvolverConActual, esCifrado, presignS3, configAlmacen, almacenConfigurado } from "@xhub/core";
 import { conPlataforma, listarAuditoria, verificarCadena, auditar, type FiltroAudit } from "@xhub/db";
 import {
   resolverAdmin, crearCliente, cambiarEstado, fijarEntitlement, crearLlave,
@@ -366,6 +366,20 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
            left join plataforma.sync_cursor sc on sc.instancia_id = i.id and sc.tipo='contactos'
            left join plataforma.sync_deriva sd on sd.instancia_id = i.id and sd.tipo='contactos'
           where i.cliente_id=$1 order by i.creada_en desc`, [id])).rows }));
+    });
+
+    // Autotest del almacenamiento (#41): prueba el roundtrip presignado PUT→GET contra el
+    // backend S3 interno (MinIO). Confirma que el presigner y el backend están sanos.
+    admin.post("/almacen/autotest", async () => {
+      if (!almacenConfigurado()) throw new ErrorApi("PROVEEDOR_DEGRADADO", "Almacenamiento no configurado (falta S3_ENDPOINT)");
+      const c = configAlmacen();
+      const key = "clientes/_autotest/ping.txt";
+      const contenido = `autotest-${Date.now()}`;
+      const base = { endpoint: c.endpoint, region: c.region, accessKey: c.accessKey, secretKey: c.secretKey, bucket: c.bucket, key } as const;
+      const rp = await fetch(presignS3({ ...base, metodo: "PUT" }), { method: "PUT", body: contenido });
+      const rg = await fetch(presignS3({ ...base, metodo: "GET" }));
+      const leido = rg.ok ? await rg.text() : "";
+      return { endpoint: c.endpoint, bucket: c.bucket, subida: rp.status, descarga: rg.status, coincide: leido === contenido };
     });
 
     // Rotación de la CLAVE MAESTRA (#139): re-envuelve cada credencial cifrada con la

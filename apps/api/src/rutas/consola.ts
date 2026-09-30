@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { randomBytes } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
-import { ErrorApi } from "@xhub/core";
+import { ErrorApi, nuevaClave, urlSubida, urlDescarga, almacenConfigurado } from "@xhub/core";
 import { conCliente, conPlataforma, emitir } from "@xhub/db";
 import { permisosDe, CATALOGO_PERMISOS, listarUsuariosCliente, buscarPersonas, fichaDePersona, modeloIADe, contextoIADe,
   crearRegla, activarRegla, aplicarReglas, aQuienAfectaria, listarReglas, type EjecutorAccion,
@@ -605,6 +605,69 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
         const afectados = await aQuienAfectaria(c, id, candidatos);
         return { evaluados: candidatos.length, afectados };
       });
+    });
+
+    // ── Adjuntos S3-compatible (#41) ────────────────────────────────────────────
+    // Subida/descarga con URL PREFIRMADA. La llave vive SIEMPRE bajo el prefijo del
+    // cliente; fuera de su prefijo no se firma nada (lo garantiza @xhub/core).
+    const puedeEscribirAdj = (ctx: CtxT) => ctx.esAdmin || ctx.permisos.some((p) => p.endsWith(".gestionar"));
+    const puedeLeerAdj = (ctx: CtxT) => ctx.esAdmin || ctx.permisos.some((p) => p.endsWith(".ver") || p.endsWith(".gestionar"));
+    const exigirAlmacen = () => { if (!almacenConfigurado()) throw new ErrorApi("PROVEEDOR_DEGRADADO", "El almacenamiento de adjuntos no está configurado"); };
+
+    // 1) Pedir URL de SUBIDA: genera la llave (bajo el prefijo del cliente) y la firma.
+    r.post("/adjuntos/url-subida", async (req) => {
+      const ctx = await guard(req); if (!puedeEscribirAdj(ctx)) throw new ErrorApi("SIN_PERMISO", "No puedes subir adjuntos");
+      exigirAlmacen();
+      const b = req.body as { objetoTipo?: string; objetoId?: string; nombre?: string };
+      if (!b?.nombre?.trim()) throw new ErrorApi("VALIDACION", "Falta el nombre del archivo");
+      const key = nuevaClave(ctx.clienteId, (b.objetoTipo || "general").slice(0, 30), (b.objetoId || "_").slice(0, 64), b.nombre.trim());
+      return { key, url: urlSubida(ctx.clienteId, key), expiraSeg: 900 };
+    });
+
+    // 2) Registrar el adjunto YA subido (guarda metadatos; valida el prefijo).
+    r.post("/adjuntos", async (req) => {
+      const ctx = await guard(req); if (!puedeEscribirAdj(ctx)) throw new ErrorApi("SIN_PERMISO", "No puedes registrar adjuntos");
+      const b = req.body as { key?: string; nombre?: string; tipo?: string; tamano?: number; objetoTipo?: string; objetoId?: string };
+      if (!b?.key || !b?.nombre) throw new ErrorApi("VALIDACION", "Faltan key y nombre");
+      if (!b.key.startsWith(`clientes/${ctx.clienteId}/`)) throw new ErrorApi("SIN_PERMISO", "La llave no pertenece a tu cliente");
+      const r2 = await conCliente(ctx.clienteId, (c) => c.query(
+        `insert into nucleo.adjuntos (cliente_id, key, nombre, tipo, tamano, objeto_tipo, objeto_id, subido_por)
+           values ($1,$2,$3,$4,$5,$6,$7,$8) returning id, nombre, tipo, tamano, objeto_tipo, objeto_id, creado_en`,
+        [ctx.clienteId, b.key, b.nombre, b.tipo ?? null, b.tamano ?? null, b.objetoTipo ?? null, b.objetoId ?? null, ctx.usuarioId]));
+      return r2.rows[0];
+    });
+
+    // 3) Listar adjuntos de un objeto.
+    r.get("/adjuntos", async (req) => {
+      const ctx = await guard(req); if (!puedeLeerAdj(ctx)) throw new ErrorApi("SIN_PERMISO", "No puedes ver adjuntos");
+      const q = req.query as { objetoTipo?: string; objetoId?: string };
+      return conCliente(ctx.clienteId, async (c) => {
+        const cond = []; const vals: unknown[] = [];
+        if (q.objetoTipo) { vals.push(q.objetoTipo); cond.push(`objeto_tipo=$${vals.length}`); }
+        if (q.objetoId) { vals.push(q.objetoId); cond.push(`objeto_id=$${vals.length}`); }
+        const where = cond.length ? "where " + cond.join(" and ") : "";
+        const datos = (await c.query(`select id, nombre, tipo, tamano, objeto_tipo, objeto_id, creado_en from nucleo.adjuntos ${where} order by creado_en desc limit 200`, vals)).rows;
+        return { datos };
+      });
+    });
+
+    // 4) Pedir URL de DESCARGA de un adjunto (por id, acotado al cliente por RLS).
+    r.get("/adjuntos/:id/url-descarga", async (req) => {
+      const ctx = await guard(req); if (!puedeLeerAdj(ctx)) throw new ErrorApi("SIN_PERMISO", "No puedes descargar adjuntos");
+      exigirAlmacen();
+      const { id } = req.params as { id: string };
+      const fila = await conCliente(ctx.clienteId, async (c) => (await c.query("select key, nombre from nucleo.adjuntos where id=$1", [id])).rows[0]);
+      if (!fila) throw new ErrorApi("NO_ENCONTRADO", "Adjunto no encontrado");
+      return { nombre: fila.nombre, url: urlDescarga(ctx.clienteId, fila.key), expiraSeg: 900 };
+    });
+
+    // 5) Borrar el registro del adjunto (la limpieza del byte la hace la retención #105).
+    r.delete("/adjuntos/:id", async (req) => {
+      const ctx = await guard(req); if (!puedeEscribirAdj(ctx)) throw new ErrorApi("SIN_PERMISO", "No puedes borrar adjuntos");
+      const { id } = req.params as { id: string };
+      const n = await conCliente(ctx.clienteId, async (c) => (await c.query("delete from nucleo.adjuntos where id=$1", [id])).rowCount);
+      if (!n) throw new ErrorApi("NO_ENCONTRADO", "Adjunto no encontrado");
+      return { ok: true };
     });
   }, { prefix: "/cliente" });
 }
