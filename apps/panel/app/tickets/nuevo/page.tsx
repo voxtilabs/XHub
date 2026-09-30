@@ -1,4 +1,5 @@
 "use client";
+import { Icon } from "@/components/icon";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -71,30 +72,35 @@ export default function NuevoTicket() {
     }
   }
 
-  const campo = "w-full rounded-md border bg-secondary px-3 h-11 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+  const campo = "w-full rounded-md border bg-secondary px-3 h-11 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <main className="min-h-screen">
-      <header className="flex flex-wrap items-center gap-3 px-4 sm:px-7 py-4 border-b border-border">
-        <span className="h-2.5 w-2.5 rounded-full bg-primary" style={{ boxShadow: "0 0 10px hsl(var(--primary))" }} />
+      <header className="xhub-standalone-header flex flex-wrap items-center gap-3 border-b border-border">
+        <span className="xhub-feature-icon"><Icon name="ticket" /></span>
         <span className="font-semibold text-lg tracking-tight">xTickets</span>
-        <span className="text-[10px] font-black tracking-[0.14em] uppercase text-[hsl(var(--senal))] border border-border rounded-pill px-2 py-0.5">Consola X5</span>
+        <span className="text-[10px] font-medium tracking-[0.14em] uppercase text-[hsl(var(--senal))] border border-border rounded-pill px-2 py-0.5">Consola X5</span>
       </header>
 
-      <div className="max-w-2xl mx-auto p-4 sm:p-7">
-        <button onClick={() => (location.href = "/tickets")} className="text-sm text-muted-foreground hover:text-foreground mb-4">← Bandeja</button>
-        <h1 className="text-2xl font-semibold tracking-tight mb-1">Nuevo ticket</h1>
-        <p className="text-muted-foreground text-sm mb-6">Alta manual — el camino directo, sin pasar por el triage de IA. Se crea la persona si no existe y queda en su línea de tiempo.</p>
+      <div className="xhub-page xhub-page--narrow">
+        <div className="xhub-page-heading">
+          <div>
+            <div className="xhub-eyebrow">XHUB · TICKETS</div>
+            <h1>Nuevo ticket</h1>
+            <p>Registra una solicitud y vincúlala al historial de la persona.</p>
+          </div>
+          <button onClick={() => (location.href = "/tickets")} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground shrink-0"><Icon name="arrow-left" /> Bandeja</button>
+        </div>
 
         {ok ? (
           <Card>
             <div className="p-6 flex flex-col items-start gap-3">
-              <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: "hsl(var(--exito))", boxShadow: "0 0 8px hsl(var(--exito))" }} />
+              <div className="flex items-center gap-2"><Icon name="check-circle" className="text-xl text-[hsl(var(--exito))]" />
                 <span className="font-semibold">Ticket #{ok.numero} creado</span></div>
               <p className="text-sm text-muted-foreground">Ya aparece en la bandeja y en la ficha 360 de la persona.</p>
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => (location.href = "/tickets")}>Ir a la bandeja</Button>
-                <Button size="sm" variant="secondary" onClick={() => setOk(null)}>Crear otro</Button>
+                <Button size="sm" onClick={() => (location.href = "/tickets")}><Icon name="chats-circle" /> Ir a la bandeja</Button>
+                <Button size="sm" variant="secondary" onClick={() => setOk(null)}><Icon name="plus" /> Crear otro</Button>
               </div>
             </div>
           </Card>
@@ -103,7 +109,7 @@ export default function NuevoTicket() {
             <div className="p-6 flex flex-col gap-5">
               {/* Canal */}
               <div>
-                <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Canal de origen</label>
+                <label className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground"><Icon name="chat-circle-dots" className="xhub-inline-icon" /> Canal de origen</label>
                 <select value={canal} onChange={(e) => setCanal(e.target.value as Canal)} className={campo + " mt-1.5"} style={{ borderColor: "hsl(var(--border))" }}>
                   {CANALES.map((c) => <option key={c.v} value={c.v}>{c.etiqueta}</option>)}
                 </select>
@@ -111,7 +117,7 @@ export default function NuevoTicket() {
 
               {/* Identidad */}
               <div>
-                <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Identidad del canal</label>
+                <label className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground"><Icon name="identification-card" className="xhub-inline-icon" /> Identidad del canal</label>
                 <Input value={identidad} onChange={(e) => setIdentidad(e.target.value)} placeholder={hintCanal} className="mt-1.5" maxLength={200} />
                 <div className="flex justify-between mt-1">
                   <span className="text-[11px] text-muted-foreground">El teléfono no es la llave: es la identidad del canal por el que llegó.</span>
@@ -121,19 +127,19 @@ export default function NuevoTicket() {
 
               {/* Asunto */}
               <div>
-                <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Asunto</label>
+                <label className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground"><Icon name="text-align-left" className="xhub-inline-icon" /> Asunto</label>
                 <Input value={asunto} onChange={(e) => setAsunto(e.target.value)} placeholder="Resumen del problema" className="mt-1.5" maxLength={300} />
                 {errores.asunto && <div className="text-[11px] text-[hsl(var(--critico))] mt-1">{errores.asunto}</div>}
               </div>
 
               {/* Prioridad */}
               <div>
-                <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Prioridad</label>
+                <label className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground"><Icon name="flag" className="xhub-inline-icon" /> Prioridad</label>
                 <div className="flex gap-2 mt-1.5 flex-wrap">
                   {PRIS.map((p) => (
                     <button key={p.v} onClick={() => setPrioridad(p.v)}
                       className={"px-3 h-9 rounded-pill text-[13px] font-medium border capitalize " + (prioridad === p.v ? "bg-secondary border-border text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
-                      {prioridad === p.v && <Badge rol={p.rol} className="mr-1.5 px-1 py-0">●</Badge>}{p.v}
+                      {prioridad === p.v && <Badge rol={p.rol} className="mr-1.5 px-1 py-0"><Icon name="check" /></Badge>}{p.v}
                     </button>
                   ))}
                 </div>
@@ -141,7 +147,7 @@ export default function NuevoTicket() {
 
               {/* Cuerpo */}
               <div>
-                <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Primer mensaje <span className="text-muted-foreground/60 normal-case font-medium">(opcional)</span></label>
+                <label className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground"><Icon name="chat-text" className="xhub-inline-icon" /> Primer mensaje <span className="text-muted-foreground/60 normal-case font-medium">(opcional)</span></label>
                 <textarea value={cuerpo} onChange={(e) => setCuerpo(e.target.value)} rows={4} maxLength={5000}
                   placeholder="Lo que dijo la persona. Si lo pegas, se analiza la urgencia (enojo, SERNAC, legal…) y puede escalar la prioridad sola."
                   className={campo.replace("h-11", "py-2.5") + " mt-1.5 resize-y"} style={{ borderColor: "hsl(var(--border))" }} />
@@ -150,12 +156,12 @@ export default function NuevoTicket() {
 
               {err && (
                 <div className="flex gap-2 items-start p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}>
-                  <span>▲</span><span>{err}</span>
+                  <Icon name="warning-circle" className="mt-0.5 shrink-0" /><span>{err}</span>
                 </div>
               )}
 
-              <div className="flex items-center gap-3 pt-1">
-                <Button onClick={enviar} disabled={!valido || enviando}>{enviando ? "Creando…" : "Crear ticket"}</Button>
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <Button onClick={enviar} disabled={!valido || enviando}><Icon name={enviando ? "spinner-gap" : "plus"} className={enviando ? "animate-spin" : ""} />{enviando ? "Creando…" : "Crear ticket"}</Button>
                 <span className="text-[11px] text-muted-foreground font-mono">POST /v1/tickets · scope tickets.crear</span>
               </div>
             </div>

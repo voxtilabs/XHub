@@ -1,3 +1,4 @@
+import { Icon } from "@/components/icon";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,51 +22,76 @@ export default function Persona() {
     <main className="min-h-screen">
       <AppShell />
       <RequierePermiso permiso="ficha360.ver">
-      <div className="max-w-4xl mx-auto p-4 sm:p-8">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center text-lg font-semibold">JP</div>
+      <div className="xhub-page xhub-person-page">
+        <div className="xhub-page-heading">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Juan Pérez</h1>
-            <div className="flex gap-2 mt-1"><Badge rol="senal">Prospecto</Badge><Badge rol="accion">VIP</Badge></div>
+            <div className="xhub-eyebrow">RELACIONES CON CLIENTES</div>
+            <h1>Personas</h1>
+            <p>El contexto de cada persona, en un solo lugar.</p>
           </div>
         </div>
+        <div className="xhub-person-layout">
+          <Card className="xhub-profile-card">
+            <div className="xhub-profile-summary">
+              <div className="xhub-person-avatar" aria-hidden="true">JP</div>
+              <h2>Juan Pérez</h2>
+              <p className="xhub-profile-subtitle">Ficha de contacto</p>
+              <div className="xhub-profile-badges"><Badge rol="senal">Prospecto</Badge><Badge rol="accion">VIP</Badge></div>
+            </div>
+            <div className="xhub-profile-section">
+              <h3>Información de contacto</h3>
+              <dl>{identidades.map((id) => <div className="xhub-contact-line" key={id.canal}>
+                <Icon name={id.canal === "teléfono" ? "phone" : id.canal === "whatsapp" ? "whatsapp-logo" : "envelope"} />
+                <div><dt>{id.canal === "email" ? "Correo electrónico" : id.canal === "teléfono" ? "Teléfono" : "WhatsApp"}</dt><dd>{id.valor}</dd></div>
+              </div>)}</dl>
+            </div>
+            <div className="xhub-profile-section"><p className="xhub-profile-note"><Icon name="plugs-connected" />Un historial compartido entre tus canales de atención.</p></div>
+          </Card>
+          <div className="xhub-person-main">
+            <div className="xhub-person-overview">
+              <div><Icon name="clock-counter-clockwise" /><div><strong>{timeline.length}</strong><span>Interacciones</span></div></div>
+              <div><Icon name="fingerprint" /><div><strong>{identidades.length}</strong><span>Identidades</span></div></div>
+              <div><Icon name="chats-circle" /><div><strong>{new Set(timeline.map(t => t.tipo)).size}</strong><span>Canales</span></div></div>
+            </div>
         <Tabs defaultValue="historia">
           <TabsList>
-            <TabsTrigger value="historia">Historia</TabsTrigger>
-            <TabsTrigger value="identidades">Identidades</TabsTrigger>
-            <TabsTrigger value="datos">Datos</TabsTrigger>
+            <TabsTrigger value="historia"><Icon name="clock-counter-clockwise" /> Historia</TabsTrigger>
+            <TabsTrigger value="identidades"><Icon name="fingerprint" /> Identidades</TabsTrigger>
+            <TabsTrigger value="datos"><Icon name="database" /> Datos</TabsTrigger>
           </TabsList>
           <TabsContent value="historia">
-            <Card><CardContent className="pt-6 space-y-0">
+            <Card className="xhub-person-history">
+              <div className="xhub-history-heading"><div><h2>Historial de actividad</h2><p>Conversaciones y eventos más recientes.</p></div><span className="xhub-history-count">{timeline.length} eventos</span></div>
               {timeline.map((t, i) => (
-                <div key={i} className="flex gap-4 py-3 border-t border-border first:border-t-0">
-                  <div className="text-xs text-muted-foreground w-24 shrink-0 pt-0.5">{t.cuando}</div>
+                <div key={i} className="xhub-timeline-item" data-channel={t.tipo}>
+                  <span className="xhub-timeline-icon"><Icon name={t.tipo === "Ticket" ? "ticket" : t.tipo === "Llamada" ? "phone" : t.tipo === "WhatsApp" ? "whatsapp-logo" : "envelope"} /></span>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{t.tipo}</span>
-                      <span className="text-[0.65rem] uppercase tracking-wider text-[hsl(var(--senal))]">{t.modulo}</span>
-                    </div>
-                    <div className="text-sm text-muted-foreground">{t.resumen}</div>
+                    <div className="xhub-event-top"><strong>{t.tipo === "Ticket" ? "Solicitud de soporte" : t.tipo === "Llamada" ? "Llamada recibida" : t.tipo === "WhatsApp" ? "Mensaje de WhatsApp" : "Contacto registrado"}</strong><time>{t.cuando}</time></div>
+                    <p>{t.resumen}</p>
+                    <span className="xhub-event-source">{t.modulo}</span>
                   </div>
                 </div>
               ))}
-            </CardContent></Card>
+            </Card>
           </TabsContent>
           <TabsContent value="identidades">
             <Card><CardContent className="pt-6 space-y-0">
+              <h2 className="xhub-section-heading mb-3">Identidades conectadas</h2>
               {identidades.map((id, i) => (
-                <div key={i} className="flex justify-between py-3 border-t border-border first:border-t-0">
-                  <span className="text-xs uppercase tracking-wider text-[hsl(var(--senal))] w-24">{id.canal}</span>
-                  <span className="font-mono text-sm">{id.valor}</span>
+                <div key={i} className="xhub-identity-row">
+                  <span className="xhub-timeline-icon"><Icon name={id.canal === "teléfono" ? "phone" : id.canal === "whatsapp" ? "whatsapp-logo" : "envelope"} /></span>
+                  <div><strong>{id.canal}</strong><p>{id.valor}</p></div>
                 </div>
               ))}
-              <p className="text-xs text-muted-foreground pt-3">El teléfono no es la llave: cada canal es una identidad propia.</p>
+              <p className="xhub-context-note"><Icon name="info" />Cada identidad conecta un canal con esta misma persona.</p>
             </CardContent></Card>
           </TabsContent>
           <TabsContent value="datos">
-            <Card><CardContent className="pt-6 text-sm text-muted-foreground">Sin campos personalizados definidos para este cliente.</CardContent></Card>
+            <Card className="xhub-person-empty"><Icon name="database" /><h2>Todo listo para más contexto</h2><p>Aún no hay campos personalizados definidos para este cliente.</p></Card>
           </TabsContent>
         </Tabs>
+          </div>
+        </div>
       </div>
       </RequierePermiso>
     </main>

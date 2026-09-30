@@ -1,0 +1,131 @@
+/* The selected 1586 × 992 visual: 961 px hero and 625 px sign-in surface. */
+html:has(.xhub-login-screen), body:has(.xhub-login-screen) { overflow: hidden; }
+.xhub-login-screen {
+  /* A 100px basis avoids Firefox rounding a sub-pixel scale before multiplying it. */
+  --login-scale: clamp(68px, 6.30517vw, 122px);
+  --login-scale: clamp(68px, min(6.30517vw, 10.08065dvh), 122px);
+  --login-surface: #fcfcfd;
+  --login-ink: #08090d;
+  --login-copy: #595f75;
+  --login-muted: #757b91;
+  --login-line: #d5d7e0;
+  --login-input: #fcfcfd;
+  --login-focus: #b74800;
+  --login-orange: #ff7a1a;
+  --login-orange-hover: #e8631a;
+  --login-cyan: #42c7e6;
+  --login-white: #fafafa;
+  display: grid;
+  grid-template-columns: 60.5927% 39.4073%;
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--login-surface);
+}
+.xhub-login-hero {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  background: #05070a url('/voxia/xhub-horizon-hero.webp') center / cover no-repeat;
+  color: var(--login-white);
+  overflow: hidden;
+}
+.xhub-login-header { position: relative; display: flex; align-items: center; gap: calc(var(--login-scale) * 0.32); padding: calc(var(--login-scale) * 0.4) calc(var(--login-scale) * 0.85) 0; }
+.xhub-login-header .xhub-brand { font-size: calc(var(--login-scale) * 0.59); font-weight: 750; line-height: 1; letter-spacing: calc(var(--login-scale) * -0.025); min-height: 0; }
+.xhub-login-edition { color: #c6c9d2; border-left: 1px solid #4b5260; padding-left: calc(var(--login-scale) * 0.32); font: 500 calc(var(--login-scale) * 0.12)/2 'JetBrains Mono', monospace; letter-spacing: calc(var(--login-scale) * 0.035); }
+.xhub-login-intro { position: relative; margin-top: calc(var(--login-scale) * 0.57); padding-inline: calc(var(--login-scale) * 0.85); }
+.xhub-login-intro h1 { font: 650 calc(var(--login-scale) * 0.91)/.956044 'Outfit', sans-serif; letter-spacing: calc(var(--login-scale) * -0.043); }
+.xhub-login-intro h1 span { color: var(--login-cyan); }
+.xhub-login-intro p { color: #c2c8d1; margin-top: calc(var(--login-scale) * 0.12); font-size: calc(var(--login-scale) * 0.23); line-height: 1.4; }
+.xhub-login-brand-footer { position: absolute; left: calc(var(--login-scale) * 0.59); bottom: calc(var(--login-scale) * 0.48); width: calc(var(--login-scale) * 5.39); max-width: calc(100% - 80px); padding-top: calc(var(--login-scale) * 0.13); border-top: 1px solid #60657466; }
+.xhub-login-brand-caption { display: block; color: #c6c9d2; font: 500 calc(var(--login-scale) * 0.09)/1.6 'JetBrains Mono', monospace; letter-spacing: calc(var(--login-scale) * 0.018); text-transform: uppercase; }
+.xhub-login-partners { display: flex; align-items: center; gap: calc(var(--login-scale) * 0.3); margin-top: calc(var(--login-scale) * 0.11); }
+.xhub-login-partner-x5 { display: flex; flex-shrink: 0; align-items: center; gap: calc(var(--login-scale) * 0.1); color: var(--login-white); font-size: calc(var(--login-scale) * 0.19); letter-spacing: -.6px; white-space: nowrap; }
+.xhub-login-partner-x5 img { width: calc(var(--login-scale) * 0.51); height: calc(var(--login-scale) * 0.64); object-fit: contain; }
+.xhub-login-partner-divider { height: calc(var(--login-scale) * 0.31); width: 1px; flex-shrink: 0; background: #69708088; }
+.xhub-login-partner-xcontact { width: calc(var(--login-scale) * 2.13); height: auto; flex-shrink: 0; }
+.xhub-login-auth { position: relative; color-scheme: light; color: var(--login-ink); background: var(--login-surface); padding: calc(var(--login-scale) * 1.72) calc(var(--login-scale) * 0.48) calc(var(--login-scale) * 0.72) calc(var(--login-scale) * 0.65); }
+/* Only the form can move if the keyboard, zoom or an error needs more room. */
+.xhub-login-auth { min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.xhub-login-auth::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.xhub-login-theme { position: absolute; top: calc(var(--login-scale) * 0.48); right: calc(var(--login-scale) * 0.48); display: grid; place-items: center; width: calc(var(--login-scale) * 0.5); height: calc(var(--login-scale) * 0.5); min-width: 44px; min-height: 44px; border: 1px solid var(--login-line); border-radius: calc(var(--login-scale) * 0.16); color: var(--login-ink); background: transparent; transition: background .15s; }
+.xhub-login-theme:hover { background: color-mix(in srgb, var(--login-copy) 6%, transparent); }
+.xhub-login-theme > .ph { font-size: calc(var(--login-scale) * 0.26); }
+.xhub-login-eyebrow { color: var(--login-copy); font: 500 calc(var(--login-scale) * 0.12)/1.6 'JetBrains Mono', monospace; letter-spacing: calc(var(--login-scale) * 0.03); text-transform: uppercase; }
+.xhub-login-eyebrow::after { content: ''; display: block; width: calc(var(--login-scale) * 0.51); margin-top: calc(var(--login-scale) * 0.11); border-bottom: 2px solid var(--login-orange); }
+.xhub-login-auth h2 { margin-top: calc(var(--login-scale) * 0.37); font: 650 calc(var(--login-scale) * 0.65)/1.03077 'Outfit', sans-serif; letter-spacing: calc(var(--login-scale) * -0.031); }
+.xhub-login-welcome { margin-top: calc(var(--login-scale) * 0.09); color: var(--login-copy); font-size: calc(var(--login-scale) * 0.24); line-height: 1.5; }
+.xhub-login-form { display: grid; gap: calc(var(--login-scale) * 0.27); margin-top: calc(var(--login-scale) * 0.51); }
+.xhub-login-field label { display: block; font-size: max(14px, calc(var(--login-scale) * 0.18)); line-height: 1.55; font-weight: 500; margin-bottom: calc(var(--login-scale) * 0.12); }
+.xhub-login-input { position: relative; }
+.xhub-login-input > input { width: 100%; -webkit-appearance: none; appearance: none; height: calc(var(--login-scale) * 0.72); min-height: 54px; border: 1px solid var(--login-line); border-radius: calc(var(--login-scale) * 0.18); background: var(--login-input); color: var(--login-ink); font-size: max(16px, calc(var(--login-scale) * 0.19)); padding-left: calc(var(--login-scale) * 0.78); padding-right: calc(var(--login-scale) * 0.64); box-shadow: none; }
+.xhub-login-input > input::-ms-reveal { display: none; }
+.xhub-login-input > input::placeholder { color: var(--login-muted); opacity: 1; }
+.xhub-login-input > input:focus { border-color: var(--login-focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--login-orange) 15%, transparent); }
+.xhub-login-input > .ph { position: absolute; z-index: 1; left: calc(var(--login-scale) * 0.25); top: 50%; transform: translateY(-50%); color: var(--login-copy); font-size: calc(var(--login-scale) * 0.29); pointer-events: none; }
+.xhub-login-password-toggle { position: absolute; right: calc(var(--login-scale) * 0.17); top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 44px; height: 44px; color: var(--login-copy); border-radius: 10px; }
+.xhub-login-password-toggle:hover { background: color-mix(in srgb, var(--login-copy) 7%, transparent); }
+.xhub-login-password-toggle > .ph { font-size: calc(var(--login-scale) * 0.29); }
+.xhub-login-submit { width: 100%; height: calc(var(--login-scale) * 0.73); min-height: 54px; padding: 0 calc(var(--login-scale) * 0.35); margin-top: calc(var(--login-scale) * 0.03); display: flex; justify-content: space-between; background: var(--login-orange); border: 0; border-radius: calc(var(--login-scale) * 0.18); color: #08090d; font: 600 calc(var(--login-scale) * 0.23)/1.3 'Outfit', sans-serif; box-shadow: none; }
+.xhub-login-submit:hover { background: var(--login-orange-hover); }
+.xhub-login-submit > .ph { font-size: calc(var(--login-scale) * 0.32); }
+.xhub-login-help { display: flex; align-items: flex-start; gap: calc(var(--login-scale) * 0.2); margin-top: calc(var(--login-scale) * 0.43); padding-top: calc(var(--login-scale) * 0.27); border-top: 1px solid var(--login-line); font-size: max(14px, calc(var(--login-scale) * 0.17)); line-height: 1.65; color: var(--login-copy); }
+.xhub-login-help > .ph { font-size: calc(var(--login-scale) * 0.27); margin-top: calc(var(--login-scale) * 0.04); }
+.xhub-login-help p > span { color: var(--login-muted); }
+.xhub-login-auth :is(button, a):focus-visible { outline: 2px solid var(--login-focus); outline-offset: 4px; }
+.xhub-login-error { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid #efb4b4; border-radius: 12px; background: #fff0f0; color: #9e2525; font-size: 14px; line-height: 1.5; }
+.xhub-login-caps { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 10px; color: var(--login-focus); }
+.xhub-login-mobile-brand { display: none; }
+[data-login-tema="oscuro"] .xhub-login-auth { --login-surface: #0a1118; --login-ink: #f5f6f8; --login-copy: #bac4d2; --login-muted: #a0acbd; --login-line: #394858; --login-input: #0f1923; --login-focus: #ff9a4d; color-scheme: dark; }
+[data-login-tema="oscuro"] .xhub-login-error { background: #31161d; border-color: #793943; color: #ffb3c3; }
+@media (min-width: 1900px) { .xhub-login-auth-content { max-width: 640px; margin-inline: auto; } }
+/* Compact screens show the sign-in task only; the artwork belongs to desktop. */
+@media (max-width: 1050px) {
+  .xhub-login-screen { display: block; --login-scale: 75px; }
+  .xhub-login-hero { display: none; }
+  .xhub-login-auth {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    height: 100%;
+    min-height: 0;
+    padding: calc(112px + env(safe-area-inset-top, 0px)) calc(28px + env(safe-area-inset-right, 0px)) calc(40px + env(safe-area-inset-bottom, 0px)) calc(28px + env(safe-area-inset-left, 0px));
+  }
+  .xhub-login-auth-content { width: 100%; max-width: 480px; flex-shrink: 0; margin: auto; }
+  .xhub-login-mobile-brand { display: block; position: absolute; top: calc(25px + env(safe-area-inset-top, 0px)); left: calc(28px + env(safe-area-inset-left, 0px)); }
+  .xhub-login-mobile-brand .xhub-brand { font-size: 34px; min-height: 0; line-height: 1; letter-spacing: -1.4px; }
+  .xhub-login-theme { top: calc(20px + env(safe-area-inset-top, 0px)); right: calc(28px + env(safe-area-inset-right, 0px)); width: 44px; height: 44px; border-radius: 14px; }
+  .xhub-login-theme > .ph { font-size: 23px; }
+  .xhub-login-eyebrow { font-size: 10px; letter-spacing: 2px; }
+  .xhub-login-eyebrow::after { width: 35px; margin-top: 9px; }
+  .xhub-login-auth h2 { margin-top: 23px; font-size: 39px; line-height: 1.08; letter-spacing: -1.6px; }
+  .xhub-login-welcome { font-size: 16px; margin-top: 8px; }
+  .xhub-login-form { margin-top: 29px; gap: 21px; }
+  .xhub-login-field label { font-size: 14px; margin-bottom: 9px; }
+  .xhub-login-input > input { height: 56px; font-size: 16px; border-radius: 14px; padding-left: 51px; padding-right: 52px; }
+  .xhub-login-input > .ph { left: 17px; font-size: 23px; }
+  .xhub-login-password-toggle { right: 7px; }
+  .xhub-login-password-toggle > .ph { font-size: 24px; }
+  .xhub-login-submit { height: 57px; margin-top: 1px; font-size: 17px; border-radius: 14px; padding-inline: 22px; }
+  .xhub-login-submit > .ph { font-size: 25px; }
+  .xhub-login-help { margin-top: 27px; padding-top: 21px; gap: 12px; font-size: 14px; }
+  .xhub-login-help > .ph { font-size: 23px; margin-top: 1px; }
+}
+@media (max-width: 370px) {
+  .xhub-login-auth { padding-left: calc(20px + env(safe-area-inset-left, 0px)); padding-right: calc(20px + env(safe-area-inset-right, 0px)); }
+  .xhub-login-mobile-brand { left: calc(20px + env(safe-area-inset-left, 0px)); }
+  .xhub-login-theme { right: calc(20px + env(safe-area-inset-right, 0px)); }
+  .xhub-login-auth h2 { font-size: 35px; }
+}
+@media (max-width: 1050px) and (max-height: 700px) {
+  .xhub-login-auth { padding-top: calc(88px + env(safe-area-inset-top, 0px)); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .xhub-login-auth h2 { margin-top: 18px; }
+  .xhub-login-form { margin-top: 20px; gap: 12px; }
+  .xhub-login-field label { margin-bottom: 7px; }
+  .xhub-login-input > input { height: 52px; min-height: 52px; }
+  .xhub-login-submit { height: 52px; min-height: 52px; }
+  .xhub-login-help { margin-top: 18px; padding-top: 14px; }
+}

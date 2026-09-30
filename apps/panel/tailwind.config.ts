@@ -12,9 +12,14 @@ const config: Config = {
       accent: { DEFAULT: "hsl(var(--accent))", foreground: "hsl(var(--accent-foreground))" },
       card: { DEFAULT: "hsl(var(--card))", foreground: "hsl(var(--card-foreground))" },
       senal: "hsl(var(--senal))", exito: "hsl(var(--exito))",
+      aviso: "hsl(var(--aviso))", critico: "hsl(var(--critico))",
     },
-    borderRadius: { lg: "1rem", md: "0.75rem", sm: "0.5rem", pill: "9999px" },
-    fontFamily: { sans: ["Inter","system-ui","sans-serif"] },
+    borderRadius: { lg: "26px", md: "14px", sm: "10px", pill: "9999px" },
+    fontFamily: {
+      sans: ["Inter", "system-ui", "sans-serif"],
+      heading: ["Outfit", "system-ui", "sans-serif"],
+      mono: ["JetBrains Mono", "monospace"],
+    },
   } },
   plugins: [],
 };
