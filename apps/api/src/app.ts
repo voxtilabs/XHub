@@ -8,6 +8,7 @@ import { autenticarApi, cuotaDe, type ContextoApi } from "@xhub/modulo-nucleo";
 import { auth } from "./auth.js";
 import { registrarRutasTickets } from "./rutas/tickets.js";
 import { registrarRutasPersonas } from "./rutas/personas.js";
+import { registrarRutasCrm } from "./rutas/publica-crm.js";
 import { registrarRutasAdmin } from "./rutas/admin.js";
 import { registrarRutasCliente } from "./rutas/cliente.js";
 import { registrarConsolaTickets } from "./rutas/consola.js";
@@ -99,12 +100,15 @@ export function crearApp(): FastifyInstance {
     const ctx = await conPlataforma((c) => autenticarApi(c, token));
     req.ctx = ctx;
     // rate limit por minuto (ráfaga)
-    const rl = await rateLimit(ctx.llaveId, 120);
+    const RAFAGA = 120;
+    const rl = await rateLimit(ctx.llaveId, RAFAGA);
+    reply.header("x-ratelimit-limit", String(RAFAGA));
     reply.header("x-ratelimit-remaining", String(rl.restante));
-    if (!rl.permitido) throw new ErrorApi("CUOTA_EXCEDIDA", "Demasiadas peticiones por minuto");
+    if (!rl.permitido) { reply.header("retry-after", "60"); throw new ErrorApi("CUOTA_EXCEDIDA", "Demasiadas peticiones por minuto"); }
     // cuota mensual
     const limite = await conPlataforma((c) => cuotaDe(c, ctx.clienteId));
     const cuota = await consumirCuota(ctx.clienteId, limite);
+    reply.header("x-cuota-limite", String(limite));
     reply.header("x-cuota-restante", String(cuota.restante));
     if (!cuota.permitido) throw new ErrorApi("CUOTA_EXCEDIDA", "Cuota mensual de API agotada");
   };
@@ -114,6 +118,7 @@ export function crearApp(): FastifyInstance {
     v1.addHook("onRequest", guard);
     registrarRutasTickets(v1);
     registrarRutasPersonas(v1);
+    registrarRutasCrm(v1);
   }, { prefix: "/v1" });
 
   registrarRutasAdmin(app);

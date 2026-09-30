@@ -16,7 +16,7 @@ const ETAPAS_DEFAULT: [string, number][] = [
 ];
 
 /** Garantiza un pipeline por cliente (crea "Ventas" + etapas y migra las oportunidades viejas). */
-async function asegurarPipeline(c: PoolClient, clienteId: string): Promise<string> {
+export async function asegurarPipeline(c: PoolClient, clienteId: string): Promise<string> {
   const ex = await c.query("select id from crm_pipelines order by orden asc limit 1");
   if (ex.rowCount) return ex.rows[0].id;
   const pl = (await c.query("insert into crm_pipelines (cliente_id, nombre, orden) values ($1,'Ventas',0) returning id", [clienteId])).rows[0].id;

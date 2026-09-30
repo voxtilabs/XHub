@@ -3,6 +3,25 @@ import { ErrorApi } from "@xhub/core";
 import { resolverLlave } from "./apikeys.js";
 import { entitlementsDe } from "./entitlements.js";
 
+/**
+ * Catálogo de alcances (scopes) de la API pública. UNA sola fuente de verdad: el
+ * panel del superadmin ofrece estos al crear una llave y el OpenAPI los documenta
+ * desde aquí. `modulo` es el entitlement que debe estar encendido para que el scope
+ * valga (nucleo va siempre). No se declara un scope que no esté en esta lista.
+ */
+export interface ScopeDef { scope: string; modulo: string; descripcion: string; }
+export const CATALOGO_SCOPES: ScopeDef[] = [
+  { scope: "nucleo.leer", modulo: "nucleo", descripcion: "Ficha 360 y búsqueda de personas." },
+  { scope: "nucleo.administrar", modulo: "nucleo", descripcion: "Supresión de datos del titular (Ley 21.719)." },
+  { scope: "tickets.leer", modulo: "tickets", descripcion: "Bandeja y contexto de tickets." },
+  { scope: "tickets.crear", modulo: "tickets", descripcion: "Crear tickets." },
+  { scope: "tickets.responder", modulo: "tickets", descripcion: "Cambiar estado y pedir respuesta sugerida." },
+  { scope: "tickets.asignar", modulo: "tickets", descripcion: "Asignar tickets a un usuario." },
+  { scope: "crm.leer", modulo: "crm", descripcion: "Leer embudos, oportunidades, organizaciones, prospectos e insights." },
+  { scope: "crm.escribir", modulo: "crm", descripcion: "Crear y actualizar oportunidades, organizaciones, prospectos y actividades." },
+];
+export const SCOPES_VALIDOS = new Set(CATALOGO_SCOPES.map((s) => s.scope));
+
 export interface ContextoApi {
   clienteId: string;
   llaveId: string;

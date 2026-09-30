@@ -7,7 +7,7 @@ import {
   resolverAdmin, crearCliente, cambiarEstado, fijarEntitlement, crearLlave,
   fijarCuota, cuotaDe, listarClientesAdmin,
   fijarLimiteUsuarios, limiteUsuariosDe, contarUsuariosCliente, listarUsuariosCliente,
-  resumenUsoIA,
+  resumenUsoIA, CATALOGO_SCOPES, SCOPES_VALIDOS,
 } from "@xhub/modulo-nucleo";
 import { consumoDelDia } from "@xhub/cuotas";
 import { fijarConfigTriage, configTriage } from "@xhub/modulo-tickets";
@@ -68,10 +68,16 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
     });
 
     // Crear una llave de API para el cliente
+    // Catálogo de scopes que el superadmin puede otorgar a una llave (para el panel).
+    admin.get("/scopes", async () => ({ datos: CATALOGO_SCOPES }));
+
     admin.post("/clientes/:id/llaves", async (req) => {
       const { id } = req.params as { id: string };
       const b = E.validar(E.crearLlave, req.body);
-      return conPlataforma((c) => crearLlave(c, id, b.nombre, b.scopes ?? []));
+      const scopes = b.scopes ?? [];
+      const invalidos = scopes.filter((s) => !SCOPES_VALIDOS.has(s));
+      if (invalidos.length) throw new ErrorApi("VALIDACION", `Scopes inexistentes: ${invalidos.join(", ")}`, { invalidos, validos: [...SCOPES_VALIDOS] });
+      return conPlataforma((c) => crearLlave(c, id, b.nombre, scopes));
     });
 
     // Crear un ADMIN DE CLIENTE (rol admin_cliente, atado a este cliente). El registro
