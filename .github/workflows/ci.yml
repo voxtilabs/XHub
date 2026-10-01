@@ -48,9 +48,19 @@ jobs:
             exit 1
           fi
           echo "· sin verificación TLS desactivada"
+          # Solo la frontera con XContact (conector + los diagnósticos que le hablan
+          # directo) puede relajar TLS — su certificado no valida (TRAMPAS.md T-05).
           if git grep -nE "rejectUnauthorized\s*:\s*false" -- '*.ts' '*.tsx' \
-             ':!*conector*' | grep .; then
-            echo "FALLA: TLS desactivado fuera del conector (ADR 0010)."
+             ':!*conector*' ':!*xcontact-probe*' ':!*fetch-xcontact*' | grep .; then
+            echo "FALLA: TLS desactivado fuera de la frontera XContact (ADR 0010)."
+            exit 1
+          fi
+          echo "· sin vocabulario de XContact (portugués) fuera del conector"
+          # El traductor (#49) es el único que conoce la jerga ajena. 'fila' NO va aquí:
+          # es español (fila/cola). Los diagnósticos del probe conocen nombres de endpoints.
+          if git grep -nwiE "senha|dados|chamada|chamadas|contato|contatos|atendimento|atendimentos|campanha|campanhas|ligacao|discador" \
+             -- '*.ts' '*.tsx' ':!*conector*' ':!*xcontact-probe*' | grep .; then
+            echo "FALLA: vocabulario de XContact (portugués) fuera del conector. Traducilo (#49, ADR 0004)."
             exit 1
           fi
           echo "ok"

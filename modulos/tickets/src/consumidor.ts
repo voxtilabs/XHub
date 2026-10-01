@@ -4,7 +4,7 @@ import { crearModuloTickets } from "./index.js";
 
 export interface EventoConversacion {
   clienteId: string;
-  payload: { canal: string; identidad: string; dedupeId: string; mensajes: { autor: string; texto: string }[]; asunto?: string | null };
+  payload: { canal: string; identidad: string; dedupeId: string; mensajes: { autor: string; texto: string }[]; asunto?: string | null; abandonada?: boolean };
 }
 
 /**
@@ -22,7 +22,7 @@ export function crearConsumidorTriage(nucleo: NucleoApi) {
       if (!p?.mensajes?.length) return { accion: "descartado" };
       const r = await T.triarConversacion(c, {
         canal: p.canal, identidad: p.identidad, dedupeId: p.dedupeId,
-        mensajes: p.mensajes, asunto: p.asunto ?? undefined,
+        mensajes: p.mensajes, asunto: p.asunto ?? undefined, abandonada: p.abandonada,
       });
       return { accion: r.accion, ticketId: r.ticket?.id };
     },

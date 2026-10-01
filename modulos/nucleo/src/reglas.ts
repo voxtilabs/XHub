@@ -30,7 +30,19 @@ export async function activarRegla(c: PoolClient, id: string, activa: boolean): 
   await c.query("update nucleo.reglas set activa=$2 where id=$1", [id, activa]);
 }
 
+/** Lista las reglas del cliente (para el panel de automatizaciones). */
+export async function listarReglas(c: PoolClient): Promise<Regla[]> {
+  const cid = await clienteDe(c);
+  const r = await c.query(
+    "select id, nombre, evento, condicion, accion, modulo_destino as \"moduloDestino\", activa from nucleo.reglas where cliente_id=$1 order by creada_en desc nulls last, nombre",
+    [cid]);
+  return r.rows as Regla[];
+}
+
 export interface EventoRegla { tipo: string; objetoId: string; personaId?: string; datos?: Record<string, unknown>; }
+
+/** Ejecutor de una acción de módulo (crear oportunidad, auto-asignar) inyectado por la capa API. */
+export type EjecutorAccion = (c: PoolClient, accion: Record<string, unknown>, ev: EventoRegla) => Promise<void>;
 
 export type ResultadoRegla = "ok" | "skip" | "pausada" | "ya_ejecutada" | "error";
 
@@ -39,7 +51,7 @@ export type ResultadoRegla = "ok" | "skip" | "pausada" | "ya_ejecutada" | "error
  * (regla, objeto). Si el módulo destino está apagado, la regla queda PAUSADA
  * con aviso (no falla). 3 fallos sobre el mismo objeto la detienen para ese objeto.
  */
-export async function aplicarReglas(c: PoolClient, ev: EventoRegla): Promise<{ reglaId: string; resultado: ResultadoRegla }[]> {
+export async function aplicarReglas(c: PoolClient, ev: EventoRegla, ejecutoresExtra?: Record<string, EjecutorAccion>): Promise<{ reglaId: string; resultado: ResultadoRegla }[]> {
   const cid = await clienteDe(c);
   const entitlements = await entitlementsDe(c, cid);
   const reglas = await c.query(
@@ -48,6 +60,13 @@ export async function aplicarReglas(c: PoolClient, ev: EventoRegla): Promise<{ r
   const out: { reglaId: string; resultado: ResultadoRegla }[] = [];
 
   for (const r of reglas.rows) {
+    // condición: todos los pares del filtro deben coincidir con los datos del evento.
+    const cond = (r.condicion ?? {}) as Record<string, unknown>;
+    const datos = ev.datos ?? {};
+    if (Object.keys(cond).length && !Object.entries(cond).every(([k, v]) => datos[k] === v)) {
+      out.push({ reglaId: r.id, resultado: "skip" });
+      continue;
+    }
     // idempotencia: ¿ya se ejecutó para este objeto?
     const prev = await c.query("select resultado, intentos from nucleo.regla_ejecuciones where regla_id=$1 and objeto_id=$2", [r.id, ev.objetoId]);
     if (prev.rowCount && prev.rows[0].resultado === "ok") { out.push({ reglaId: r.id, resultado: "ya_ejecutada" }); continue; }
@@ -61,7 +80,7 @@ export async function aplicarReglas(c: PoolClient, ev: EventoRegla): Promise<{ r
     }
 
     try {
-      await ejecutarAccion(c, r.accion, ev);
+      await ejecutarAccion(c, r.accion, ev, ejecutoresExtra);
       await registrarEjecucion(c, r.id, ev.objetoId, "ok");
       out.push({ reglaId: r.id, resultado: "ok" });
     } catch {
@@ -80,8 +99,10 @@ async function registrarEjecucion(c: PoolClient, reglaId: string, objetoId: stri
 }
 
 /** Ejecuta la acción declarativa. Extensible por tipo. */
-async function ejecutarAccion(c: PoolClient, accion: Record<string, unknown>, ev: EventoRegla): Promise<void> {
+async function ejecutarAccion(c: PoolClient, accion: Record<string, unknown>, ev: EventoRegla, ejecutoresExtra?: Record<string, EjecutorAccion>): Promise<void> {
   const tipo = accion.tipo as string;
+  // Acciones de módulo (crear oportunidad, auto-asignar) las provee la capa API.
+  if (ejecutoresExtra?.[tipo]) { await ejecutoresExtra[tipo](c, accion, ev); return; }
   if (tipo === "enlazar_a_oportunidad") {
     // el ticket "queda en el CRM": se enlaza a una oportunidad (creada por el módulo crm)
     const oportunidadId = accion.oportunidadId as string ?? `op-${ev.objetoId}`;

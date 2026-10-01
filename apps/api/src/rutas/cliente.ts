@@ -1,12 +1,17 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
+import { randomBytes } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi } from "@xhub/core";
 import { conPlataforma } from "@xhub/db";
 import {
   limiteUsuariosDe, contarUsuariosCliente, listarUsuariosCliente,
-  permisosDe, fijarPermisos, usuarioDeCliente, CATALOGO_PERMISOS,
+  permisosDe, fijarPermisos, usuarioDeCliente, CATALOGO_PERMISOS, entitlementsDe,
+  contextoIADe, modeloIADe, fijarContextoCliente,
+  datosIADe, fijarDatosIA, ejemplosIADe, fijarEjemplosIA, type DatoIA, type EjemploIA,
 } from "@xhub/modulo-nucleo";
 import { auth } from "../auth.js";
+import { leerCookieSoporte } from "../soporte.js";
+import { esPlataforma, esAdminCliente } from "../roles.js";
 import * as E from "../esquemas.js";
 
 /**
@@ -95,6 +100,68 @@ export function registrarRutasCliente(app: FastifyInstance): void {
       const permisos = await conPlataforma((c) => fijarPermisos(c, id, b.permisos));
       return { id, permisos };
     });
+
+    // Resetear la clave de un usuario del equipo → genera una temporal, se muestra UNA vez.
+    cli.put("/usuarios/:id/reset-clave", async (req) => {
+      const { clienteId } = ctx(req);
+      const { id } = req.params as { id: string };
+      await exigirMismoCliente(clienteId, id);
+      const nueva = randomBytes(9).toString("base64url");
+      const context = await auth.$context;
+      const hash = await context.password.hash(nueva);
+      const r = await conPlataforma((c) => c.query(`update "account" set password=$2, "updatedAt"=now() where "userId"=$1 and "providerId"='credential'`, [id, hash]));
+      if (!r.rowCount) throw new ErrorApi("NO_ENCONTRADO", "Ese usuario no tiene credencial de acceso");
+      return { clave: nueva };
+    });
+
+    // Eliminar un usuario del equipo (no a uno mismo). Limpia permisos + credencial + cuenta.
+    cli.delete("/usuarios/:id", async (req) => {
+      const { clienteId, usuarioId } = ctx(req);
+      const { id } = req.params as { id: string };
+      if (id === usuarioId) throw new ErrorApi("VALIDACION", "No puedes eliminarte a ti mismo");
+      await exigirMismoCliente(clienteId, id);
+      await conPlataforma(async (c) => {
+        await fijarPermisos(c, id, []);
+        await c.query(`delete from "account" where "userId"=$1`, [id]);
+        await c.query(`delete from "session" where "userId"=$1`, [id]);
+        await c.query(`delete from "user" where id=$1 and "clienteId"=$2`, [id, clienteId]);
+      });
+      return { ok: true };
+    });
+
+    // Contexto de IA del cliente (rubro, tono, datos): lo edita el ADMIN DEL CLIENTE
+    // para su propio espacio. Se antepone a los prompts de resumen y sugerencia. El
+    // modelo lo fija la plataforma (control de costo), así que acá va solo informativo.
+    cli.get("/ia", async (req) => {
+      const { clienteId } = ctx(req);
+      return conPlataforma(async (c) => ({
+        contexto: await contextoIADe(c, clienteId),
+        modelo: await modeloIADe(c, clienteId),
+      }));
+    });
+    cli.put("/ia", async (req) => {
+      const { clienteId } = ctx(req);
+      const b = req.body as { contexto?: string };
+      const contexto = typeof b?.contexto === "string" ? b.contexto.slice(0, 4000) : "";
+      await conPlataforma((c) => fijarContextoCliente(c, clienteId, contexto));
+      return { ok: true, contexto: contexto.trim() || null };
+    });
+
+    // Contexto IA RICO (más que el system prompt): datos estructurados + ejemplos few-shot.
+    // El admin del cliente edita LO SUYO; se antepone a los prompts de resumen/sugerencia.
+    cli.get("/ia-datos", async (req) => {
+      const { clienteId } = ctx(req);
+      return conPlataforma(async (c) => ({ datos: await datosIADe(c, clienteId), ejemplos: await ejemplosIADe(c, clienteId) }));
+    });
+    cli.put("/ia-datos", async (req) => {
+      const { clienteId } = ctx(req);
+      const b = req.body as { datos?: DatoIA[]; ejemplos?: EjemploIA[] };
+      await conPlataforma(async (c) => {
+        if (Array.isArray(b?.datos)) await fijarDatosIA(c, clienteId, b.datos);
+        if (Array.isArray(b?.ejemplos)) await fijarEjemplosIA(c, clienteId, b.ejemplos);
+      });
+      return conPlataforma(async (c) => ({ ok: true, datos: await datosIADe(c, clienteId), ejemplos: await ejemplosIADe(c, clienteId) }));
+    });
   }, { prefix: "/cliente" });
 
   // Consola de CUALQUIER usuario del cliente (agente o admin): su identidad + permisos.
@@ -106,12 +173,33 @@ export function registrarRutasCliente(app: FastifyInstance): void {
       try { sesion = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) }); } catch { sesion = null; }
       const u = sesion?.user as { id?: string; email?: string; name?: string; rol?: string; clienteId?: string } | undefined;
       if (!u?.id) throw new ErrorApi("NO_AUTENTICADO", "Sesión requerida");
-      const esAdmin = u.rol === "admin_cliente";
+      const sop = leerCookieSoporte(req.headers.cookie);
+      if (esPlataforma(u.rol) && sop && sop.a === u.id) {
+        const modSop = [...(await conPlataforma((c) => entitlementsDe(c, sop.c)))];
+        return { id: u.id, email: u.email ?? null, nombre: u.name ?? null, rol: "plataforma", clienteId: sop.c, esAdmin: true, esSoporte: true, motivoSoporte: sop.m, permisos: CATALOGO_PERMISOS.map((p) => p.clave), modulos: modSop };
+      }
+      const esAdmin = esAdminCliente(u.rol);
       // El admin de cliente tiene acceso total: recibe todas las claves del catálogo.
       const permisos = esAdmin
         ? CATALOGO_PERMISOS.map((p) => p.clave)
         : await conPlataforma((c) => permisosDe(c, u.id!));
-      return { id: u.id, email: u.email ?? null, nombre: u.name ?? null, rol: u.rol ?? "usuario", clienteId: u.clienteId ?? null, esAdmin, permisos };
+      const modulos = u.clienteId ? [...(await conPlataforma((c) => entitlementsDe(c, u.clienteId!)))] : [];
+      return { id: u.id, email: u.email ?? null, nombre: u.name ?? null, rol: u.rol ?? "usuario", clienteId: u.clienteId ?? null, esAdmin, permisos, modulos };
+    });
+
+    // Marca blanca del cliente logueado: el panel se pinta con ella (o defaults si no hay).
+    yo.get("/marca", async (req) => {
+      let sesion: Awaited<ReturnType<typeof auth.api.getSession>> = null;
+      try { sesion = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) }); } catch { sesion = null; }
+      const um = sesion?.user as { id?: string; rol?: string; clienteId?: string } | undefined;
+      const sopm = leerCookieSoporte(req.headers.cookie);
+      const cid = (esPlataforma(um?.rol) && sopm && sopm.a === um?.id) ? sopm.c : um?.clienteId;
+      const vacia = { nombre_marca: null, logo_url: null, color_primario: null, color_acento: null };
+      if (!cid) return vacia;
+      return conPlataforma(async (c) => {
+        const r = await c.query("select nombre_marca, logo_url, color_primario, color_acento from plataforma.clientes_marca where cliente_id=$1", [cid]);
+        return r.rows[0] ?? vacia;
+      });
     });
   }, { prefix: "/cliente" });
 

@@ -7,9 +7,13 @@ import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
 import { AppShell } from "@/components/app-shell";
 
-type Cliente = { id: string; nombre: string; estado: string; modulos: string[] };
+type Cliente = { id: string; nombre: string; estado: string; modulos: string[]; ia_modelo?: string | null; ia_contexto?: string | null };
+type IAConfig = { modeloDefault: string | null; proveedor: string; modeloEnv: string | null; iaActiva: boolean };
+type ScopeDef = { scope: string; modulo: string; descripcion: string };
+type Llave = { id: string; nombre: string; prefijo: string; scopes: string[]; creada_en: string; ultimo_uso: string | null; revocada_en: string | null };
 type Consumo = { total: number; cuotaMensual: number; dia: string };
 type Triage = { modo: "automatico" | "sugerir" | "manual"; umbral: number };
+type Automatizacion = { clave: string; nombre: string; descripcion: string; categoria: string; activa: boolean };
 type UsuarioCliente = { id: string; email: string; nombre: string; rol: string; creadoEn: string };
 type Usuarios = { limite: number; usados: number; usuarios: UsuarioCliente[] };
 type ResumenIA = {
@@ -36,21 +40,37 @@ export default function ClienteDetalle() {
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [llave, setLlave] = useState<string | null>(null);
+  const [llaveScopes, setLlaveScopes] = useState<string[]>([]);
+  const [scopesCat, setScopesCat] = useState<ScopeDef[]>([]);
+  const [llaves, setLlaves] = useState<Llave[]>([]);
+  const [editando, setEditando] = useState<string | null>(null);
+  const [editScopes, setEditScopes] = useState<string[]>([]);
+  const [iaCfg, setIaCfg] = useState<IAConfig | null>(null);
+  const [modeloDefault, setModeloDefault] = useState("");
+  const [modeloCliente, setModeloCliente] = useState("");
+  const [contextoCliente, setContextoCliente] = useState("");
   const [usuarios, setUsuarios] = useState<Usuarios | null>(null);
   const [lim, setLim] = useState("");
   const [nu, setNu] = useState({ email: "", nombre: "", password: "" });
   const [ia, setIa] = useState<ResumenIA | null>(null);
+  const [autos, setAutos] = useState<Automatizacion[]>([]);
 
   async function cargar(cid: string) {
     try {
       const lista = await apiFetch<{ datos: Cliente[] }>("/admin/clientes");
-      setCli(lista.datos.find((x) => x.id === cid) ?? null);
+      const yo = lista.datos.find((x) => x.id === cid) ?? null;
+      setCli(yo); setModeloCliente(yo?.ia_modelo ?? ""); setContextoCliente(yo?.ia_contexto ?? "");
+      const ia = await apiFetch<IAConfig>("/admin/ia/config"); setIaCfg(ia); setModeloDefault(ia.modeloDefault ?? "");
       const co = await apiFetch<Consumo>(`/admin/clientes/${cid}/consumo`); setConsumo(co); setCuota(String(co.cuotaMensual));
       setTriage(await apiFetch<Triage>(`/admin/clientes/${cid}/triage`));
+      setAutos((await apiFetch<{ datos: Automatizacion[] }>(`/admin/clientes/${cid}/automatizaciones`)).datos);
       const us = await apiFetch<Usuarios>(`/admin/clientes/${cid}/usuarios`); setUsuarios(us); setLim(String(us.limite));
       setIa(await apiFetch<ResumenIA>(`/admin/clientes/${cid}/ia?dias=30`));
+      setScopesCat((await apiFetch<{ datos: ScopeDef[] }>("/admin/scopes")).datos);
+      setLlaves((await apiFetch<{ datos: Llave[] }>(`/admin/clientes/${cid}/llaves`)).datos);
     } catch (e) { setError((e as Error).message); }
   }
+  const recargarLlaves = async () => { try { setLlaves((await apiFetch<{ datos: Llave[] }>(`/admin/clientes/${id}/llaves`)).datos); } catch { /* noop */ } };
   async function recargarUsuarios(cid: string) {
     try { const us = await apiFetch<Usuarios>(`/admin/clientes/${cid}/usuarios`); setUsuarios(us); setLim(String(us.limite)); } catch { /* noop */ }
   }
@@ -69,7 +89,19 @@ export default function ClienteDetalle() {
   const toggle = (mod: string) => accion(async () => { const on = !cli!.modulos.includes(mod); await apiFetch(`/admin/clientes/${id}/modulos/${mod}`, { method: "PUT", body: JSON.stringify({ encendido: on }) }); setCli((c) => c && { ...c, modulos: on ? [...c.modulos, mod] : c.modulos.filter((m) => m !== mod) }); }, "Módulo actualizado");
   const guardarCuota = () => accion(async () => { const n = Number(cuota); await apiFetch(`/admin/clientes/${id}/cuota`, { method: "PUT", body: JSON.stringify({ limiteMensual: n }) }); setConsumo((c) => c && { ...c, cuotaMensual: n }); }, "Cuota fijada");
   const guardarTriage = (t: Triage) => accion(async () => { await apiFetch(`/admin/clientes/${id}/triage`, { method: "PUT", body: JSON.stringify(t) }); setTriage(t); }, "Triage guardado");
-  const nuevaLlave = () => accion(async () => { const r = await apiFetch<{ token: string }>(`/admin/clientes/${id}/llaves`, { method: "POST", body: JSON.stringify({ nombre: "Panel " + new Date().toISOString().slice(0, 10) }) }); setLlave(r.token); }, "Llave creada");
+  const toggleAuto = (a: Automatizacion) => accion(async () => {
+    const activa = !a.activa;
+    await apiFetch(`/admin/clientes/${id}/automatizaciones/${encodeURIComponent(a.clave)}`, { method: "PUT", body: JSON.stringify({ activa }) });
+    setAutos((xs) => xs.map((x) => x.clave === a.clave ? { ...x, activa } : x));
+  }, "Automatización actualizada");
+  const guardarModeloDefault = () => accion(async () => { await apiFetch("/admin/ia/config", { method: "PUT", body: JSON.stringify({ modeloDefault: modeloDefault.trim() || null }) }); setIaCfg((c) => c && { ...c, modeloDefault: modeloDefault.trim() || null }); }, "Modelo por defecto guardado");
+  const guardarModeloCliente = () => accion(async () => { await apiFetch(`/admin/clientes/${id}/ia-modelo`, { method: "PUT", body: JSON.stringify({ modelo: modeloCliente.trim() || null }) }); setCli((c) => c && { ...c, ia_modelo: modeloCliente.trim() || null }); }, "Modelo del cliente guardado");
+  const guardarContextoCliente = () => accion(async () => { await apiFetch(`/admin/clientes/${id}/ia-modelo`, { method: "PUT", body: JSON.stringify({ contexto: contextoCliente.trim() || null }) }); setCli((c) => c && { ...c, ia_contexto: contextoCliente.trim() || null }); }, "Contexto de IA guardado");
+  const nuevaLlave = () => accion(async () => { const r = await apiFetch<{ token: string; scopes: string[] }>(`/admin/clientes/${id}/llaves`, { method: "POST", body: JSON.stringify({ nombre: "Panel " + new Date().toISOString().slice(0, 10) }) }); setLlave(r.token); setLlaveScopes(r.scopes ?? []); await recargarLlaves(); }, "Llave creada");
+  const abrirEdicion = (l: Llave) => { setEditando(l.id); setEditScopes(l.scopes); };
+  const toggleScope = (s: string) => setEditScopes((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+  const guardarScopes = (l: Llave) => accion(async () => { await apiFetch(`/admin/clientes/${id}/llaves/${l.id}/scopes`, { method: "PUT", body: JSON.stringify({ scopes: editScopes }) }); setEditando(null); await recargarLlaves(); }, "Scopes actualizados");
+  const revocarLlave = (l: Llave) => accion(async () => { await apiFetch(`/admin/clientes/${id}/llaves/${l.id}`, { method: "DELETE" }); await recargarLlaves(); }, "Llave revocada");
   const guardarLimite = () => accion(async () => { const n = Number(lim); await apiFetch(`/admin/clientes/${id}/limite-usuarios`, { method: "PUT", body: JSON.stringify({ limite: n }) }); setUsuarios((u) => u && { ...u, limite: n }); }, "Tope de usuarios fijado");
   const crearUsuario = () => accion(async () => {
     await apiFetch(`/admin/clientes/${id}/usuarios`, { method: "POST", body: JSON.stringify(nu) });
@@ -95,7 +127,12 @@ export default function ClienteDetalle() {
           <Card style={{ borderColor: "hsl(var(--senal)/0.5)" }}><CardContent className="pt-5">
             <div className="text-xs font-black uppercase tracking-widest text-[hsl(var(--senal))] mb-2">Llave de API creada</div>
             <div className="font-mono text-[12px] break-all bg-secondary rounded-md p-3">{llave}</div>
-            <p className="text-[11px] text-muted-foreground mt-2">⚠ Se muestra una sola vez — cópiala ahora.</p>
+            {llaveScopes.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {llaveScopes.map((s) => <span key={s} className="text-[10.5px] font-mono px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{s}</span>)}
+              </div>
+            )}
+            <p className="text-[11px] text-muted-foreground mt-2">⚠ Se muestra una sola vez — cópiala ahora. Alcances: {llaveScopes.length ? `${llaveScopes.length} (todos los módulos activos)` : "ninguno"}.</p>
             <Button size="sm" variant="secondary" className="mt-3" onClick={() => setLlave(null)}>La copié</Button>
           </CardContent></Card>
         )}
@@ -207,6 +244,34 @@ export default function ClienteDetalle() {
           )}
         </CardContent></Card>
 
+        {/* Automatizaciones (reglas de negocio toggleables por cliente) */}
+        <Card><CardContent className="pt-5">
+          <div className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">Automatizaciones</div>
+          <p className="text-[12px] text-muted-foreground mb-3">Reglas de negocio que enciendes por cliente. El catálogo crece a medida que los clientes las piden.</p>
+          {autos.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">No hay automatizaciones en el catálogo todavía.</p>
+          ) : (
+            <div className="space-y-3">
+              {autos.map((a) => (
+                <div key={a.clave} className="flex items-start gap-3 pt-3 border-t border-border first:border-t-0 first:pt-0">
+                  <button type="button" role="switch" aria-checked={a.activa} onClick={() => toggleAuto(a)} className="shrink-0 mt-0.5">
+                    <span className={"h-5 w-9 rounded-full relative transition block " + (a.activa ? "bg-[hsl(var(--exito))]" : "bg-secondary border border-border")}>
+                      <span className={"absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all " + (a.activa ? "left-[18px]" : "left-0.5")} />
+                    </span>
+                  </button>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[13px] font-medium">{a.nombre}</span>
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded-full px-1.5 py-0.5">{a.categoria}</span>
+                    </div>
+                    <p className="text-[11.5px] text-muted-foreground mt-0.5">{a.descripcion}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent></Card>
+
         {/* Consumo de IA del cliente (qué hizo, cuánto) */}
         <Card><CardContent className="pt-5">
           <div className="flex items-center justify-between mb-3">
@@ -232,7 +297,93 @@ export default function ClienteDetalle() {
           )}
         </CardContent></Card>
 
-        <Button variant="secondary" onClick={nuevaLlave}>+ Nueva llave de API</Button>
+        {/* IA — proveedor + modelo por defecto y override por cliente */}
+        <Card><CardContent className="pt-5">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-xs font-black uppercase tracking-widest text-muted-foreground">Inteligencia artificial</div>
+            {iaCfg && <Badge rol={iaCfg.iaActiva ? "exito" : "neutro"}>{iaCfg.iaActiva ? `${iaCfg.proveedor} activo` : "IA apagada"}</Badge>}
+          </div>
+          <p className="text-[12px] text-muted-foreground mb-3">La llave del proveedor vive en el entorno (nunca acá). Solo se configura el <b>modelo</b>. Sin modelo del cliente, se usa el por defecto{iaCfg?.modeloEnv ? ` (env: ${iaCfg.modeloEnv})` : ""}.</p>
+          <div className="space-y-3">
+            <div className="flex items-end gap-2 flex-wrap">
+              <label className="flex flex-col flex-1 min-w-[200px]"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Modelo por defecto (toda la plataforma)</span><Input value={modeloDefault} onChange={(e) => setModeloDefault(e.target.value)} placeholder={iaCfg?.modeloEnv ?? "google/gemma-3-12b-it"} className="mt-1 font-mono text-[12px]" /></label>
+              <Button variant="secondary" size="sm" onClick={guardarModeloDefault}>Guardar default</Button>
+            </div>
+            <div className="flex items-end gap-2 flex-wrap">
+              <label className="flex flex-col flex-1 min-w-[200px]"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Modelo de {cli?.nombre ?? "este cliente"} (override)</span><Input value={modeloCliente} onChange={(e) => setModeloCliente(e.target.value)} placeholder={`(usa el default: ${modeloDefault || iaCfg?.modeloEnv || "—"})`} className="mt-1 font-mono text-[12px]" /></label>
+              <Button variant="secondary" size="sm" onClick={guardarModeloCliente}>Guardar cliente</Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Ej. económicos en OpenRouter: <code>meta-llama/llama-3.1-8b-instruct</code>, <code>openai/gpt-4o-mini</code>, <code>google/gemma-3-12b-it</code>. Dejá vacío el del cliente para heredar el default.</p>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Contexto para la IA (rubro, tono, datos del cliente)</span>
+                <Button variant="secondary" size="sm" onClick={guardarContextoCliente}>Guardar contexto</Button>
+              </div>
+              <textarea value={contextoCliente} onChange={(e) => setContextoCliente(e.target.value)} rows={4}
+                placeholder="Ej.: Somos una inmobiliaria en Santiago. Tono cercano y formal. No prometas fechas de entrega. Los reclamos por postventa se derivan al área de mantención."
+                className="w-full mt-1 rounded-md border border-border bg-background px-3 py-2 text-[13px] resize-y" />
+              <p className="text-[11px] text-muted-foreground mt-1">Se antepone a los prompts de <b>resumen</b> y <b>sugerencia</b> de este cliente, para que la IA conozca su negocio.</p>
+            </div>
+          </div>
+        </CardContent></Card>
+
+        {/* Llaves de API — listar, crear, editar scopes, revocar */}
+        <Card><CardContent className="pt-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs font-black uppercase tracking-widest text-muted-foreground">Llaves de API</div>
+            <Button size="sm" variant="secondary" onClick={nuevaLlave}>+ Nueva llave</Button>
+          </div>
+          {llaves.length === 0 ? (
+            <div className="text-[13px] text-muted-foreground">Sin llaves. Al crear una recibe todos los scopes de los módulos activos del cliente; podés restringirla acá.</div>
+          ) : (
+            <div className="space-y-2">
+              {llaves.map((l) => (
+                <div key={l.id} className={"rounded-md border border-border p-3 " + (l.revocada_en ? "opacity-50" : "")}>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="min-w-0">
+                      <span className="font-mono text-[12.5px]">{l.prefijo}…</span>
+                      <span className="text-[11px] text-muted-foreground ml-2">{l.nombre}</span>
+                      {l.revocada_en && <span className="text-[10px] text-[hsl(var(--critico))] ml-2 uppercase font-bold">revocada</span>}
+                    </div>
+                    {!l.revocada_en && (
+                      <div className="flex gap-3">
+                        {editando === l.id ? (
+                          <>
+                            <button onClick={() => guardarScopes(l)} className="text-[12px] text-[hsl(var(--senal))] hover:underline">guardar</button>
+                            <button onClick={() => setEditando(null)} className="text-[12px] text-muted-foreground hover:underline">cancelar</button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => abrirEdicion(l)} className="text-[12px] text-[hsl(var(--senal))] hover:underline">editar scopes</button>
+                            <button onClick={() => revocarLlave(l)} className="text-[12px] text-muted-foreground hover:text-[hsl(var(--critico))]">revocar</button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {editando === l.id ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {scopesCat.map((s) => (
+                        <button key={s.scope} onClick={() => toggleScope(s.scope)} title={s.descripcion}
+                          className={"text-[11px] font-mono px-2 py-1 rounded border " + (editScopes.includes(s.scope) ? "border-[hsl(var(--senal))] text-foreground" : "border-border text-muted-foreground")}
+                          style={editScopes.includes(s.scope) ? { background: "hsl(var(--senal)/0.1)" } : undefined}>
+                          {editScopes.includes(s.scope) ? "✓ " : ""}{s.scope}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {l.scopes.length === 0
+                        ? <span className="text-[11px] text-muted-foreground">sin scopes declarados — hereda todos los del cliente</span>
+                        : l.scopes.map((s) => <span key={s} className="text-[10.5px] font-mono px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{s}</span>)}
+                    </div>
+                  )}
+                  {l.ultimo_uso && <div className="text-[10px] text-muted-foreground mt-1.5">último uso: {l.ultimo_uso.slice(0, 16).replace("T", " ")}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent></Card>
       </div>
     </main>
   );

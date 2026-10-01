@@ -6,8 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
 import { AppShell } from "@/components/app-shell";
+import { EditorMarca } from "@/components/editor-marca";
 
 type Cliente = { id: string; nombre: string; estado: string; modulos: string[] };
+type Panorama = {
+  clientes: { total: number; activos: number; conTickets: number };
+  tickets: { abiertos: number; vencidos: number; total: number };
+  ia: { total: number; tokensPrompt: number; tokensSalida: number };
+  porCliente: { id: string; abiertos: number; vencidos: number; total: number }[];
+};
+type Plan = { id: string; nombre: string; modulos: string[]; limiteUsuarios: number; cuotaMensual: number };
 const MODULOS: { k: string; nombre: string }[] = [
   { k: "tickets", nombre: "xTickets" },
   { k: "crm", nombre: "xCRM" },
@@ -22,10 +30,18 @@ export default function Superadmin() {
   const [nombre, setNombre] = useState("");
   const [creando, setCreando] = useState(false);
   const [llave, setLlave] = useState<{ cliente: string; token: string } | null>(null);
+  const [marcaAbierta, setMarcaAbierta] = useState<string | null>(null);
+  const [pan, setPan] = useState<Panorama | null>(null);
+  const [planes, setPlanes] = useState<Plan[]>([]);
+  const [pf, setPf] = useState({ nombre: "", tickets: true, crm: false, limiteUsuarios: 5, cuotaMensual: 100000 });
 
   async function cargar() {
     setCargando(true); setError(null);
-    try { setClientes((await apiFetch<{ datos: Cliente[] }>("/admin/clientes")).datos); }
+    try {
+      setClientes((await apiFetch<{ datos: Cliente[] }>("/admin/clientes")).datos);
+      apiFetch<Panorama>("/admin/panorama").then(setPan).catch(() => {});
+      apiFetch<{ datos: Plan[] }>("/admin/planes").then((r) => setPlanes(r.datos)).catch(() => {});
+    }
     catch (e) { setError((e as Error).message); }
     finally { setCargando(false); }
   }
@@ -44,6 +60,30 @@ export default function Superadmin() {
     try { await apiFetch(`/admin/clientes/${cl.id}/modulos/${mod}`, { method: "PUT", body: JSON.stringify({ encendido }) }); }
     catch (e) { setError((e as Error).message); await cargar(); }
   }
+  async function crearPlan() {
+    if (pf.nombre.trim().length < 2) return;
+    const modulos = [pf.tickets ? "tickets" : null, pf.crm ? "crm" : null].filter(Boolean) as string[];
+    try {
+      await apiFetch("/admin/planes", { method: "POST", body: JSON.stringify({ nombre: pf.nombre.trim(), modulos, limiteUsuarios: Number(pf.limiteUsuarios), cuotaMensual: Number(pf.cuotaMensual) }) });
+      setPf({ nombre: "", tickets: true, crm: false, limiteUsuarios: 5, cuotaMensual: 100000 });
+      const r = await apiFetch<{ datos: Plan[] }>("/admin/planes"); setPlanes(r.datos);
+    } catch (e) { setError((e as Error).message); }
+  }
+  async function borrarPlan(pid: string) {
+    try { await apiFetch(`/admin/planes/${pid}`, { method: "DELETE" }); setPlanes((ps) => ps.filter((p) => p.id !== pid)); }
+    catch (e) { setError((e as Error).message); }
+  }
+  async function aplicarPlan(cl: Cliente, planId: string) {
+    if (!planId) return;
+    try { await apiFetch(`/admin/clientes/${cl.id}/aplicar-plan`, { method: "POST", body: JSON.stringify({ planId }) }); await cargar(); }
+    catch (e) { setError((e as Error).message); }
+  }
+  async function entrarSoporte(cl: Cliente) {
+    const motivo = window.prompt(`Motivo del acceso de soporte a "${cl.nombre}" (queda auditado):`);
+    if (!motivo || motivo.trim().length < 4) return;
+    try { await apiFetch("/admin/soporte", { method: "POST", body: JSON.stringify({ clienteId: cl.id, motivo: motivo.trim() }) }); window.location.href = "/tickets"; }
+    catch (e) { setError((e as Error).message); }
+  }
   async function nuevaLlave(cl: Cliente) {
     setError(null);
     try {
@@ -59,16 +99,48 @@ export default function Superadmin() {
       <AppShell />
 
       <div className="max-w-5xl mx-auto p-4 sm:p-8">
-        <div className="flex gap-4 mb-8 flex-wrap">
-          {([["Clientes", clientes.length], ["Activos", activos], ["Módulos xTickets", clientes.filter((c) => c.modulos.includes("tickets")).length]] as const).map(([l, n]) => (
-            <Card key={l} className="flex-1 min-w-[160px]">
+        <div className="flex justify-end mb-2"><a href="/superadmin/xcontact" className="text-[13px] text-[hsl(var(--senal))] hover:underline">Probar XContact →</a></div>
+        <div className="flex gap-3 mb-8 flex-wrap">
+          {([
+            ["Clientes", pan ? pan.clientes.total : clientes.length, "--senal"],
+            ["Activos", pan ? pan.clientes.activos : activos, "--exito"],
+            ["Tickets abiertos", pan ? pan.tickets.abiertos : null, "--aviso"],
+            ["SLA vencidos", pan ? pan.tickets.vencidos : null, (pan && pan.tickets.vencidos > 0) ? "--critico" : "--muted-foreground"],
+            ["IA · 30 días", pan ? pan.ia.total : null, "--senal"],
+          ] as const).map(([l, n, col]) => (
+            <Card key={l} className="flex-1 min-w-[150px]">
               <CardContent className="pt-6">
-                <div className="text-xs font-black tracking-widest uppercase text-[hsl(var(--senal))]">{l}</div>
-                <div className="text-4xl font-semibold tracking-tight mt-1 tabular-nums">{cargando ? "·" : n}</div>
+                <div className="text-[11px] font-black tracking-widest uppercase text-muted-foreground">{l}</div>
+                <div className="text-4xl font-semibold tracking-tight mt-1 tabular-nums" style={{ color: `hsl(var(${col}))` }}>{n == null ? (cargando ? "·" : "·") : n}</div>
+                {l === "IA · 30 días" && pan && <div className="text-[10.5px] text-muted-foreground mt-1">{(pan.ia.tokensPrompt + pan.ia.tokensSalida).toLocaleString("es-CL")} tokens</div>}
               </CardContent>
             </Card>
           ))}
         </div>
+
+        {/* Planes (plantillas de suscripción) */}
+        <Card className="mb-6"><CardContent className="pt-6">
+          <div className="text-xs font-black tracking-widest uppercase text-muted-foreground mb-3">Planes</div>
+          {planes.length > 0 && (
+            <div className="flex flex-col gap-1.5 mb-4">
+              {planes.map((p) => (
+                <div key={p.id} className="flex items-center gap-2 text-[13px] rounded-md bg-secondary/40 px-3 py-1.5">
+                  <span className="font-medium">{p.nombre}</span>
+                  <span className="text-muted-foreground">· {p.modulos.length ? p.modulos.join(", ") : "sin módulos"} · {p.limiteUsuarios} usuarios · {p.cuotaMensual.toLocaleString("es-CL")} API/mes</span>
+                  <button onClick={() => borrarPlan(p.id)} className="ml-auto text-muted-foreground hover:text-[hsl(var(--critico))] text-xs">eliminar</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-end flex-wrap">
+            <Input value={pf.nombre} onChange={(e) => setPf({ ...pf, nombre: e.target.value })} placeholder="Nombre del plan (ej: Pro)" className="sm:flex-1 min-w-[140px]" />
+            <label className="flex items-center gap-1.5 text-[13px]"><input type="checkbox" checked={pf.tickets} onChange={(e) => setPf({ ...pf, tickets: e.target.checked })} /> xTickets</label>
+            <label className="flex items-center gap-1.5 text-[13px]"><input type="checkbox" checked={pf.crm} onChange={(e) => setPf({ ...pf, crm: e.target.checked })} /> xCRM</label>
+            <Input type="number" value={pf.limiteUsuarios} onChange={(e) => setPf({ ...pf, limiteUsuarios: Number(e.target.value) })} className="w-24" title="Tope usuarios" />
+            <Input type="number" value={pf.cuotaMensual} onChange={(e) => setPf({ ...pf, cuotaMensual: Number(e.target.value) })} className="w-32" title="Cuota API/mes" />
+            <Button variant="secondary" onClick={crearPlan}>+ Plan</Button>
+          </div>
+        </CardContent></Card>
 
         {/* Crear cliente — REAL, pega a POST /admin/clientes */}
         <Card className="mb-6"><CardContent className="pt-6">
@@ -110,7 +182,16 @@ export default function Superadmin() {
                   <Badge rol={estRol(cl.estado)}>{cl.estado.replace("_", " ")}</Badge>
                   <div className="flex-1" />
                   <a href={`/superadmin/cliente?id=${cl.id}`} className="text-xs text-[hsl(var(--senal))] hover:underline">Gestionar →</a>
+                  <Button variant="secondary" size="sm" onClick={() => entrarSoporte(cl)}>Soporte</Button>
+                  <Button variant="secondary" size="sm" onClick={() => setMarcaAbierta(marcaAbierta === cl.id ? null : cl.id)}>Marca</Button>
                   <Button variant="secondary" size="sm" onClick={() => nuevaLlave(cl)}>+ Llave API</Button>
+                  {planes.length > 0 && (
+                    <select defaultValue="" onChange={(e) => { const v = e.target.value; e.currentTarget.value = ""; aplicarPlan(cl, v); }}
+                      className="h-8 rounded-md border border-border bg-background px-2 text-[12px]">
+                      <option value="">Aplicar plan…</option>
+                      {planes.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                    </select>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-3">
                   <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mr-1">Módulos:</span>
@@ -124,6 +205,14 @@ export default function Superadmin() {
                     );
                   })}
                 </div>
+                {(() => { const t = pan?.porCliente.find((x) => x.id === cl.id); return t ? (
+                  <div className="mt-2 text-[12px] text-muted-foreground">
+                    <span className="tabular-nums font-medium text-foreground">{t.abiertos}</span> abiertos ·{" "}
+                    <span className="tabular-nums font-medium" style={{ color: t.vencidos > 0 ? "hsl(var(--critico))" : undefined }}>{t.vencidos}</span> SLA vencidos ·{" "}
+                    <span className="tabular-nums">{t.total}</span> tickets
+                  </div>
+                ) : null; })()}
+                {marcaAbierta === cl.id && <EditorMarca clienteId={cl.id} />}
               </CardContent></Card>
             ))}
           </div>

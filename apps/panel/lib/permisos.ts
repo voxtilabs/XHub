@@ -10,6 +10,7 @@ import { apiFetch } from "@/lib/api";
 export type Yo = {
   id: string; email: string | null; nombre: string | null;
   rol: string; clienteId: string | null; esAdmin: boolean; permisos: string[];
+  esSoporte?: boolean; motivoSoporte?: string; modulos?: string[];
 };
 
 export function useYo() {

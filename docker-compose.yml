@@ -74,11 +74,49 @@ services:
       REDIS_URL: redis://redis:6379
       XHUB_DOMINIO_API: ${XHUB_DOMINIO_API:-}
       XHUB_CORS_ORIGENES: ${XHUB_CORS_ORIGENES:-}
+      XHUB_SMTP_HOST: ${XHUB_SMTP_HOST:-}
+      XHUB_SMTP_PORT: ${XHUB_SMTP_PORT:-587}
+      XHUB_SMTP_SECURE: ${XHUB_SMTP_SECURE:-false}
+      XHUB_SMTP_USER: ${XHUB_SMTP_USER:-}
+      XHUB_SMTP_PASS: ${XHUB_SMTP_PASS:-}
+      XHUB_SMTP_FROM: ${XHUB_SMTP_FROM:-}
+      XHUB_SMTP_OAUTH: ${XHUB_SMTP_OAUTH:-}
+      XHUB_SMTP_TENANT: ${XHUB_SMTP_TENANT:-}
+      XHUB_SMTP_CLIENTID: ${XHUB_SMTP_CLIENTID:-}
+      XHUB_SMTP_CLIENTSECRET: ${XHUB_SMTP_CLIENTSECRET:-}
+      XHUB_INBOUND_SECRET: ${XHUB_INBOUND_SECRET:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       # Login (Better Auth)
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-}
       XHUB_COOKIE_DOMINIO: ${XHUB_COOKIE_DOMINIO:-}
+      # IA por env (la llave del proveedor vive SOLO acá). Global + por tarea.
+      IA_API_KEY: ${IA_API_KEY:-}
+      IA_API_BASE: ${IA_API_BASE:-}
+      IA_MODELO: ${IA_MODELO:-}
+      IA_RESUMEN_API_KEY: ${IA_RESUMEN_API_KEY:-}
+      IA_RESUMEN_API_BASE: ${IA_RESUMEN_API_BASE:-}
+      IA_RESUMEN_MODELO: ${IA_RESUMEN_MODELO:-}
+      IA_RESPUESTA_API_KEY: ${IA_RESPUESTA_API_KEY:-}
+      IA_RESPUESTA_API_BASE: ${IA_RESPUESTA_API_BASE:-}
+      IA_RESPUESTA_MODELO: ${IA_RESPUESTA_MODELO:-}
+      IA_DECISION_API_KEY: ${IA_DECISION_API_KEY:-}
+      IA_DECISION_API_BASE: ${IA_DECISION_API_BASE:-}
+      IA_DECISION_MODELO: ${IA_DECISION_MODELO:-}
+      # Credenciales XContact por referencia (credencial_ref de la instancia). Cada
+      # instancia nombra su env var; para la flota dada de alta desde el panel, #139
+      # (bóveda cifrada) reemplaza esto.
+      XCONTACT_X5_PASS: ${XCONTACT_X5_PASS:-}
+      # Bóveda de credenciales (#139): clave maestra del cifrado en sobre (32 bytes base64).
+      XHUB_MASTER_KEY: ${XHUB_MASTER_KEY:-}
+      XHUB_MASTER_KEY_ANTERIOR: ${XHUB_MASTER_KEY_ANTERIOR:-}
+      # Almacenamiento de adjuntos S3-compatible (#41). Backend interno MinIO.
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-xhub-adjuntos}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -92,10 +130,63 @@ services:
       XHUB_ENV: ${XHUB_ENV:-staging}
       DATABASE_URL: postgres://${POSTGRES_USER:-xhub}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-xhub}
       REDIS_URL: redis://redis:6379
+      IA_API_KEY: ${IA_API_KEY:-}
+      IA_API_BASE: ${IA_API_BASE:-}
+      IA_MODELO: ${IA_MODELO:-}
+      IA_DECISION_API_KEY: ${IA_DECISION_API_KEY:-}
+      IA_DECISION_API_BASE: ${IA_DECISION_API_BASE:-}
+      IA_DECISION_MODELO: ${IA_DECISION_MODELO:-}
+      # Credencial XContact para el SONDEO del scheduler (credencial_ref de la instancia).
+      XCONTACT_X5_PASS: ${XCONTACT_X5_PASS:-}
+      # Bóveda de credenciales (#139): clave maestra del cifrado en sobre (32 bytes base64).
+      XHUB_MASTER_KEY: ${XHUB_MASTER_KEY:-}
+      XHUB_MASTER_KEY_ANTERIOR: ${XHUB_MASTER_KEY_ANTERIOR:-}
+      # Almacenamiento de adjuntos S3-compatible (#41). Backend interno MinIO.
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-xhub-adjuntos}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      # Ajustes del sondeo (opcionales, con default en código).
+      SONDEO_TICK_MS: ${SONDEO_TICK_MS:-}
+      SONDEO_CONCURRENCIA: ${SONDEO_CONCURRENCIA:-}
+      SONDEO_LOTE: ${SONDEO_LOTE:-}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }
+
+  # Almacenamiento S3-compatible para adjuntos (#41): MinIO interno. Portable (ADR 0007):
+  # habla S3 contra lo que haya — en prod puede apuntarse a R2/S3 solo cambiando S3_* env.
+  # entrypoint en array JSON; $$ = $ literal en compose.
+  minio:
+    image: minio/minio:latest
+    # Apagado por defecto (profile 'almacen'): un deploy normal lo ignora y no lo descarga.
+    # Para activar el almacén interno: habilitar este profile y poner S3_ENDPOINT=http://minio:9000.
+    # Alternativa de prod (ADR 0007): dejar esto apagado y apuntar S3_* a Cloudflare R2/S3.
+    profiles: ["almacen"]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin123}
+    volumes: [miniodata:/data]
+    restart: unless-stopped
+
+  # Crea el bucket al arrancar (idempotente). Corre una vez y termina.
+  minio-init:
+    image: minio/mc:latest
+    profiles: ["almacen"]
+    depends_on: [minio]
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin123}
+      S3_BUCKET: ${S3_BUCKET:-xhub-adjuntos}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - 'until mc alias set x http://minio:9000 "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY"; do echo esperando-minio; sleep 2; done; mc mb -p x/"$$S3_BUCKET" || true; echo bucket-listo'
+    restart: "no"
 
   panel:
     <<: *xhub
@@ -124,3 +215,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  miniodata:

@@ -26,3 +26,5 @@ export async function apiFetch<T = unknown>(path: string, opts: RequestInit = {}
   return data as T;
 }
 export const apiDocsUrl = () => apiDominio() + "/docs";
+// Base pública de la API del cliente (se usa por llave xhub_, no por cookie).
+export const apiV1Base = () => apiDominio() + "/v1";

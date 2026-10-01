@@ -1,73 +1,238 @@
+"use client";
+import { useState, useMemo } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { AppShell } from "@/components/app-shell";
 import { RequierePermiso } from "@/components/requiere-permiso";
+import { apiFetch } from "@/lib/api";
 
-const timeline = [
-  { tipo: "Ticket", modulo: "xTickets", resumen: "Abrió ticket: problema con despacho", cuando: "hoy 10:42" },
-  { tipo: "Llamada", modulo: "xContact", resumen: "Llamada entrante · 4m 12s · atendida", cuando: "hoy 09:15" },
-  { tipo: "WhatsApp", modulo: "xContact", resumen: "«Hola, consulta por mi pedido»", cuando: "ayer 18:30" },
-  { tipo: "Email", modulo: "núcleo", resumen: "Se registró por correo", cuando: "12 sep" },
-];
-const identidades = [
-  { canal: "teléfono", valor: "+56 9 1234 5678" },
-  { canal: "email", valor: "juan.perez@empresa.cl" },
-  { canal: "whatsapp", valor: "+56 9 1234 5678" },
-];
+type Res = { personaId: string; texto: string; nombre: string | null; identidades: { canal: string; valor: string }[] };
+const CANAL_ETQ: Record<string, string> = { telefono: "☎", email: "✉", rut: "RUT", xcontact: "XC", webchat: "💬", instagram: "IG", messenger: "FB" };
+type Ident = { canal: string; identificador?: string; valor?: string };
+type Item = { seq: string; tipo: string; ocurrio_en: string; modulo_origen: string; resumen: string | null };
+type TicketMini = { id: string; numero: string; asunto: string; estado: string; prioridad: string };
+type OpMini = { id: string; titulo: string; valor: number; etapa: string; estado: string };
+type Campo = { nombre: string; tipo: string; valor: unknown };
+type Enlace = { origen_tipo: string; origen_id: string; tipo_enlace: string; destino_tipo: string; destino_id: string };
+type Fuente = { tipo: string; externoId: string | null; ultimoDato: string | null } | null;
+type Ficha = {
+  persona: { id: string; nombre: string | null }; identidades: Ident[]; etiquetas: { nombre: string }[];
+  campos: Campo[]; lineaDeTiempo: Item[]; enlaces: Enlace[]; tickets: TicketMini[]; oportunidades: OpMini[]; fuente: Fuente;
+};
+
+const fecha = (s: string) => { try { return new Date(s).toLocaleString("es-CL", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return s; } };
+const dia = (s: string) => { try { return new Date(s).toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "numeric" }); } catch { return s; } };
+// Tiempo relativo en español, sin dependencias.
+function relativo(s: string): string {
+  const t = new Date(s).getTime(); if (isNaN(t)) return "";
+  const seg = Math.round((Date.now() - t) / 1000);
+  if (seg < 60) return "recién"; const min = Math.round(seg / 60);
+  if (min < 60) return `hace ${min} min`; const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`; const d = Math.round(h / 24);
+  if (d < 30) return `hace ${d} d`; const me = Math.round(d / 30);
+  if (me < 12) return `hace ${me} mes${me > 1 ? "es" : ""}`; return `hace ${Math.round(me / 12)} año(s)`;
+}
+const MODULOS: Record<string, { etq: string; icono: string }> = {
+  tickets: { etq: "Tickets", icono: "🎫" }, crm: { etq: "CRM", icono: "💼" },
+  conector: { etq: "XContact", icono: "⟳" }, nucleo: { etq: "Núcleo", icono: "•" },
+};
+const modInfo = (m: string) => MODULOS[m] ?? { etq: m, icono: "•" };
+const valorCampo = (v: unknown) => v == null ? "—" : typeof v === "boolean" ? (v ? "Sí" : "No") : typeof v === "object" ? JSON.stringify(v) : String(v);
 
 export default function Persona() {
   return (
     <main className="min-h-screen">
       <AppShell />
-      <RequierePermiso permiso="ficha360.ver">
-      <div className="max-w-4xl mx-auto p-4 sm:p-8">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center text-lg font-semibold">JP</div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Juan Pérez</h1>
-            <div className="flex gap-2 mt-1"><Badge rol="senal">Prospecto</Badge><Badge rol="accion">VIP</Badge></div>
-          </div>
-        </div>
-        <Tabs defaultValue="historia">
-          <TabsList>
-            <TabsTrigger value="historia">Historia</TabsTrigger>
-            <TabsTrigger value="identidades">Identidades</TabsTrigger>
-            <TabsTrigger value="datos">Datos</TabsTrigger>
-          </TabsList>
-          <TabsContent value="historia">
-            <Card><CardContent className="pt-6 space-y-0">
-              {timeline.map((t, i) => (
-                <div key={i} className="flex gap-4 py-3 border-t border-border first:border-t-0">
-                  <div className="text-xs text-muted-foreground w-24 shrink-0 pt-0.5">{t.cuando}</div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{t.tipo}</span>
-                      <span className="text-[0.65rem] uppercase tracking-wider text-[hsl(var(--senal))]">{t.modulo}</span>
-                    </div>
-                    <div className="text-sm text-muted-foreground">{t.resumen}</div>
-                  </div>
-                </div>
-              ))}
-            </CardContent></Card>
-          </TabsContent>
-          <TabsContent value="identidades">
-            <Card><CardContent className="pt-6 space-y-0">
-              {identidades.map((id, i) => (
-                <div key={i} className="flex justify-between py-3 border-t border-border first:border-t-0">
-                  <span className="text-xs uppercase tracking-wider text-[hsl(var(--senal))] w-24">{id.canal}</span>
-                  <span className="font-mono text-sm">{id.valor}</span>
-                </div>
-              ))}
-              <p className="text-xs text-muted-foreground pt-3">El teléfono no es la llave: cada canal es una identidad propia.</p>
-            </CardContent></Card>
-          </TabsContent>
-          <TabsContent value="datos">
-            <Card><CardContent className="pt-6 text-sm text-muted-foreground">Sin campos personalizados definidos para este cliente.</CardContent></Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-      </RequierePermiso>
+      <RequierePermiso permiso="ficha360.ver"><Contenido /></RequierePermiso>
     </main>
+  );
+}
+
+function Contenido() {
+  const [q, setQ] = useState("");
+  const [res, setRes] = useState<Res[]>([]);
+  const [ficha, setFicha] = useState<Ficha | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  const [filtro, setFiltro] = useState<string>("");
+
+  async function buscar(term: string) {
+    setQ(term); setError(null);
+    if (term.trim().length < 2) { setRes([]); return; }
+    setBuscando(true);
+    try { setRes((await apiFetch<{ datos: Res[] }>(`/cliente/personas?q=${encodeURIComponent(term.trim())}`)).datos); }
+    catch (e) { setError((e as Error).message); } finally { setBuscando(false); }
+  }
+  async function abrir(id: string) {
+    setError(null); setFiltro("");
+    try { setFicha(await apiFetch<Ficha>(`/cliente/personas/${id}`)); setRes([]); setQ(""); }
+    catch (e) { setError((e as Error).message); }
+  }
+
+  const nombre = ficha?.persona.nombre || ficha?.identidades[0]?.identificador || ficha?.identidades[0]?.valor || "Persona";
+  const inic = nombre.split(/[ @.]/).map((x) => x[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+
+  // Conteos por módulo para los chips del filtro + resumen temporal.
+  const tl = ficha?.lineaDeTiempo ?? [];
+  const porModulo = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const it of tl) m.set(it.modulo_origen, (m.get(it.modulo_origen) ?? 0) + 1);
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  }, [tl]);
+  const tlVisible = filtro ? tl.filter((it) => it.modulo_origen === filtro) : tl;
+  const primera = tl.length ? tl[tl.length - 1].ocurrio_en : null; // timeline viene desc → la última fila es la más antigua
+  const ultima = tl.length ? tl[0].ocurrio_en : null;
+
+  return (
+    <div className="max-w-4xl mx-auto p-4 sm:p-8">
+      <h1 className="text-2xl font-semibold tracking-tight mb-1">Personas</h1>
+      <p className="text-muted-foreground text-sm mb-4">La ficha 360: una sola identidad por persona, con TODA su historia — tickets y oportunidades juntos.</p>
+
+      <div className="relative max-w-md mb-2">
+        <Input value={q} onChange={(e) => buscar(e.target.value)} placeholder="Buscar por nombre, email o teléfono…" className="h-10" />
+        {(res.length > 0 || (q.length >= 2 && !buscando)) && (
+          <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-card shadow-2xl max-h-72 overflow-auto">
+            {res.map((r) => (
+              <button key={r.personaId} onClick={() => abrir(r.personaId)} className="block w-full text-left px-3 py-2 hover:bg-secondary border-b border-border last:border-0">
+                <div className="text-[13px] font-medium truncate">{r.nombre || <span className="text-muted-foreground italic">Sin nombre</span>}</div>
+                {r.identidades.length > 0 && (
+                  <div className="flex gap-1.5 flex-wrap mt-0.5">
+                    {r.identidades.slice(0, 4).map((i, k) => (
+                      <span key={k} className="text-[11px] text-muted-foreground font-mono"><span className="opacity-60">{CANAL_ETQ[i.canal] ?? i.canal}</span> {i.valor}</span>
+                    ))}
+                  </div>
+                )}
+              </button>
+            ))}
+            {res.length === 0 && <div className="px-3 py-2 text-[12.5px] text-muted-foreground">Sin resultados</div>}
+          </div>
+        )}
+      </div>
+
+      {error && <div className="mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", color: "hsl(var(--critico))" }}>▲ {error}</div>}
+
+      {!ficha ? (
+        <Card><CardContent className="py-12 text-center text-muted-foreground text-sm">Busca una persona para ver su ficha 360.</CardContent></Card>
+      ) : (
+        <>
+          <div className="flex items-center gap-4 mb-4 mt-4">
+            <div className="h-14 w-14 rounded-full bg-secondary grid place-items-center text-lg font-semibold">{inic}</div>
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold tracking-tight truncate">{nombre}</h2>
+              <div className="flex gap-1.5 mt-1 flex-wrap">
+                {ficha.identidades.map((i, k) => <Badge key={k} rol="neutro">{(CANAL_ETQ[i.canal] ?? i.canal)}: {i.identificador ?? i.valor}</Badge>)}
+                {ficha.etiquetas.map((e, k) => <Badge key={"e" + k} rol="senal">{e.nombre}</Badge>)}
+              </div>
+            </div>
+          </div>
+
+          {/* Resumen: la foto de un vistazo */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+            {[
+              { k: "Interacciones", v: String(tl.length) },
+              { k: "Tickets", v: String(ficha.tickets.length) },
+              { k: "Oportunidades", v: String(ficha.oportunidades.length) },
+              { k: "Primer contacto", v: primera ? relativo(primera) : "—" },
+            ].map((s) => (
+              <div key={s.k} className="rounded-lg border border-border bg-card px-3 py-2">
+                <div className="text-lg font-semibold tracking-tight leading-tight">{s.v}</div>
+                <div className="text-[10.5px] uppercase tracking-wide text-muted-foreground">{s.k}</div>
+              </div>
+            ))}
+          </div>
+
+          {ficha.fuente?.tipo === "xcontact" && (() => {
+            const ud = ficha.fuente.ultimoDato ? new Date(ficha.fuente.ultimoDato) : null;
+            const dias = ud ? Math.floor((Date.now() - ud.getTime()) / 86400000) : null;
+            const vieja = dias != null && dias > 7;
+            return (
+              <div className="mb-4 p-2.5 rounded-md text-[12.5px] flex items-center gap-2 flex-wrap"
+                style={{ background: vieja ? "hsl(var(--aviso)/0.1)" : "hsl(var(--secondary))", color: vieja ? "hsl(var(--aviso))" : "hsl(var(--muted-foreground))" }}>
+                <span>{vieja ? "⚠" : "⟳"}</span>
+                <span>Datos espejados de <b>XContact</b> (id {ficha.fuente.externoId}). {ud ? <>Última sincronización: {ud.toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}{vieja ? ` · desactualizados (${dias} días)` : ""}.</> : "sin fecha de sincronización."} xHub muestra su copia aunque la fuente esté caída.</span>
+              </div>
+            );
+          })()}
+
+          <div className="grid md:grid-cols-[1fr_260px] gap-4">
+            {/* Historia unificada, con filtro por módulo */}
+            <Card><CardContent className="pt-5">
+              <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Historia (omnicanal)</div>
+                {ultima && <div className="text-[10.5px] text-muted-foreground">últ. actividad {relativo(ultima)}</div>}
+              </div>
+              {porModulo.length > 1 && (
+                <div className="flex gap-1.5 flex-wrap mb-3">
+                  <button onClick={() => setFiltro("")} className={`text-[11px] px-2 py-0.5 rounded-full border ${filtro === "" ? "bg-foreground text-background border-foreground" : "border-border text-muted-foreground hover:bg-secondary"}`}>Todo ({tl.length})</button>
+                  {porModulo.map(([m, n]) => (
+                    <button key={m} onClick={() => setFiltro(m === filtro ? "" : m)} className={`text-[11px] px-2 py-0.5 rounded-full border ${filtro === m ? "bg-foreground text-background border-foreground" : "border-border text-muted-foreground hover:bg-secondary"}`}>{modInfo(m).icono} {modInfo(m).etq} ({n})</button>
+                  ))}
+                </div>
+              )}
+              {tlVisible.length === 0 ? <div className="text-[13px] text-muted-foreground">Sin interacciones registradas.</div> : (
+                <div className="space-y-0">
+                  {tlVisible.map((it) => (
+                    <div key={it.seq} className="flex gap-3 py-2.5 border-t border-border first:border-t-0">
+                      <span className="text-base leading-none pt-0.5" title={modInfo(it.modulo_origen).etq}>{modInfo(it.modulo_origen).icono}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[13px]">{it.resumen ?? it.tipo}</div>
+                        <div className="text-[10.5px] text-muted-foreground">{modInfo(it.modulo_origen).etq} · {it.tipo} · {fecha(it.ocurrio_en)} · {relativo(it.ocurrio_en)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent></Card>
+
+            {/* Columna derecha: datos del cliente, tickets, oportunidades, enlaces */}
+            <div className="flex flex-col gap-4">
+              {ficha.campos.length > 0 && (
+                <Card><CardContent className="pt-5">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Datos</div>
+                  {ficha.campos.map((cp, k) => (
+                    <div key={k} className="py-1.5 border-t border-border first:border-t-0">
+                      <div className="text-[10.5px] text-muted-foreground">{cp.nombre}</div>
+                      <div className="text-[12.5px] font-medium break-words">{valorCampo(cp.valor)}</div>
+                    </div>
+                  ))}
+                </CardContent></Card>
+              )}
+              <Card><CardContent className="pt-5">
+                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Tickets ({ficha.tickets.length})</div>
+                {ficha.tickets.length === 0 ? <div className="text-[12.5px] text-muted-foreground">—</div> : ficha.tickets.map((t) => (
+                  <Link key={t.id} href={`/tickets/${t.id}`} className="block py-1.5 border-t border-border first:border-t-0 hover:text-[hsl(var(--senal))]">
+                    <div className="text-[12.5px] font-medium truncate">#{t.numero} {t.asunto}</div>
+                    <div className="text-[10.5px] text-muted-foreground">{t.estado} · {t.prioridad}</div>
+                  </Link>
+                ))}
+              </CardContent></Card>
+              <Card><CardContent className="pt-5">
+                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Oportunidades ({ficha.oportunidades.length})</div>
+                {ficha.oportunidades.length === 0 ? <div className="text-[12.5px] text-muted-foreground">—</div> : ficha.oportunidades.map((o) => (
+                  <div key={o.id} className="py-1.5 border-t border-border first:border-t-0">
+                    <div className="text-[12.5px] font-medium truncate">{o.titulo}</div>
+                    <div className="text-[10.5px] text-muted-foreground">${o.valor.toLocaleString("es-CL")} · {o.etapa} · {o.estado}</div>
+                  </div>
+                ))}
+              </CardContent></Card>
+              {ficha.enlaces.length > 0 && (
+                <Card><CardContent className="pt-5">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Enlaces ({ficha.enlaces.length})</div>
+                  {ficha.enlaces.map((e, k) => (
+                    <div key={k} className="py-1.5 border-t border-border first:border-t-0 text-[11.5px]">
+                      <span className="font-mono text-muted-foreground">{e.origen_tipo}</span>
+                      <span className="mx-1 text-[hsl(var(--senal))]">→ {e.tipo_enlace} →</span>
+                      <span className="font-mono text-muted-foreground">{e.destino_tipo}</span>
+                    </div>
+                  ))}
+                </CardContent></Card>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

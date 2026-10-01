@@ -3,14 +3,19 @@ import cors from "@fastify/cors";
 import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi, aCuerpo } from "@xhub/core";
 import { conCliente, conPlataforma, baseViva } from "@xhub/db";
-import { rateLimit, consumirCuota } from "@xhub/cuotas";
+import { rateLimit, consumirCuota, registrarUso } from "@xhub/cuotas";
 import { autenticarApi, cuotaDe, type ContextoApi } from "@xhub/modulo-nucleo";
 import { auth } from "./auth.js";
 import { registrarRutasTickets } from "./rutas/tickets.js";
 import { registrarRutasPersonas } from "./rutas/personas.js";
+import { registrarRutasCrm } from "./rutas/publica-crm.js";
 import { registrarRutasAdmin } from "./rutas/admin.js";
 import { registrarRutasCliente } from "./rutas/cliente.js";
+import { registrarConsolaTickets } from "./rutas/consola.js";
+import { registrarCorreoEntrante } from "./rutas/correo-entrante.js";
+import { registrarConsolaCrm } from "./rutas/crm.js";
 import { generarOpenApi } from "./openapi.js";
+import { registrarIdempotencia } from "./idempotencia.js";
 
 const orígenesPanel = (process.env.XHUB_CORS_ORIGENES || "http://localhost:3000")
   .split(",").map((s) => s.trim()).filter(Boolean);
@@ -39,7 +44,16 @@ export function crearApp(): FastifyInstance {
         headers: fromNodeHeaders(req.headers),
         ...(req.body ? { body: JSON.stringify(req.body) } : {}),
       });
-      const resp = await auth.handler(pedido);
+      let resp: Response;
+      try {
+        resp = await auth.handler(pedido);
+      } catch (e) {
+        // Better Auth puede lanzar (p.ej. schema mismatch): lo registramos para ops y
+        // devolvemos un error genérico, sin filtrar el detalle interno al cliente.
+        process.stderr.write(`[auth] handler lanzó: ${(e as Error).stack || (e as Error).message}\n`);
+        reply.status(500);
+        return reply.send({ error: { codigo: "INTERNO", mensaje: "No pudimos procesar la autenticación." } });
+      }
       reply.status(resp.status);
       for (const [k, v] of resp.headers.entries()) {
         if (k.toLowerCase() !== "set-cookie") reply.header(k, v);
@@ -73,20 +87,26 @@ export function crearApp(): FastifyInstance {
     reply.code(http).send(cuerpo);
   });
 
-  // Salud / listo
-  app.get("/salud", async () => ({ ok: true }));
-  app.get("/listo", async (_req, reply) => {
+  // Salud / listo. También bajo /api/* (el prefijo que el proxy enruta al API), así
+  // un chequeo externo por el dominio no cae al panel (que redirige a /login).
+  const salud = async () => ({ ok: true });
+  const listo = async (_req: FastifyRequest, reply: import("fastify").FastifyReply) => {
     if (await baseViva()) return { listo: true };
     reply.code(503); return { listo: false };
-  });
+  };
+  for (const pfx of ["", "/api"]) { app.get(`${pfx}/salud`, salud); app.get(`${pfx}/listo`, listo); }
 
-  // Contrato OpenAPI (público) + página de documentación
+  // Contrato OpenAPI (público) + página de documentación. Se montan en la raíz
+  // (para el dominio propio del API) Y bajo /api/* — el único prefijo que el proxy
+  // del staging enruta al API, así los docs son alcanzables sin dominio dedicado.
+  // `data-url` RELATIVO ("openapi.json") → resuelve al lado de la página en ambos montajes.
   const spec = generarOpenApi();
-  app.get("/openapi.json", async () => spec);
-  app.get("/docs", async (_req, reply) => {
-    reply.type("text/html").send(
-      `<!doctype html><html><head><meta charset="utf-8"><title>xHub API</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0"><script id="api-reference" data-url="/openapi.json"></script><script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script></body></html>`);
-  });
+  const paginaDocs =
+    `<!doctype html><html><head><meta charset="utf-8"><title>xHub API</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0"><script id="api-reference" data-url="openapi.json"></script><script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script></body></html>`;
+  for (const pfx of ["", "/api"]) {
+    app.get(`${pfx}/openapi.json`, async () => spec);
+    app.get(`${pfx}/docs`, async (_req, reply) => { reply.type("text/html").send(paginaDocs); });
+  }
 
   // Guard de la API pública del cliente: autentica por llave, rate limit + cuota.
   const guard = async (req: FastifyRequest, reply: import("fastify").FastifyReply) => {
@@ -96,25 +116,37 @@ export function crearApp(): FastifyInstance {
     const ctx = await conPlataforma((c) => autenticarApi(c, token));
     req.ctx = ctx;
     // rate limit por minuto (ráfaga)
-    const rl = await rateLimit(ctx.llaveId, 120);
+    const RAFAGA = 120;
+    const rl = await rateLimit(ctx.llaveId, RAFAGA);
+    reply.header("x-ratelimit-limit", String(RAFAGA));
     reply.header("x-ratelimit-remaining", String(rl.restante));
-    if (!rl.permitido) throw new ErrorApi("CUOTA_EXCEDIDA", "Demasiadas peticiones por minuto");
+    if (!rl.permitido) { reply.header("retry-after", "60"); throw new ErrorApi("CUOTA_EXCEDIDA", "Demasiadas peticiones por minuto"); }
     // cuota mensual
     const limite = await conPlataforma((c) => cuotaDe(c, ctx.clienteId));
     const cuota = await consumirCuota(ctx.clienteId, limite);
+    reply.header("x-cuota-limite", String(limite));
     reply.header("x-cuota-restante", String(cuota.restante));
     if (!cuota.permitido) throw new ErrorApi("CUOTA_EXCEDIDA", "Cuota mensual de API agotada");
+    // Tablero de consumo diario (#78): cuenta por ruta-patrón, no por :id, para no
+    // explotar la cardinalidad. Fire-and-forget: una métrica NUNCA rompe la request.
+    const ruta = ((req as { routeOptions?: { url?: string } }).routeOptions?.url) || req.url.split("?")[0];
+    void registrarUso(ctx.clienteId, ruta).catch(() => {});
   };
 
   // Rutas /v1 protegidas por el guard, ejecutadas conCliente (RLS)
   app.register(async (v1) => {
     v1.addHook("onRequest", guard);
+    registrarIdempotencia(v1); // Idempotency-Key en POST (tras el guard: usa req.ctx)
     registrarRutasTickets(v1);
     registrarRutasPersonas(v1);
+    registrarRutasCrm(v1);
   }, { prefix: "/v1" });
 
   registrarRutasAdmin(app);
   registrarRutasCliente(app);
+  registrarConsolaTickets(app);
+  registrarCorreoEntrante(app);
+  registrarConsolaCrm(app);
 
   return app;
 }

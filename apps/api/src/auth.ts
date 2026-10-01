@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { twoFactor } from "better-auth/plugins";
 import { Pool } from "pg";
 
 /**
@@ -28,6 +29,9 @@ export const auth = betterAuth({
     // no cualquiera que llegue al endpoint. El login sí es público.
     disableSignUp: true,
   },
+  // 2FA OPCIONAL: el usuario lo activa desde su configuración; el login exige el
+  // segundo factor (TOTP + códigos de respaldo) SOLO si el usuario lo tiene activo.
+  plugins: [twoFactor({ issuer: "xHub" })],
   trustedOrigins: orígenes,
   advanced: {
     crossSubDomainCookies: dominioCookie ? { enabled: true, domain: dominioCookie } : { enabled: false },

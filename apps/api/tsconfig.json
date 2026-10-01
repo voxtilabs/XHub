@@ -1,1 +1,6 @@
-{ "extends": "../../tsconfig.base.json", "include": ["src", "test"] }
+{
+  "extends": "../../tsconfig.base.json",
+  "comment": "declaration:false — apps/api corre con tsx y no publica tipos; evita TS2742 por los tipos zod v4 que filtra el plugin twoFactor de better-auth",
+  "compilerOptions": { "declaration": false, "composite": false },
+  "include": ["src", "test"]
+}

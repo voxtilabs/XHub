@@ -4,7 +4,7 @@ import type { DefinicionModulo, NucleoApi } from "@xhub/sdk-modulo";
 import { politicaSla, sumarMinutosHabiles } from "./sla.js";
 import { type Agente, filtroVisibilidad, permisosDe } from "./roles.js";
 import { analizarUrgencia } from "./urgencia.js";
-import { resumirConversacionIA, sugerirRespuestaIA } from "@xhub/ia";
+import { resumirConversacionIA, sugerirRespuestaIA, leerConfigIA } from "@xhub/ia";
 import { clasificar, decidir, configTriage, type MensajeConv } from "./triage.js";
 
 export type EstadoTicket = "nuevo" | "abierto" | "pendiente" | "resuelto" | "cerrado";
@@ -37,7 +37,7 @@ async function proximoNumero(c: PoolClient, cid: string): Promise<number> {
  */
 export function crearModuloTickets(nucleo: NucleoApi) {
   return {
-    async crearTicket(c: PoolClient, args: { canal: string; identidad: string; asunto: string; prioridad?: Prioridad; canalOrigen?: string; cuerpo?: string; equipoId?: string; categoria?: string; etiquetas?: string[] }): Promise<Ticket> {
+    async crearTicket(c: PoolClient, args: { canal: string; identidad: string; asunto: string; prioridad?: Prioridad; canalOrigen?: string; cuerpo?: string; equipoId?: string; categoria?: string; etiquetas?: string[]; sinFicha?: boolean }): Promise<Ticket> {
       const cid = await clienteDe(c);
       if (!args.asunto.trim()) throw new ErrorApi("VALIDACION", "El asunto es obligatorio");
       const persona = await nucleo.asegurarPersona(c, args.canal, args.identidad);
@@ -62,7 +62,10 @@ export function crearModuloTickets(nucleo: NucleoApi) {
           t.prioridad = "urgente";   // reflejar el escalado en el objeto devuelto
         }
       }
-      await nucleo.registrarInteraccion(c, { personaId: persona.id, tipo: "ticket.creado", moduloOrigen: "tickets", objetoTipo: "ticket", objetoId: t.id, resumen: `Ticket #${numero}: ${args.asunto.slice(0, 60)}` });
+      // Regla de negocio: una conversación ABANDONADA con la ficha apagada genera el
+      // ticket pero NO se registra en la línea de tiempo de la persona (ficha360).
+      if (!args.sinFicha)
+        await nucleo.registrarInteraccion(c, { personaId: persona.id, tipo: "ticket.creado", moduloOrigen: "tickets", objetoTipo: "ticket", objetoId: t.id, resumen: `Ticket #${numero}: ${args.asunto.slice(0, 60)}` });
       return t;
     },
     async asignarTicket(c: PoolClient, ticketId: string, usuarioId: string): Promise<void> {
@@ -89,14 +92,14 @@ export function crearModuloTickets(nucleo: NucleoApi) {
       const cid = await clienteDe(c);
       await c.query("insert into tickets_mensajes (cliente_id, ticket_id, autor_tipo, autor_id, cuerpo, interno) values ($1,$2,$3,$4,$5,$6)", [cid, ticketId, args.autorTipo, args.autorId ?? null, args.cuerpo, args.interno ?? false]);
     },
-    async resumirConversacion(c: PoolClient, ticketId: string, resumen?: string): Promise<string> {
+    async resumirConversacion(c: PoolClient, ticketId: string, resumen?: string, modelo?: string | null, contexto?: string | null): Promise<string> {
       const cid = await clienteDe(c);
       let texto = resumen;
       if (!texto) {
         const m = await c.query("select autor_tipo, cuerpo from tickets_mensajes where cliente_id=$1 and ticket_id=$2 and interno=false order by seq asc", [cid, ticketId]);
         const n = m.rowCount ?? 0;
         // IA-first (GLM si la llave está configurada), con fallback determinista.
-        const ia = n > 0 ? await resumirConversacionIA(m.rows.map((x) => ({ autor: x.autor_tipo, texto: x.cuerpo }))) : null;
+        const ia = n > 0 ? await resumirConversacionIA(m.rows.map((x) => ({ autor: x.autor_tipo, texto: x.cuerpo })), modelo ? { ...leerConfigIA("RESUMEN"), modelo } : undefined, contexto ?? undefined) : null;
         texto = ia ?? (n === 0 ? "Sin mensajes aún." : `${n} mensaje(s). Motivo inicial: ${m.rows[0]?.cuerpo?.slice(0, 120) ?? ""}`);
       }
       await c.query("update tickets set resumen=$2, actualizado_en=now() where id=$1 and cliente_id=$3", [ticketId, texto, cid]);
@@ -150,7 +153,7 @@ export function crearModuloTickets(nucleo: NucleoApi) {
      * Devuelve la decisión y, si se creó, el ticket. Así NO todo contacto es un ticket.
      */
     async triarConversacion(c: PoolClient, args: {
-      canal: string; identidad: string; mensajes: MensajeConv[]; dedupeId: string; asunto?: string; canalOrigen?: string;
+      canal: string; identidad: string; mensajes: MensajeConv[]; dedupeId: string; asunto?: string; canalOrigen?: string; abandonada?: boolean;
     }): Promise<{ accion: "creado" | "sugerido" | "descartado"; confianza: number; motivo: string; fuente: string; ticket?: Ticket }> {
       const cid = await clienteDe(c);
       // idempotencia: ¿ya evaluamos esta conversación?
@@ -161,7 +164,11 @@ export function crearModuloTickets(nucleo: NucleoApi) {
       }
       const ev = await clasificar(args.mensajes);
       const cfg = await configTriage(c, cid);
-      const accion = decidir(ev, cfg);
+      // Automatización "voxia: ticket solo si abandonada": si está activa, la decisión
+      // la manda `abandonada`, no el clasificador. ABANDONADA → ticket + ficha360;
+      // ATENDIDA → solo ficha360 (sin ticket). Si está apagada, triage normal.
+      const accion: "creado" | "sugerido" | "descartado" =
+        cfg.ticketSoloSiAbandonada ? (args.abandonada ? "creado" : "descartado") : decidir(ev, cfg);
       let ticket: Ticket | undefined;
       if (accion === "creado") {
         ticket = await this.crearTicket(c, {
@@ -169,6 +176,15 @@ export function crearModuloTickets(nucleo: NucleoApi) {
           asunto: args.asunto ?? args.mensajes[0]?.texto?.slice(0, 80) ?? "Conversación",
           prioridad: ev.prioridad, canalOrigen: args.canalOrigen ?? args.canal,
           cuerpo: args.mensajes.map((m) => `${m.autor}: ${m.texto}`).join("\n"),
+        }); // ficha360 SIEMPRE se registra con el ticket
+      } else if (cfg.ticketSoloSiAbandonada && !args.abandonada) {
+        // Conversación ATENDIDA bajo la regla: no hay ticket, pero igual se registra la
+        // persona y la conversación en su ficha360 (línea de tiempo), con dedupe.
+        const persona = await nucleo.asegurarPersona(c, args.canal, args.identidad);
+        await nucleo.registrarInteraccion(c, {
+          personaId: persona.id, tipo: "conversacion.atendida", moduloOrigen: "conector",
+          resumen: args.asunto ?? args.mensajes[0]?.texto?.slice(0, 80) ?? "Conversación atendida",
+          dedupeId: `conv-atendida:${args.dedupeId}`,
         });
       }
       await c.query(
@@ -183,17 +199,17 @@ export function crearModuloTickets(nucleo: NucleoApi) {
      * del ticket + contexto de reincidencia. Devuelve null si la IA está apagada.
      * El agente decide si la usa: es una sugerencia, no un envío automático.
      */
-    async sugerirRespuesta(c: PoolClient, ticketId: string): Promise<string | null> {
+    async sugerirRespuesta(c: PoolClient, ticketId: string, modelo?: string | null, contexto?: string | null): Promise<string | null> {
       const cid = await clienteDe(c);
       const m = await c.query("select autor_tipo, cuerpo from tickets_mensajes where cliente_id=$1 and ticket_id=$2 and interno=false order by seq asc", [cid, ticketId]);
       if ((m.rowCount ?? 0) === 0) return null;
       const t = await c.query("select prioridad, canal_origen from tickets where id=$1 and cliente_id=$2", [ticketId, cid]);
-      const contexto: string[] = [];
+      const contextoTk: string[] = [];
       if (t.rowCount) {
-        if (t.rows[0].prioridad === "urgente") contexto.push("Ticket de prioridad urgente");
-        if (t.rows[0].canal_origen) contexto.push(`Llegó por ${t.rows[0].canal_origen}`);
+        if (t.rows[0].prioridad === "urgente") contextoTk.push("Ticket de prioridad urgente");
+        if (t.rows[0].canal_origen) contextoTk.push(`Llegó por ${t.rows[0].canal_origen}`);
       }
-      return sugerirRespuestaIA(m.rows.map((x) => ({ autor: x.autor_tipo, texto: x.cuerpo })), contexto);
+      return sugerirRespuestaIA(m.rows.map((x) => ({ autor: x.autor_tipo, texto: x.cuerpo })), contextoTk, modelo ? { ...leerConfigIA("RESPUESTA"), modelo } : undefined, contexto ?? undefined);
     },
     async listarBandeja(c: PoolClient, filtro: { estado?: EstadoTicket; asignadoA?: string } = {}, cursor?: string, limite = 25) {
       const cid = await clienteDe(c);

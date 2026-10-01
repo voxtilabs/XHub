@@ -43,11 +43,14 @@ function proveedorDe(base: string): string {
 export function leerConfigIA(tarea?: string, env = process.env): ConfigIA {
   const p = tarea ? `IA_${tarea.toUpperCase()}_` : "IA_";
   const g = "IA_";
-  const clave = env[`${p}API_KEY`] ?? env[`${g}API_KEY`] ?? "";
+  // Una variable en "" (p.ej. `${VAR:-}` del compose) cuenta como AUSENTE: así la
+  // config por tarea cae a la global sin romperse. `??` no bastaba (no cae en "").
+  const val = (k: string): string | undefined => { const v = env[k]; return v && v.trim() ? v : undefined; };
+  const clave = val(`${p}API_KEY`) ?? val(`${g}API_KEY`) ?? "";
   return {
     activa: Boolean(clave),
-    base: env[`${p}API_BASE`] ?? env[`${g}API_BASE`] ?? "https://integrate.api.nvidia.com/v1",
-    modelo: env[`${p}MODELO`] ?? env[`${g}MODELO`] ?? "z-ai/glm-5.3-flash",
+    base: val(`${p}API_BASE`) ?? val(`${g}API_BASE`) ?? "https://integrate.api.nvidia.com/v1",
+    modelo: val(`${p}MODELO`) ?? val(`${g}MODELO`) ?? "z-ai/glm-5.3-flash",
     clave,
     tarea: (tarea ?? "general").toLowerCase(),
   };
@@ -74,16 +77,20 @@ export async function completar(
     catch { /* la observabilidad nunca rompe la llamada */ }
   };
   try {
-    const r = await fetch(`${cfg.base}/chat/completions`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${cfg.clave}`, "content-type": "application/json" },
-      body: JSON.stringify({
-        model: cfg.modelo, messages: mensajes,
-        max_tokens: opciones.maxTokens ?? 1024, temperature: opciones.temperatura ?? 0.2,
-      }),
-      signal: ctrl.signal,
+    const cuerpo = JSON.stringify({
+      model: cfg.modelo, messages: mensajes,
+      max_tokens: opciones.maxTokens ?? 1024, temperature: opciones.temperatura ?? 0.2,
     });
-    if (!r.ok) { emitir(false); return null; }
+    const headers = { authorization: `Bearer ${cfg.clave}`, "content-type": "application/json" };
+    // El modelo/proveedor puede estar temporalmente sobrecargado (429) o fallar (5xx):
+    // reintentamos una vez con un respiro corto antes de caer al fallback determinista.
+    let r: Response | null = null;
+    for (let intento = 0; intento < 2; intento++) {
+      r = await fetch(`${cfg.base}/chat/completions`, { method: "POST", headers, body: cuerpo, signal: ctrl.signal });
+      if (r.ok || !(r.status === 429 || r.status >= 500) || intento === 1) break;
+      await new Promise((res) => setTimeout(res, 1500));
+    }
+    if (!r || !r.ok) { emitir(false); return null; }
     const d = await r.json() as { choices?: { message?: { content?: string | null } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
     emitir(true, d.usage?.prompt_tokens ?? 0, d.usage?.completion_tokens ?? 0);
     const c = d.choices?.[0]?.message?.content;
@@ -96,12 +103,16 @@ export async function completar(
   }
 }
 
+/** Contexto de negocio del cliente, si lo hay, como línea extra del system prompt. */
+const conContexto = (base: string, instrucciones?: string): string =>
+  instrucciones?.trim() ? `${base}\n\nContexto del negocio del cliente (tenelo en cuenta):\n${instrucciones.trim()}` : base;
+
 /** Resume una conversación en una frase. Devuelve null si la IA está apagada o falla. */
-export async function resumirConversacionIA(mensajes: { autor: string; texto: string }[], cfg = leerConfigIA("RESUMEN")): Promise<string | null> {
+export async function resumirConversacionIA(mensajes: { autor: string; texto: string }[], cfg = leerConfigIA("RESUMEN"), instrucciones?: string): Promise<string | null> {
   if (!cfg.activa || mensajes.length === 0) return null;
   const conv = mensajes.map((m) => `${m.autor}: ${m.texto}`).join("\n");
   return completar([
-    { role: "system", content: "Eres un asistente de un centro de contacto chileno. Resume la conversación del ticket en UNA frase breve y neutra, en español, sin preámbulos ni comillas." },
+    { role: "system", content: conContexto("Eres un asistente de un centro de contacto chileno. Resume la conversación del ticket en UNA frase breve y neutra, en español, sin preámbulos ni comillas.", instrucciones) },
     { role: "user", content: conv },
   ], cfg, { maxTokens: 1200, topeMs: 55000 });
 }
@@ -112,13 +123,13 @@ export async function resumirConversacionIA(mensajes: { autor: string; texto: st
  * está apagada o falla — el agente sigue escribiendo a mano.
  */
 export async function sugerirRespuestaIA(
-  mensajes: { autor: string; texto: string }[], contexto: string[] = [], cfg = leerConfigIA("RESPUESTA"),
+  mensajes: { autor: string; texto: string }[], contexto: string[] = [], cfg = leerConfigIA("RESPUESTA"), instrucciones?: string,
 ): Promise<string | null> {
   if (!cfg.activa || mensajes.length === 0) return null;
   const conv = mensajes.map((m) => `${m.autor}: ${m.texto}`).join("\n");
-  const ctx = contexto.length ? `\n\nContexto del cliente:\n- ${contexto.join("\n- ")}` : "";
+  const ctx = contexto.length ? `\n\nContexto del ticket:\n- ${contexto.join("\n- ")}` : "";
   return completar([
-    { role: "system", content: "Eres un agente de soporte chileno, amable y resolutivo. Redacta UNA respuesta breve, cordial y en español para responder al cliente en este ticket. No inventes datos (números de pedido, fechas) que no estén en la conversación; si faltan, pídelos con amabilidad. Sin saludos genéricos largos, directo y humano." },
+    { role: "system", content: conContexto("Eres un agente de soporte chileno, amable y resolutivo. Redacta UNA respuesta breve, cordial y en español para responder al cliente en este ticket. No inventes datos (números de pedido, fechas) que no estén en la conversación; si faltan, pídelos con amabilidad. Sin saludos genéricos largos, directo y humano.", instrucciones) },
     { role: "user", content: conv + ctx },
   ], cfg, { maxTokens: 1000, topeMs: 55000 });
 }

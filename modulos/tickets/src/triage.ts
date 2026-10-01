@@ -3,7 +3,15 @@ import { completar, leerConfigIA } from "@xhub/ia";
 import type { Prioridad } from "./index.js";
 
 export type ModoTriage = "automatico" | "sugerir" | "manual";
-export interface ConfigTriage { modo: ModoTriage; umbral: number; }
+export interface ConfigTriage {
+  modo: ModoTriage;
+  umbral: number;
+  /** Automatización "voxia: ticket solo si abandonada" (catálogo). Si está activa, la
+   *  decisión de crear ticket la manda `abandonada`, NO el clasificador:
+   *    abandonada → ticket + ficha360 ·  atendida → solo ficha360 (sin ticket).
+   *  Default false (triage normal). Opcional en el tipo; configTriage() lo resuelve. */
+  ticketSoloSiAbandonada?: boolean;
+}
 
 export interface Evaluacion {
   necesitaTicket: boolean;
@@ -84,13 +92,13 @@ export function decidir(ev: Evaluacion, cfg: ConfigTriage): Accion {
 }
 
 export async function configTriage(c: PoolClient, clienteId: string): Promise<ConfigTriage> {
-  const r = await c.query("select modo, umbral from ticket_triage_config where cliente_id=$1", [clienteId]);
-  if (r.rowCount === 0) return { modo: "sugerir", umbral: 0.7 }; // default sensato
-  return { modo: r.rows[0].modo, umbral: Number(r.rows[0].umbral) };
+  const r = await c.query("select modo, umbral, ticket_solo_si_abandonada from ticket_triage_config where cliente_id=$1", [clienteId]);
+  if (r.rowCount === 0) return { modo: "sugerir", umbral: 0.7, ticketSoloSiAbandonada: false }; // default sensato
+  return { modo: r.rows[0].modo, umbral: Number(r.rows[0].umbral), ticketSoloSiAbandonada: r.rows[0].ticket_solo_si_abandonada === true };
 }
 export async function fijarConfigTriage(c: PoolClient, clienteId: string, cfg: ConfigTriage): Promise<void> {
   await c.query(
-    `insert into ticket_triage_config (cliente_id, modo, umbral) values ($1,$2,$3)
-       on conflict (cliente_id) do update set modo=excluded.modo, umbral=excluded.umbral, actualizado_en=now()`,
-    [clienteId, cfg.modo, cfg.umbral]);
+    `insert into ticket_triage_config (cliente_id, modo, umbral, ticket_solo_si_abandonada) values ($1,$2,$3,$4)
+       on conflict (cliente_id) do update set modo=excluded.modo, umbral=excluded.umbral, ticket_solo_si_abandonada=excluded.ticket_solo_si_abandonada, actualizado_en=now()`,
+    [clienteId, cfg.modo, cfg.umbral, cfg.ticketSoloSiAbandonada === true]);
 }
