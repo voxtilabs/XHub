@@ -398,7 +398,11 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
         const rp = await fetch(presignS3({ ...base, metodo: "PUT" }), { method: "PUT", body: contenido });
         const rg = await fetch(presignS3({ ...base, metodo: "GET" }));
         const leido = rg.ok ? await rg.text() : "";
-        return { ok: rp.ok && rg.ok && leido === contenido, endpoint: c.endpoint, bucket: c.bucket, subida: rp.status, descarga: rg.status, coincide: leido === contenido };
+        // Ciclo completo incl. borrado (primitivo de retención #105): DELETE y confirmar 404.
+        const rd = await fetch(presignS3({ ...base, metodo: "DELETE" }), { method: "DELETE" });
+        const rv = await fetch(presignS3({ ...base, metodo: "GET" }));
+        const borrado = rd.ok && rv.status === 404;
+        return { ok: rp.ok && rg.ok && leido === contenido && borrado, endpoint: c.endpoint, bucket: c.bucket, subida: rp.status, descarga: rg.status, coincide: leido === contenido, borrado, borradoStatus: rd.status, postBorradoStatus: rv.status };
       } catch (e) {
         // fetch rechaza a nivel de red (backend inalcanzable): lo reportamos legible, sin
         // filtrar secretos — es el caso típico de «MinIO no está arriba» o DNS del servicio.

@@ -111,7 +111,7 @@ services:
       XHUB_MASTER_KEY: ${XHUB_MASTER_KEY:-}
       XHUB_MASTER_KEY_ANTERIOR: ${XHUB_MASTER_KEY_ANTERIOR:-}
       # Almacenamiento de adjuntos S3-compatible (#41). Backend interno MinIO.
-      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_BUCKET: ${S3_BUCKET:-xhub-adjuntos}
@@ -142,7 +142,7 @@ services:
       XHUB_MASTER_KEY: ${XHUB_MASTER_KEY:-}
       XHUB_MASTER_KEY_ANTERIOR: ${XHUB_MASTER_KEY_ANTERIOR:-}
       # Almacenamiento de adjuntos S3-compatible (#41). Backend interno MinIO.
-      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_BUCKET: ${S3_BUCKET:-xhub-adjuntos}
@@ -162,6 +162,10 @@ services:
   # entrypoint en array JSON; $$ = $ literal en compose.
   minio:
     image: minio/minio:latest
+    # Apagado por defecto (profile 'almacen'): un deploy normal lo ignora y no lo descarga.
+    # Para activar el almacén interno: habilitar este profile y poner S3_ENDPOINT=http://minio:9000.
+    # Alternativa de prod (ADR 0007): dejar esto apagado y apuntar S3_* a Cloudflare R2/S3.
+    profiles: ["almacen"]
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
@@ -172,6 +176,7 @@ services:
   # Crea el bucket al arrancar (idempotente). Corre una vez y termina.
   minio-init:
     image: minio/mc:latest
+    profiles: ["almacen"]
     depends_on: [minio]
     environment:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
