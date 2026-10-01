@@ -3,6 +3,7 @@ import { fijarObservadorIA } from "@xhub/ia";
 import { crearSinkUsoIA, entregarWebhooksPendientes } from "@xhub/modulo-nucleo";
 import { construirRegistro } from "./registro.js";
 import { tickSondeo, tickReconciliacion } from "./sondeo.js";
+import { tickRetencion, retencionDebida } from "./retencion.js";
 
 // El triage con IA corre aquí (consumidores del outbox): registra su consumo.
 fijarObservadorIA(crearSinkUsoIA());
@@ -54,6 +55,13 @@ async function bucle(): Promise<void> {
         const rc = await tickReconciliacion().catch((e) => { process.stderr.write(`[recon] tick error: ${(e as Error).message}\n`); return null; });
         if (rc && rc.debidas)
           process.stdout.write(`[xhub-workers] recon debidas=${rc.debidas} conDeriva=${rc.conDeriva} reparadas=${rc.reparadas} fallidas=${rc.fallidas}\n`);
+      }
+      // Retención por plan (#105): barrido de muy baja frecuencia (1/día). Borra adjuntos
+      // fuera de la ventana y sus objetos del almacén. Aislado: su fallo no frena el bucle.
+      if (retencionDebida()) {
+        const rt = await tickRetencion().catch((e) => { process.stderr.write(`[retencion] tick error: ${(e as Error).message}\n`); return null; });
+        if (rt && (rt.clientesConPurga || rt.objetosFallidos))
+          process.stdout.write(`[xhub-workers] retencion clientes=${rt.clientesConPurga} adjuntos=${rt.adjuntosBorrados} objetos=${rt.objetosBorrados} fallidos=${rt.objetosFallidos}\n`);
       }
       await dormir(r.leidos > 0 || w.intentadas > 0 ? 150 : ESPERA_VACIO);
     } catch (e) {

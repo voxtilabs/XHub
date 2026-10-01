@@ -56,3 +56,19 @@ export function urlDescarga(clienteId: string, key: string, expiraSeg = 900): st
   const c = configAlmacen();
   return presignS3({ endpoint: c.publicEndpoint, region: c.region, accessKey: c.accessKey, secretKey: c.secretKey, bucket: c.bucket, key, metodo: "GET", expiraSeg });
 }
+
+/**
+ * Borra un objeto del almacén (retención #105). Server-side: firma un DELETE contra el
+ * endpoint INTERNO y lo ejecuta. Idempotente: S3 responde 204 aunque el objeto no exista.
+ * Exige el prefijo del cliente, igual que subida/descarga — nadie borra fuera de su carpeta.
+ */
+export async function eliminarObjeto(clienteId: string, key: string): Promise<void> {
+  exigirPrefijo(clienteId, key);
+  const c = configAlmacen();
+  const url = presignS3({ endpoint: c.endpoint, region: c.region, accessKey: c.accessKey, secretKey: c.secretKey, bucket: c.bucket, key, metodo: "DELETE", expiraSeg: 300 });
+  const res = await fetch(url, { method: "DELETE" });
+  // 204 (borrado) y 404 (ya no está) son éxito; cualquier otro es fallo real.
+  if (!res.ok && res.status !== 404) {
+    throw new ErrorApi("PROVEEDOR_DEGRADADO", `No se pudo borrar el objeto (${res.status})`);
+  }
+}

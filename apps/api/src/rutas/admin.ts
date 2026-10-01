@@ -12,6 +12,7 @@ import {
   reconciliarPersona, registrarInteraccion,
   asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
   configIA, fijarModeloDefault, fijarModeloCliente, fijarContextoCliente,
+  purgarRetencion,
 } from "@xhub/modulo-nucleo";
 import { sincronizarContactosInstancia, reconciliarContactosInstancia, validarAccesoV5, type NucleoContactos, type DepsSondeo } from "@xhub/modulo-conector";
 import { fetchXContact } from "../fetch-xcontact.js";
@@ -245,17 +246,34 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
 
     // PLANES (plantillas de suscripción): módulos + tope de usuarios + cuota.
     admin.get("/planes", async () => ({ datos: await conPlataforma(async (c) =>
-      (await c.query("select id, nombre, modulos, limite_usuarios as \"limiteUsuarios\", cuota_mensual::int as \"cuotaMensual\" from plataforma.planes order by nombre asc")).rows) }));
+      (await c.query("select id, nombre, modulos, limite_usuarios as \"limiteUsuarios\", cuota_mensual::int as \"cuotaMensual\", retencion_dias as \"retencionDias\" from plataforma.planes order by nombre asc")).rows) }));
     admin.post("/planes", async (req) => {
-      const b = req.body as { nombre?: string; modulos?: string[]; limiteUsuarios?: number; cuotaMensual?: number };
+      const b = req.body as { nombre?: string; modulos?: string[]; limiteUsuarios?: number; cuotaMensual?: number; retencionDias?: number | null };
       const nombre = b?.nombre?.trim();
       if (!nombre) throw new ErrorApi("VALIDACION", "El plan necesita nombre");
       const modulos = Array.isArray(b.modulos) ? b.modulos.filter((m) => ["tickets", "crm"].includes(m)) : [];
+      // retención: null/0/negativo = ilimitado (no se purga). Positivo = días a conservar.
+      const ret = typeof b.retencionDias === "number" && b.retencionDias > 0 ? Math.floor(b.retencionDias) : null;
       return conPlataforma(async (c) => (await c.query(
-        `insert into plataforma.planes (nombre, modulos, limite_usuarios, cuota_mensual) values ($1,$2,$3,$4)
-           on conflict (nombre) do update set modulos=$2, limite_usuarios=$3, cuota_mensual=$4
-         returning id, nombre, modulos, limite_usuarios as "limiteUsuarios", cuota_mensual::int as "cuotaMensual"`,
-        [nombre, modulos, Math.max(1, Number(b.limiteUsuarios) || 5), Math.max(0, Number(b.cuotaMensual) || 100000)])).rows[0]);
+        `insert into plataforma.planes (nombre, modulos, limite_usuarios, cuota_mensual, retencion_dias) values ($1,$2,$3,$4,$5)
+           on conflict (nombre) do update set modulos=$2, limite_usuarios=$3, cuota_mensual=$4, retencion_dias=$5
+         returning id, nombre, modulos, limite_usuarios as "limiteUsuarios", cuota_mensual::int as "cuotaMensual", retencion_dias as "retencionDias"`,
+        [nombre, modulos, Math.max(1, Number(b.limiteUsuarios) || 5), Math.max(0, Number(b.cuotaMensual) || 100000), ret])).rows[0]);
+    });
+    // Excepción de retención por cliente (#105): solo puede ACORTAR respecto del plan
+    // (el techo lo impone el plan; lo resuelve retencionEfectiva). null = usa el plan.
+    admin.post("/clientes/:id/retencion", async (req) => {
+      const { id } = req.params as { id: string };
+      const b = req.body as { retencionDias?: number | null };
+      const ret = typeof b?.retencionDias === "number" && b.retencionDias > 0 ? Math.floor(b.retencionDias) : null;
+      await conPlataforma((c) => c.query("update plataforma.clientes set retencion_dias=$2 where id=$1", [id, ret]));
+      await auditar({ clienteId: id, actorTipo: "plataforma", accion: "retencion.excepcion", recurso: "cliente", recursoId: id, resultado: "ok", metadata: { retencionDias: ret } });
+      return { ok: true, retencionDias: ret };
+    });
+    // Corrida de retención (#105). ?dry=1 solo cuenta lo que borraría, sin tocar nada.
+    admin.post("/retencion/ejecutar", async (req) => {
+      const dry = (req.query as { dry?: string }).dry === "1";
+      return purgarRetencion({ dry });
     });
     admin.delete("/planes/:id", async (req) => {
       const { id } = req.params as { id: string };
@@ -376,10 +394,17 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       const key = "clientes/_autotest/ping.txt";
       const contenido = `autotest-${Date.now()}`;
       const base = { endpoint: c.endpoint, region: c.region, accessKey: c.accessKey, secretKey: c.secretKey, bucket: c.bucket, key } as const;
-      const rp = await fetch(presignS3({ ...base, metodo: "PUT" }), { method: "PUT", body: contenido });
-      const rg = await fetch(presignS3({ ...base, metodo: "GET" }));
-      const leido = rg.ok ? await rg.text() : "";
-      return { endpoint: c.endpoint, bucket: c.bucket, subida: rp.status, descarga: rg.status, coincide: leido === contenido };
+      try {
+        const rp = await fetch(presignS3({ ...base, metodo: "PUT" }), { method: "PUT", body: contenido });
+        const rg = await fetch(presignS3({ ...base, metodo: "GET" }));
+        const leido = rg.ok ? await rg.text() : "";
+        return { ok: rp.ok && rg.ok && leido === contenido, endpoint: c.endpoint, bucket: c.bucket, subida: rp.status, descarga: rg.status, coincide: leido === contenido };
+      } catch (e) {
+        // fetch rechaza a nivel de red (backend inalcanzable): lo reportamos legible, sin
+        // filtrar secretos — es el caso típico de «MinIO no está arriba» o DNS del servicio.
+        const cause = (e as { cause?: { code?: string } }).cause;
+        return { ok: false, endpoint: c.endpoint, bucket: c.bucket, error: (e as Error).message, causa: cause?.code ?? null };
+      }
     });
 
     // Rotación de la CLAVE MAESTRA (#139): re-envuelve cada credencial cifrada con la

@@ -13,7 +13,7 @@ export interface OpcionesPresign {
   secretKey: string;
   bucket: string;
   key: string;        // ruta del objeto (incluye el prefijo del cliente)
-  metodo: "GET" | "PUT";
+  metodo: "GET" | "PUT" | "DELETE";
   expiraSeg?: number; // vida de la URL (def. 900s)
   ahora?: Date;       // inyectable para tests
 }
