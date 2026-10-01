@@ -10,21 +10,38 @@ async function clienteDe(c: PoolClient): Promise<string> {
   return cid;
 }
 
-export interface ResultadoBusqueda { personaId: string; texto: string; }
+export interface ResultadoBusqueda {
+  personaId: string; texto: string;
+  nombre: string | null;
+  identidades: { canal: string; valor: string }[];
+}
 
-/** Busca personas por nombre o identidad, en español. Excluye fusionadas. RLS. */
+/**
+ * Busca personas por nombre o identidad (teléfono/email/RUT), en español. RANKEADA:
+ * prefijo de nombre primero, luego relevancia full-text. Devuelve nombre + identidades
+ * (no el blob crudo) para pintar un resultado legible. Excluye fusionadas. RLS.
+ */
 export async function buscarPersonas(c: PoolClient, termino: string, limite = 20): Promise<ResultadoBusqueda[]> {
   const cid = await clienteDe(c);
-  if (!termino.trim()) return [];
+  const t = termino.trim();
+  if (!t) return [];
   const r = await c.query(
-    `select b.persona_id, b.texto
+    `select p.id as persona_id, p.nombre, b.texto,
+            coalesce(json_agg(json_build_object('canal', i.canal, 'valor', i.identificador)
+                     order by (i.canal='telefono') desc, (i.canal='email') desc, i.canal)
+                     filter (where i.id is not null), '[]') as identidades
        from nucleo.persona_busqueda b
        join nucleo.personas p on p.cliente_id=b.cliente_id and p.id=b.persona_id
+       left join nucleo.identidades i on i.cliente_id=p.cliente_id and i.persona_id=p.id
       where b.cliente_id=$1 and p.fusionada_en is null
         and (b.vector @@ plainto_tsquery('spanish', unaccent($2)) or b.texto ilike '%' || $2 || '%')
+      group by p.id, p.nombre, b.texto, b.vector
+      order by (lower(coalesce(p.nombre,'')) like lower($2) || '%') desc,
+               ts_rank_cd(b.vector, plainto_tsquery('spanish', unaccent($2))) desc,
+               p.nombre nulls last
       limit $3`,
-    [cid, termino, limite]);
-  return r.rows.map((x) => ({ personaId: x.persona_id, texto: x.texto }));
+    [cid, t, limite]);
+  return r.rows.map((x) => ({ personaId: x.persona_id, texto: x.texto, nombre: x.nombre, identidades: x.identidades as { canal: string; valor: string }[] }));
 }
 
 export interface Ficha {

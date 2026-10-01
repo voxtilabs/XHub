@@ -8,7 +8,8 @@ import { AppShell } from "@/components/app-shell";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import { apiFetch } from "@/lib/api";
 
-type Res = { personaId: string; texto: string };
+type Res = { personaId: string; texto: string; nombre: string | null; identidades: { canal: string; valor: string }[] };
+const CANAL_ETQ: Record<string, string> = { telefono: "☎", email: "✉", rut: "RUT", xcontact: "XC", webchat: "💬", instagram: "IG", messenger: "FB" };
 type Ident = { canal: string; identificador?: string; valor?: string };
 type Item = { seq: string; tipo: string; ocurrio_en: string; modulo_origen: string; resumen: string | null };
 type TicketMini = { id: string; numero: string; asunto: string; estado: string; prioridad: string };
@@ -61,7 +62,16 @@ function Contenido() {
         {(res.length > 0 || (q.length >= 2 && !buscando)) && (
           <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-card shadow-2xl max-h-72 overflow-auto">
             {res.map((r) => (
-              <button key={r.personaId} onClick={() => abrir(r.personaId)} className="block w-full text-left px-3 py-2 text-[13px] hover:bg-secondary">{r.texto}</button>
+              <button key={r.personaId} onClick={() => abrir(r.personaId)} className="block w-full text-left px-3 py-2 hover:bg-secondary border-b border-border last:border-0">
+                <div className="text-[13px] font-medium truncate">{r.nombre || <span className="text-muted-foreground italic">Sin nombre</span>}</div>
+                {r.identidades.length > 0 && (
+                  <div className="flex gap-1.5 flex-wrap mt-0.5">
+                    {r.identidades.slice(0, 4).map((i, k) => (
+                      <span key={k} className="text-[11px] text-muted-foreground font-mono"><span className="opacity-60">{CANAL_ETQ[i.canal] ?? i.canal}</span> {i.valor}</span>
+                    ))}
+                  </div>
+                )}
+              </button>
             ))}
             {res.length === 0 && <div className="px-3 py-2 text-[12.5px] text-muted-foreground">Sin resultados</div>}
           </div>
