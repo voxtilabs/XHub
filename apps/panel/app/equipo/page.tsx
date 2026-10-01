@@ -20,6 +20,7 @@ export default function Equipo() {
   const [nu, setNu] = useState({ email: "", nombre: "", password: "" });
   const [creando, setCreando] = useState(false);
   const [claveTmp, setClaveTmp] = useState<{ id: string; clave: string } | null>(null);
+  const [confirmarEliminar, setConfirmarEliminar] = useState<string | null>(null);
 
   async function cargar() {
     setError(null);
@@ -53,8 +54,9 @@ export default function Equipo() {
     const r = await apiFetch<{ clave: string }>(`/cliente/usuarios/${u.id}/reset-clave`, { method: "PUT" });
     setClaveTmp({ id: u.id, clave: r.clave });
   }, "Clave temporal generada");
+  // Confirmación INLINE (sin confirm() nativo, que algunos navegadores bloquean).
   const eliminarUsuario = (u: Usuario) => accion(async () => {
-    if (!confirm(`¿Eliminar a ${u.nombre || u.email}? No se puede deshacer.`)) return;
+    setConfirmarEliminar(null);
     await apiFetch(`/cliente/usuarios/${u.id}`, { method: "DELETE" });
     setData((d) => d && { ...d, usados: d.usados - 1, usuarios: d.usuarios.filter((x) => x.id !== u.id) });
   }, "Usuario eliminado");
@@ -148,7 +150,15 @@ export default function Equipo() {
             )}
             <div className="mt-2 flex gap-3 justify-end">
               <button type="button" onClick={() => resetClave(u)} className="text-[12px] text-[hsl(var(--senal))] hover:underline">↺ resetear clave</button>
-              {u.rol !== "admin_cliente" && <button type="button" onClick={() => eliminarUsuario(u)} className="text-[12px] text-muted-foreground hover:text-[hsl(var(--critico))]">eliminar</button>}
+              {u.rol !== "admin_cliente" && (confirmarEliminar === u.id ? (
+                <span className="text-[12px] flex items-center gap-2">
+                  <span className="text-muted-foreground">¿Eliminar?</span>
+                  <button type="button" onClick={() => eliminarUsuario(u)} className="text-[hsl(var(--critico))] font-semibold hover:underline">Sí</button>
+                  <button type="button" onClick={() => setConfirmarEliminar(null)} className="text-muted-foreground hover:underline">no</button>
+                </span>
+              ) : (
+                <button type="button" onClick={() => setConfirmarEliminar(u.id)} className="text-[12px] text-muted-foreground hover:text-[hsl(var(--critico))]">eliminar</button>
+              ))}
             </div>
           </CardContent></Card>
         ))}

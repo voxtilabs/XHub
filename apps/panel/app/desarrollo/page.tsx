@@ -23,6 +23,7 @@ export default function Desarrollo() {
   const [sel, setSel] = useState<string[]>([]);
   const [creando, setCreando] = useState(false);
   const [tokenNuevo, setTokenNuevo] = useState<string | null>(null);
+  const [confirmar, setConfirmar] = useState<string | null>(null);
   const [editando, setEditando] = useState<string | null>(null);
   const [copiado, setCopiado] = useState<string | null>(null);
 
@@ -49,9 +50,10 @@ export default function Desarrollo() {
       setTokenNuevo(r.token); setNombre(""); setSel([]); await cargar(); flash("Llave creada");
     } catch (e) { setError((e as Error).message); } finally { setCreando(false); }
   }
+  // Confirmación INLINE (sin confirm() nativo: algunos navegadores lo bloquean y el
+  // botón "no hacía nada"). Primer clic pide confirmar; el segundo revoca.
   async function revocar(k: Llave) {
-    if (!confirm(`¿Revocar la llave «${k.nombre}»? Dejará de funcionar de inmediato.`)) return;
-    setError(null);
+    setError(null); setConfirmar(null);
     try { await apiFetch(`/cliente/llaves/${k.id}`, { method: "DELETE" }); await cargar(); flash("Llave revocada"); }
     catch (e) { setError((e as Error).message); }
   }
@@ -169,8 +171,16 @@ export default function Desarrollo() {
               <div className="text-right text-[11px] text-muted-foreground whitespace-nowrap">
                 <div>último uso: {fecha(k.ultimo_uso)}</div>
                 <div className="mt-1.5 flex gap-3 justify-end">
-                  <button onClick={() => setEditando(editando === k.id ? null : k.id)} className="text-[12px] text-[hsl(var(--senal))] hover:underline">scopes</button>
-                  <button onClick={() => revocar(k)} className="text-[12px] text-muted-foreground hover:text-[hsl(var(--critico))]">revocar</button>
+                  <button type="button" onClick={() => setEditando(editando === k.id ? null : k.id)} className="text-[12px] text-[hsl(var(--senal))] hover:underline">scopes</button>
+                  {confirmar === k.id ? (
+                    <span className="text-[12px] flex items-center gap-2">
+                      <span className="text-muted-foreground">¿Revocar?</span>
+                      <button type="button" onClick={() => revocar(k)} className="text-[hsl(var(--critico))] font-semibold hover:underline">Sí, revocar</button>
+                      <button type="button" onClick={() => setConfirmar(null)} className="text-muted-foreground hover:underline">no</button>
+                    </span>
+                  ) : (
+                    <button type="button" onClick={() => setConfirmar(k.id)} className="text-[12px] text-muted-foreground hover:text-[hsl(var(--critico))]">revocar</button>
+                  )}
                 </div>
               </div>
             </div>
