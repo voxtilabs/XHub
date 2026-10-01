@@ -12,7 +12,8 @@ type IAConfig = { modeloDefault: string | null; proveedor: string; modeloEnv: st
 type ScopeDef = { scope: string; modulo: string; descripcion: string };
 type Llave = { id: string; nombre: string; prefijo: string; scopes: string[]; creada_en: string; ultimo_uso: string | null; revocada_en: string | null };
 type Consumo = { total: number; cuotaMensual: number; dia: string };
-type Triage = { modo: "automatico" | "sugerir" | "manual"; umbral: number; fichaEnAbandonadas?: boolean };
+type Triage = { modo: "automatico" | "sugerir" | "manual"; umbral: number };
+type Automatizacion = { clave: string; nombre: string; descripcion: string; categoria: string; activa: boolean };
 type UsuarioCliente = { id: string; email: string; nombre: string; rol: string; creadoEn: string };
 type Usuarios = { limite: number; usados: number; usuarios: UsuarioCliente[] };
 type ResumenIA = {
@@ -52,6 +53,7 @@ export default function ClienteDetalle() {
   const [lim, setLim] = useState("");
   const [nu, setNu] = useState({ email: "", nombre: "", password: "" });
   const [ia, setIa] = useState<ResumenIA | null>(null);
+  const [autos, setAutos] = useState<Automatizacion[]>([]);
 
   async function cargar(cid: string) {
     try {
@@ -61,6 +63,7 @@ export default function ClienteDetalle() {
       const ia = await apiFetch<IAConfig>("/admin/ia/config"); setIaCfg(ia); setModeloDefault(ia.modeloDefault ?? "");
       const co = await apiFetch<Consumo>(`/admin/clientes/${cid}/consumo`); setConsumo(co); setCuota(String(co.cuotaMensual));
       setTriage(await apiFetch<Triage>(`/admin/clientes/${cid}/triage`));
+      setAutos((await apiFetch<{ datos: Automatizacion[] }>(`/admin/clientes/${cid}/automatizaciones`)).datos);
       const us = await apiFetch<Usuarios>(`/admin/clientes/${cid}/usuarios`); setUsuarios(us); setLim(String(us.limite));
       setIa(await apiFetch<ResumenIA>(`/admin/clientes/${cid}/ia?dias=30`));
       setScopesCat((await apiFetch<{ datos: ScopeDef[] }>("/admin/scopes")).datos);
@@ -86,6 +89,11 @@ export default function ClienteDetalle() {
   const toggle = (mod: string) => accion(async () => { const on = !cli!.modulos.includes(mod); await apiFetch(`/admin/clientes/${id}/modulos/${mod}`, { method: "PUT", body: JSON.stringify({ encendido: on }) }); setCli((c) => c && { ...c, modulos: on ? [...c.modulos, mod] : c.modulos.filter((m) => m !== mod) }); }, "Módulo actualizado");
   const guardarCuota = () => accion(async () => { const n = Number(cuota); await apiFetch(`/admin/clientes/${id}/cuota`, { method: "PUT", body: JSON.stringify({ limiteMensual: n }) }); setConsumo((c) => c && { ...c, cuotaMensual: n }); }, "Cuota fijada");
   const guardarTriage = (t: Triage) => accion(async () => { await apiFetch(`/admin/clientes/${id}/triage`, { method: "PUT", body: JSON.stringify(t) }); setTriage(t); }, "Triage guardado");
+  const toggleAuto = (a: Automatizacion) => accion(async () => {
+    const activa = !a.activa;
+    await apiFetch(`/admin/clientes/${id}/automatizaciones/${encodeURIComponent(a.clave)}`, { method: "PUT", body: JSON.stringify({ activa }) });
+    setAutos((xs) => xs.map((x) => x.clave === a.clave ? { ...x, activa } : x));
+  }, "Automatización actualizada");
   const guardarModeloDefault = () => accion(async () => { await apiFetch("/admin/ia/config", { method: "PUT", body: JSON.stringify({ modeloDefault: modeloDefault.trim() || null }) }); setIaCfg((c) => c && { ...c, modeloDefault: modeloDefault.trim() || null }); }, "Modelo por defecto guardado");
   const guardarModeloCliente = () => accion(async () => { await apiFetch(`/admin/clientes/${id}/ia-modelo`, { method: "PUT", body: JSON.stringify({ modelo: modeloCliente.trim() || null }) }); setCli((c) => c && { ...c, ia_modelo: modeloCliente.trim() || null }); }, "Modelo del cliente guardado");
   const guardarContextoCliente = () => accion(async () => { await apiFetch(`/admin/clientes/${id}/ia-modelo`, { method: "PUT", body: JSON.stringify({ contexto: contextoCliente.trim() || null }) }); setCli((c) => c && { ...c, ia_contexto: contextoCliente.trim() || null }); }, "Contexto de IA guardado");
@@ -234,20 +242,32 @@ export default function ClienteDetalle() {
               <p className="text-[11px] text-muted-foreground mt-1">Solo se crea/sugiere si la confianza ≥ {Math.round(triage.umbral * 100)}%.</p>
             </div>
           )}
-          {/* Regla de negocio general: conversaciones ABANDONADAS → ¿ficha360? */}
-          {triage && (
-            <div className="mt-4 pt-4 border-t border-border">
-              <button type="button" role="switch" aria-checked={triage.fichaEnAbandonadas !== false}
-                onClick={() => guardarTriage({ ...triage, fichaEnAbandonadas: triage.fichaEnAbandonadas === false })}
-                className="flex items-center gap-3 text-left w-full">
-                <span className={"h-5 w-9 rounded-full relative transition shrink-0 " + (triage.fichaEnAbandonadas !== false ? "bg-[hsl(var(--exito))]" : "bg-secondary border border-border")}>
-                  <span className={"absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all " + (triage.fichaEnAbandonadas !== false ? "left-[18px]" : "left-0.5")} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-medium">Registrar conversaciones abandonadas en la ficha 360</span>
-                  <span className="block text-[11px] text-muted-foreground">Apágalo para que las abandonadas solo generen un ticket (no se suman a la línea de tiempo de la persona). Las no abandonadas siempre se registran.</span>
-                </span>
-              </button>
+        </CardContent></Card>
+
+        {/* Automatizaciones (reglas de negocio toggleables por cliente) */}
+        <Card><CardContent className="pt-5">
+          <div className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">Automatizaciones</div>
+          <p className="text-[12px] text-muted-foreground mb-3">Reglas de negocio que enciendes por cliente. El catálogo crece a medida que los clientes las piden.</p>
+          {autos.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">No hay automatizaciones en el catálogo todavía.</p>
+          ) : (
+            <div className="space-y-3">
+              {autos.map((a) => (
+                <div key={a.clave} className="flex items-start gap-3 pt-3 border-t border-border first:border-t-0 first:pt-0">
+                  <button type="button" role="switch" aria-checked={a.activa} onClick={() => toggleAuto(a)} className="shrink-0 mt-0.5">
+                    <span className={"h-5 w-9 rounded-full relative transition block " + (a.activa ? "bg-[hsl(var(--exito))]" : "bg-secondary border border-border")}>
+                      <span className={"absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all " + (a.activa ? "left-[18px]" : "left-0.5")} />
+                    </span>
+                  </button>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[13px] font-medium">{a.nombre}</span>
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded-full px-1.5 py-0.5">{a.categoria}</span>
+                    </div>
+                    <p className="text-[11.5px] text-muted-foreground mt-0.5">{a.descripcion}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent></Card>

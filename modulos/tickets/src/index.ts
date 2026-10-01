@@ -164,18 +164,27 @@ export function crearModuloTickets(nucleo: NucleoApi) {
       }
       const ev = await clasificar(args.mensajes);
       const cfg = await configTriage(c, cid);
-      const accion = decidir(ev, cfg);
+      // Automatización "voxia: ticket solo si abandonada": si está activa, la decisión
+      // la manda `abandonada`, no el clasificador. ABANDONADA → ticket + ficha360;
+      // ATENDIDA → solo ficha360 (sin ticket). Si está apagada, triage normal.
+      const accion: "creado" | "sugerido" | "descartado" =
+        cfg.ticketSoloSiAbandonada ? (args.abandonada ? "creado" : "descartado") : decidir(ev, cfg);
       let ticket: Ticket | undefined;
       if (accion === "creado") {
-        // Regla general: una conversación abandonada, con la ficha apagada para el
-        // cliente, genera el ticket SIN registrarse en la ficha360 de la persona.
-        const sinFicha = !!args.abandonada && cfg.fichaEnAbandonadas === false;
         ticket = await this.crearTicket(c, {
           canal: args.canal, identidad: args.identidad,
           asunto: args.asunto ?? args.mensajes[0]?.texto?.slice(0, 80) ?? "Conversación",
           prioridad: ev.prioridad, canalOrigen: args.canalOrigen ?? args.canal,
           cuerpo: args.mensajes.map((m) => `${m.autor}: ${m.texto}`).join("\n"),
-          sinFicha,
+        }); // ficha360 SIEMPRE se registra con el ticket
+      } else if (cfg.ticketSoloSiAbandonada && !args.abandonada) {
+        // Conversación ATENDIDA bajo la regla: no hay ticket, pero igual se registra la
+        // persona y la conversación en su ficha360 (línea de tiempo), con dedupe.
+        const persona = await nucleo.asegurarPersona(c, args.canal, args.identidad);
+        await nucleo.registrarInteraccion(c, {
+          personaId: persona.id, tipo: "conversacion.atendida", moduloOrigen: "conector",
+          resumen: args.asunto ?? args.mensajes[0]?.texto?.slice(0, 80) ?? "Conversación atendida",
+          dedupeId: `conv-atendida:${args.dedupeId}`,
         });
       }
       await c.query(

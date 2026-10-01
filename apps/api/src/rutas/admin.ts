@@ -13,6 +13,7 @@ import {
   asegurarEtiqueta, aplicarEtiqueta, asegurarCampo, ponerValor,
   configIA, fijarModeloDefault, fijarModeloCliente, fijarContextoCliente,
   purgarRetencion,
+  CATALOGO_AUTOMATIZACIONES, automatizacionesGenericasDe, fijarAutomatizacionGenerica,
 } from "@xhub/modulo-nucleo";
 import { sincronizarContactosInstancia, reconciliarContactosInstancia, validarAccesoV5, type NucleoContactos, type DepsSondeo } from "@xhub/modulo-conector";
 import { fetchXContact } from "../fetch-xcontact.js";
@@ -617,6 +618,43 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
       const b = E.validar(E.configTriage, req.body);
       await conCliente(id, (c) => fijarConfigTriage(c, id, b));
       return { cliente: id, ...b };
+    });
+
+    // Catálogo de AUTOMATIZACIONES por cliente (reglas de negocio toggleables). El catálogo
+    // de claves vive en código; el estado por cliente se compone: las de respaldo "triage"
+    // leen ticket_triage_config; las "generica" leen plataforma.cliente_automatizaciones.
+    admin.get("/clientes/:id/automatizaciones", async (req) => {
+      const { id } = req.params as { id: string };
+      return conCliente(id, async (c) => {
+        const genericas = await automatizacionesGenericasDe(c, id);
+        const triage = await configTriage(c, id);
+        const datos = CATALOGO_AUTOMATIZACIONES.map((e) => {
+          let activa = e.porDefecto;
+          if (e.respaldo === "triage") {
+            if (e.clave === "voxia.ticket_solo_si_abandonada") activa = triage.ticketSoloSiAbandonada === true;
+          } else {
+            activa = genericas.get(e.clave)?.activa ?? e.porDefecto;
+          }
+          return { clave: e.clave, nombre: e.nombre, descripcion: e.descripcion, categoria: e.categoria, activa };
+        });
+        return { datos };
+      });
+    });
+    admin.put("/clientes/:id/automatizaciones/:clave", async (req) => {
+      const { id, clave } = req.params as { id: string; clave: string };
+      const activa = (req.body as { activa?: boolean })?.activa === true;
+      const entrada = CATALOGO_AUTOMATIZACIONES.find((e) => e.clave === clave);
+      if (!entrada) throw new ErrorApi("NO_ENCONTRADO", "Automatización desconocida");
+      await conCliente(id, async (c) => {
+        if (entrada.respaldo === "triage" && clave === "voxia.ticket_solo_si_abandonada") {
+          const cfg = await configTriage(c, id);
+          await fijarConfigTriage(c, id, { ...cfg, ticketSoloSiAbandonada: activa });
+        } else {
+          await fijarAutomatizacionGenerica(c, id, clave, activa);
+        }
+      });
+      await auditar({ clienteId: id, actorTipo: "plataforma", accion: "automatizacion.cambiada", recurso: "cliente", recursoId: id, resultado: "ok", metadata: { clave, activa } });
+      return { ok: true, clave, activa };
     });
 
     // Marca blanca del cliente: logo + colores. La plataforma la fija; el panel del

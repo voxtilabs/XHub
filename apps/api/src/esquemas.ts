@@ -29,7 +29,7 @@ export const modulo = z.object({ encendido: z.boolean() }).strict();
 export const configTriage = z.object({
   modo: z.enum(["automatico", "sugerir", "manual"]),
   umbral: z.number().min(0).max(1),   // porcentaje 0..1, 100% ajustable
-  fichaEnAbandonadas: z.boolean().optional(),  // regla: registrar abandonadas en ficha360 (def. true)
+  ticketSoloSiAbandonada: z.boolean().optional(),  // regla voxia: abandonada→ticket+ficha, atendida→solo ficha (def. false)
 }).strict();
 export const crearLlave = z.object({
   nombre: z.string().min(1).max(80),
