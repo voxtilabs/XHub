@@ -11,6 +11,7 @@ import {
 } from "@xhub/modulo-nucleo";
 import { auth } from "../auth.js";
 import { leerCookieSoporte } from "../soporte.js";
+import { esPlataforma, esAdminCliente } from "../roles.js";
 import * as E from "../esquemas.js";
 
 /**
@@ -173,11 +174,11 @@ export function registrarRutasCliente(app: FastifyInstance): void {
       const u = sesion?.user as { id?: string; email?: string; name?: string; rol?: string; clienteId?: string } | undefined;
       if (!u?.id) throw new ErrorApi("NO_AUTENTICADO", "Sesión requerida");
       const sop = leerCookieSoporte(req.headers.cookie);
-      if (u.rol === "plataforma" && sop && sop.a === u.id) {
+      if (esPlataforma(u.rol) && sop && sop.a === u.id) {
         const modSop = [...(await conPlataforma((c) => entitlementsDe(c, sop.c)))];
         return { id: u.id, email: u.email ?? null, nombre: u.name ?? null, rol: "plataforma", clienteId: sop.c, esAdmin: true, esSoporte: true, motivoSoporte: sop.m, permisos: CATALOGO_PERMISOS.map((p) => p.clave), modulos: modSop };
       }
-      const esAdmin = u.rol === "admin_cliente";
+      const esAdmin = esAdminCliente(u.rol);
       // El admin de cliente tiene acceso total: recibe todas las claves del catálogo.
       const permisos = esAdmin
         ? CATALOGO_PERMISOS.map((p) => p.clave)
@@ -192,7 +193,7 @@ export function registrarRutasCliente(app: FastifyInstance): void {
       try { sesion = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) }); } catch { sesion = null; }
       const um = sesion?.user as { id?: string; rol?: string; clienteId?: string } | undefined;
       const sopm = leerCookieSoporte(req.headers.cookie);
-      const cid = (um?.rol === "plataforma" && sopm && sopm.a === um.id) ? sopm.c : um?.clienteId;
+      const cid = (esPlataforma(um?.rol) && sopm && sopm.a === um?.id) ? sopm.c : um?.clienteId;
       const vacia = { nombre_marca: null, logo_url: null, color_primario: null, color_acento: null };
       if (!cid) return vacia;
       return conPlataforma(async (c) => {

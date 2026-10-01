@@ -9,6 +9,7 @@ import { permisosDe, CATALOGO_PERMISOS, listarUsuariosCliente, buscarPersonas, f
   crearLlave, listarLlaves, actualizarScopesLlave, entitlementsDe, cuotaDe, CATALOGO_SCOPES } from "@xhub/modulo-nucleo";
 import { consumoDelDia } from "@xhub/cuotas";
 import { crearModuloTickets, contextoOmnicanal, reincidencia } from "@xhub/modulo-tickets";
+import { esPlataforma, esAdminCliente } from "../roles.js";
 import { nucleo } from "../nucleo.js";
 import { asegurarPipeline } from "./crm.js";
 import { enviarCorreo } from "../correo.js";
@@ -37,11 +38,11 @@ export async function guard(req: FastifyRequest): Promise<CtxT> {
   const u = sesion?.user as { id?: string; rol?: string; clienteId?: string } | undefined;
   if (!u?.id) throw new ErrorApi("NO_AUTENTICADO", "Sesión requerida");
   const sop = leerCookieSoporte(req.headers.cookie);
-  if (u.rol === "plataforma" && sop && sop.a === u.id) {
+  if (esPlataforma(u.rol) && sop && sop.a === u.id) {
     return { clienteId: sop.c, usuarioId: u.id, rol: "plataforma", esAdmin: true, permisos: CATALOGO_PERMISOS.map((p) => p.clave) };
   }
   if (!u.clienteId) throw new ErrorApi("SIN_PERMISO", "Tu usuario no está asociado a un cliente");
-  const esAdmin = u.rol === "admin_cliente";
+  const esAdmin = esAdminCliente(u.rol);
   const permisos = esAdmin ? CATALOGO_PERMISOS.map((p) => p.clave) : await conPlataforma((c) => permisosDe(c, u.id!));
   return { clienteId: u.clienteId, usuarioId: u.id, rol: u.rol ?? "usuario", esAdmin, permisos };
 }
