@@ -83,18 +83,19 @@ test("regla voxia: ABANDONADA → ticket + ficha360; ATENDIDA → solo ficha360 
   const inter = (tel: string, tipo: string) => conCliente(A, async (c) => (await c.query(
     "select count(*)::int n from nucleo.interacciones i join nucleo.identidades d on d.persona_id=i.persona_id where d.identificador=$1 and i.tipo=$2", [tel, tipo])).rows[0].n);
 
+  // Teléfonos ÚNICOS de este test (otros tests del archivo usan +569{1,2,3}… → evitar contaminación).
   // Abandonada → ticket creado Y registrado en la ficha360.
-  const rAb = await conCliente(A, (c) => T.triarConversacion(c, { canal: "telefono", identidad: "+56911111111", dedupeId: "conv-ab-1", mensajes: msgs, abandonada: true }));
+  const rAb = await conCliente(A, (c) => T.triarConversacion(c, { canal: "telefono", identidad: "+56951111111", dedupeId: "conv-ab-1", mensajes: msgs, abandonada: true }));
   expect(rAb.accion).toBe("creado");
   expect(rAb.ticket).toBeTruthy();
-  expect(await inter("+56911111111", "ticket.creado")).toBeGreaterThanOrEqual(1);
+  expect(await inter("+56951111111", "ticket.creado")).toBeGreaterThanOrEqual(1);
 
   // Atendida (no abandonada) → NO ticket, pero SÍ queda en la ficha360.
-  const rNo = await conCliente(A, (c) => T.triarConversacion(c, { canal: "telefono", identidad: "+56922222222", dedupeId: "conv-no-1", mensajes: msgs, abandonada: false }));
+  const rNo = await conCliente(A, (c) => T.triarConversacion(c, { canal: "telefono", identidad: "+56952222222", dedupeId: "conv-no-1", mensajes: msgs, abandonada: false }));
   expect(rNo.accion).toBe("descartado");
   expect(rNo.ticket).toBeFalsy();
-  expect(await inter("+56922222222", "conversacion.atendida")).toBeGreaterThanOrEqual(1);
-  expect(await inter("+56922222222", "ticket.creado")).toBe(0);
+  expect(await inter("+56952222222", "conversacion.atendida")).toBeGreaterThanOrEqual(1);
+  expect(await inter("+56952222222", "ticket.creado")).toBe(0);
 
   // Con la regla APAGADA (default), rige el triage normal (decide el clasificador por contenido).
   await conCliente(A, (c) => fijarConfigTriage(c, A, { modo: "automatico", umbral: 0.5, ticketSoloSiAbandonada: false }));
