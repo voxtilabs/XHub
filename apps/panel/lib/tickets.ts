@@ -25,7 +25,11 @@ export const notaInterna = (id: string, cuerpo: string) => apiFetch(`/cliente/ti
 export const cambiarEstado = (id: string, estado: Estado) => apiFetch<TicketRow>(`/cliente/tickets/${id}/estado`, { method: "PUT", body: JSON.stringify({ estado }) });
 export const resumirTicket = (id: string) => apiFetch<{ resumen: string }>(`/cliente/tickets/${id}/resumir`, { method: "POST" });
 export const crearTicket = (b: { canal: string; identidad: string; asunto: string; prioridad?: Prioridad; cuerpo?: string; categoria?: string }) => apiFetch<TicketRow>(`/cliente/tickets`, { method: "POST", body: JSON.stringify(b) });
-export const getMetricas = () => apiFetch<{ porEstado: Record<string, number>; porPrioridad: Record<string, number>; abiertos: number; vencidos: number; csat: { prom: number; n: number } }>(`/cliente/metricas`);
+export const getMetricas = () => apiFetch<{
+  porEstado: Record<string, number>; porPrioridad: Record<string, number>; abiertos: number; vencidos: number; csat: { prom: number; n: number };
+  porCategoria: { k: string; n: number }[]; porCanal: { k: string; n: number }[]; resolucion: { horas: number; n: number };
+  serie: { dia: string; n: number }[]; totalCreados: number; resueltos: number;
+}>(`/cliente/metricas`);
 
 export type Agente = { id: string; email: string; nombre: string | null; rol: string };
 export const getAgentes = () => apiFetch<{ datos: Agente[] }>("/cliente/agentes");

@@ -542,7 +542,16 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
         const csat = (await c.query("select coalesce(round(avg(satisfaccion)::numeric,2),0) prom, count(satisfaccion)::int n from tickets where satisfaccion is not null")).rows[0];
         const porEstado: Record<string, number> = {}; for (const x of est.rows) porEstado[x.estado] = x.n;
         const porPrioridad: Record<string, number> = {}; for (const x of pri.rows) porPrioridad[x.prioridad] = x.n;
-        return { porEstado, porPrioridad, abiertos, vencidos, csat };
+        // Detalle extra: por categoría, por canal, tiempo de resolución y tendencia (14 días hábiles).
+        const porCategoria = (await c.query("select coalesce(nullif(categoria,''),'(sin categoría)') k, count(*)::int n from tickets group by 1 order by n desc limit 8")).rows;
+        const porCanal = (await c.query("select coalesce(nullif(canal_origen,''),'(sin canal)') k, count(*)::int n from tickets group by 1 order by n desc limit 8")).rows;
+        const resol = (await c.query("select coalesce(round((avg(extract(epoch from (resuelto_en - creado_en)))/3600)::numeric,1),0) horas, count(*)::int n from tickets where resuelto_en is not null")).rows[0];
+        const serie = (await c.query(
+          "select to_char((creado_en at time zone 'America/Santiago')::date,'YYYY-MM-DD') dia, count(*)::int n from tickets where creado_en > now() - interval '14 days' group by 1 order by 1")).rows;
+        const totalCreados = (await c.query("select count(*)::int n from tickets")).rows[0].n;
+        const resueltos = (await c.query("select count(*)::int n from tickets where estado in ('resuelto','cerrado')")).rows[0].n;
+        return { porEstado, porPrioridad, abiertos, vencidos, csat, porCategoria, porCanal,
+          resolucion: { horas: Number(resol.horas), n: resol.n }, serie, totalCreados, resueltos };
       });
     });
 
