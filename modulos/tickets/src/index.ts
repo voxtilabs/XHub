@@ -37,7 +37,7 @@ async function proximoNumero(c: PoolClient, cid: string): Promise<number> {
  */
 export function crearModuloTickets(nucleo: NucleoApi) {
   return {
-    async crearTicket(c: PoolClient, args: { canal: string; identidad: string; asunto: string; prioridad?: Prioridad; canalOrigen?: string; cuerpo?: string; equipoId?: string; categoria?: string; etiquetas?: string[] }): Promise<Ticket> {
+    async crearTicket(c: PoolClient, args: { canal: string; identidad: string; asunto: string; prioridad?: Prioridad; canalOrigen?: string; cuerpo?: string; equipoId?: string; categoria?: string; etiquetas?: string[]; sinFicha?: boolean }): Promise<Ticket> {
       const cid = await clienteDe(c);
       if (!args.asunto.trim()) throw new ErrorApi("VALIDACION", "El asunto es obligatorio");
       const persona = await nucleo.asegurarPersona(c, args.canal, args.identidad);
@@ -62,7 +62,10 @@ export function crearModuloTickets(nucleo: NucleoApi) {
           t.prioridad = "urgente";   // reflejar el escalado en el objeto devuelto
         }
       }
-      await nucleo.registrarInteraccion(c, { personaId: persona.id, tipo: "ticket.creado", moduloOrigen: "tickets", objetoTipo: "ticket", objetoId: t.id, resumen: `Ticket #${numero}: ${args.asunto.slice(0, 60)}` });
+      // Regla de negocio: una conversación ABANDONADA con la ficha apagada genera el
+      // ticket pero NO se registra en la línea de tiempo de la persona (ficha360).
+      if (!args.sinFicha)
+        await nucleo.registrarInteraccion(c, { personaId: persona.id, tipo: "ticket.creado", moduloOrigen: "tickets", objetoTipo: "ticket", objetoId: t.id, resumen: `Ticket #${numero}: ${args.asunto.slice(0, 60)}` });
       return t;
     },
     async asignarTicket(c: PoolClient, ticketId: string, usuarioId: string): Promise<void> {
@@ -150,7 +153,7 @@ export function crearModuloTickets(nucleo: NucleoApi) {
      * Devuelve la decisión y, si se creó, el ticket. Así NO todo contacto es un ticket.
      */
     async triarConversacion(c: PoolClient, args: {
-      canal: string; identidad: string; mensajes: MensajeConv[]; dedupeId: string; asunto?: string; canalOrigen?: string;
+      canal: string; identidad: string; mensajes: MensajeConv[]; dedupeId: string; asunto?: string; canalOrigen?: string; abandonada?: boolean;
     }): Promise<{ accion: "creado" | "sugerido" | "descartado"; confianza: number; motivo: string; fuente: string; ticket?: Ticket }> {
       const cid = await clienteDe(c);
       // idempotencia: ¿ya evaluamos esta conversación?
@@ -164,11 +167,15 @@ export function crearModuloTickets(nucleo: NucleoApi) {
       const accion = decidir(ev, cfg);
       let ticket: Ticket | undefined;
       if (accion === "creado") {
+        // Regla general: una conversación abandonada, con la ficha apagada para el
+        // cliente, genera el ticket SIN registrarse en la ficha360 de la persona.
+        const sinFicha = !!args.abandonada && cfg.fichaEnAbandonadas === false;
         ticket = await this.crearTicket(c, {
           canal: args.canal, identidad: args.identidad,
           asunto: args.asunto ?? args.mensajes[0]?.texto?.slice(0, 80) ?? "Conversación",
           prioridad: ev.prioridad, canalOrigen: args.canalOrigen ?? args.canal,
           cuerpo: args.mensajes.map((m) => `${m.autor}: ${m.texto}`).join("\n"),
+          sinFicha,
         });
       }
       await c.query(

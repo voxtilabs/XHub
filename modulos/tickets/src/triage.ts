@@ -3,7 +3,14 @@ import { completar, leerConfigIA } from "@xhub/ia";
 import type { Prioridad } from "./index.js";
 
 export type ModoTriage = "automatico" | "sugerir" | "manual";
-export interface ConfigTriage { modo: ModoTriage; umbral: number; }
+export interface ConfigTriage {
+  modo: ModoTriage;
+  umbral: number;
+  /** ¿Registrar en la ficha360 (línea de tiempo de la persona) las conversaciones
+   *  ABANDONADAS? Si es false, las abandonadas solo generan el ticket. Default true.
+   *  Opcional en el tipo (decidir() no lo usa); configTriage() siempre lo resuelve. */
+  fichaEnAbandonadas?: boolean;
+}
 
 export interface Evaluacion {
   necesitaTicket: boolean;
@@ -84,13 +91,13 @@ export function decidir(ev: Evaluacion, cfg: ConfigTriage): Accion {
 }
 
 export async function configTriage(c: PoolClient, clienteId: string): Promise<ConfigTriage> {
-  const r = await c.query("select modo, umbral from ticket_triage_config where cliente_id=$1", [clienteId]);
-  if (r.rowCount === 0) return { modo: "sugerir", umbral: 0.7 }; // default sensato
-  return { modo: r.rows[0].modo, umbral: Number(r.rows[0].umbral) };
+  const r = await c.query("select modo, umbral, ficha_en_abandonadas from ticket_triage_config where cliente_id=$1", [clienteId]);
+  if (r.rowCount === 0) return { modo: "sugerir", umbral: 0.7, fichaEnAbandonadas: true }; // default sensato
+  return { modo: r.rows[0].modo, umbral: Number(r.rows[0].umbral), fichaEnAbandonadas: r.rows[0].ficha_en_abandonadas !== false };
 }
 export async function fijarConfigTriage(c: PoolClient, clienteId: string, cfg: ConfigTriage): Promise<void> {
   await c.query(
-    `insert into ticket_triage_config (cliente_id, modo, umbral) values ($1,$2,$3)
-       on conflict (cliente_id) do update set modo=excluded.modo, umbral=excluded.umbral, actualizado_en=now()`,
-    [clienteId, cfg.modo, cfg.umbral]);
+    `insert into ticket_triage_config (cliente_id, modo, umbral, ficha_en_abandonadas) values ($1,$2,$3,$4)
+       on conflict (cliente_id) do update set modo=excluded.modo, umbral=excluded.umbral, ficha_en_abandonadas=excluded.ficha_en_abandonadas, actualizado_en=now()`,
+    [clienteId, cfg.modo, cfg.umbral, cfg.fichaEnAbandonadas !== false]);
 }

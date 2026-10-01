@@ -12,7 +12,7 @@ type IAConfig = { modeloDefault: string | null; proveedor: string; modeloEnv: st
 type ScopeDef = { scope: string; modulo: string; descripcion: string };
 type Llave = { id: string; nombre: string; prefijo: string; scopes: string[]; creada_en: string; ultimo_uso: string | null; revocada_en: string | null };
 type Consumo = { total: number; cuotaMensual: number; dia: string };
-type Triage = { modo: "automatico" | "sugerir" | "manual"; umbral: number };
+type Triage = { modo: "automatico" | "sugerir" | "manual"; umbral: number; fichaEnAbandonadas?: boolean };
 type UsuarioCliente = { id: string; email: string; nombre: string; rol: string; creadoEn: string };
 type Usuarios = { limite: number; usados: number; usuarios: UsuarioCliente[] };
 type ResumenIA = {
@@ -232,6 +232,22 @@ export default function ClienteDetalle() {
                 onMouseUp={() => guardarTriage(triage)} onTouchEnd={() => guardarTriage(triage)}
                 className="w-full accent-[hsl(var(--primary))]" />
               <p className="text-[11px] text-muted-foreground mt-1">Solo se crea/sugiere si la confianza ≥ {Math.round(triage.umbral * 100)}%.</p>
+            </div>
+          )}
+          {/* Regla de negocio general: conversaciones ABANDONADAS → ¿ficha360? */}
+          {triage && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <button type="button" role="switch" aria-checked={triage.fichaEnAbandonadas !== false}
+                onClick={() => guardarTriage({ ...triage, fichaEnAbandonadas: triage.fichaEnAbandonadas === false })}
+                className="flex items-center gap-3 text-left w-full">
+                <span className={"h-5 w-9 rounded-full relative transition shrink-0 " + (triage.fichaEnAbandonadas !== false ? "bg-[hsl(var(--exito))]" : "bg-secondary border border-border")}>
+                  <span className={"absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all " + (triage.fichaEnAbandonadas !== false ? "left-[18px]" : "left-0.5")} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-medium">Registrar conversaciones abandonadas en la ficha 360</span>
+                  <span className="block text-[11px] text-muted-foreground">Apágalo para que las abandonadas solo generen un ticket (no se suman a la línea de tiempo de la persona). Las no abandonadas siempre se registran.</span>
+                </span>
+              </button>
             </div>
           )}
         </CardContent></Card>

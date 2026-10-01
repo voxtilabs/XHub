@@ -12,6 +12,7 @@ export interface ConversacionTerminada {
   dedupeId: string;        // id de la conversación en XContact
   mensajes: { autor: string; texto: string }[];
   asunto?: string;
+  abandonada?: boolean;    // llamada/chat abandonado (colgó antes de atención). Regla de negocio aguas abajo.
 }
 
 /** Firma del emisor de outbox que el conector recibe inyectado (del núcleo). */
@@ -23,6 +24,6 @@ export async function publicarConversacionTerminada(c: PoolClient, emitir: Emiti
     clienteId: conv.clienteId,
     modulo: "conector",
     tipo: "conversacion.terminada",
-    payload: { canal: conv.canal, identidad: conv.identidad, dedupeId: conv.dedupeId, mensajes: conv.mensajes, asunto: conv.asunto ?? null },
+    payload: { canal: conv.canal, identidad: conv.identidad, dedupeId: conv.dedupeId, mensajes: conv.mensajes, asunto: conv.asunto ?? null, abandonada: conv.abandonada ?? false },
   });
 }

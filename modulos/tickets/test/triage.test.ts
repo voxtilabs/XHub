@@ -76,3 +76,26 @@ test("idempotente: reprocesar la misma conversación no crea otro ticket", async
   const n = await conCliente(A, (c) => c.query("select count(*)::int n from ticket_triage_log where dedupe_id='conv-3'")) as { rows: { n: number }[] };
   expect(n.rows[0].n).toBe(1);
 });
+
+test("regla general: conversación ABANDONADA con ficha apagada → ticket SIN ficha360; la no abandonada SÍ", async () => {
+  await conCliente(A, (c) => fijarConfigTriage(c, A, { modo: "automatico", umbral: 0.5, fichaEnAbandonadas: false }));
+  const msgs = [{ autor: "cliente", texto: "Mi pedido no llega hace 5 días, quiero un reclamo urgente" }];
+  const cuenta = (tel: string) => conCliente(A, async (c) => (await c.query(
+    "select count(*)::int n from nucleo.interacciones i join nucleo.identidades d on d.persona_id=i.persona_id where d.identificador=$1 and i.tipo='ticket.creado'", [tel])).rows[0].n);
+
+  // Abandonada → ticket creado, PERO no queda en la línea de tiempo de la persona.
+  const rAb = await conCliente(A, (c) => T.triarConversacion(c, { canal: "telefono", identidad: "+56911111111", dedupeId: "conv-ab-1", mensajes: msgs, abandonada: true }));
+  expect(rAb.accion).toBe("creado");
+  expect(rAb.ticket).toBeTruthy();
+  expect(await cuenta("+56911111111")).toBe(0);  // NO en ficha360
+
+  // No abandonada → ticket creado Y registrado en ficha360.
+  const rNo = await conCliente(A, (c) => T.triarConversacion(c, { canal: "telefono", identidad: "+56922222222", dedupeId: "conv-no-1", mensajes: msgs, abandonada: false }));
+  expect(rNo.accion).toBe("creado");
+  expect(await cuenta("+56922222222")).toBeGreaterThanOrEqual(1);  // SÍ en ficha360
+
+  // Con la ficha ENCENDIDA (default), hasta una abandonada se registra.
+  await conCliente(A, (c) => fijarConfigTriage(c, A, { modo: "automatico", umbral: 0.5, fichaEnAbandonadas: true }));
+  await conCliente(A, (c) => T.triarConversacion(c, { canal: "telefono", identidad: "+56933333333", dedupeId: "conv-ab-2", mensajes: msgs, abandonada: true }));
+  expect(await cuenta("+56933333333")).toBeGreaterThanOrEqual(1);
+});
