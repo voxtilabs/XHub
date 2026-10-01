@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,11 +14,32 @@ type Ident = { canal: string; identificador?: string; valor?: string };
 type Item = { seq: string; tipo: string; ocurrio_en: string; modulo_origen: string; resumen: string | null };
 type TicketMini = { id: string; numero: string; asunto: string; estado: string; prioridad: string };
 type OpMini = { id: string; titulo: string; valor: number; etapa: string; estado: string };
+type Campo = { nombre: string; tipo: string; valor: unknown };
+type Enlace = { origen_tipo: string; origen_id: string; tipo_enlace: string; destino_tipo: string; destino_id: string };
 type Fuente = { tipo: string; externoId: string | null; ultimoDato: string | null } | null;
-type Ficha = { persona: { id: string; nombre: string | null }; identidades: Ident[]; etiquetas: { nombre: string }[]; lineaDeTiempo: Item[]; tickets: TicketMini[]; oportunidades: OpMini[]; fuente: Fuente };
+type Ficha = {
+  persona: { id: string; nombre: string | null }; identidades: Ident[]; etiquetas: { nombre: string }[];
+  campos: Campo[]; lineaDeTiempo: Item[]; enlaces: Enlace[]; tickets: TicketMini[]; oportunidades: OpMini[]; fuente: Fuente;
+};
 
 const fecha = (s: string) => { try { return new Date(s).toLocaleString("es-CL", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return s; } };
-const iconoMod = (m: string) => m === "tickets" ? "🎫" : m === "crm" ? "💼" : "•";
+const dia = (s: string) => { try { return new Date(s).toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "numeric" }); } catch { return s; } };
+// Tiempo relativo en español, sin dependencias.
+function relativo(s: string): string {
+  const t = new Date(s).getTime(); if (isNaN(t)) return "";
+  const seg = Math.round((Date.now() - t) / 1000);
+  if (seg < 60) return "recién"; const min = Math.round(seg / 60);
+  if (min < 60) return `hace ${min} min`; const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`; const d = Math.round(h / 24);
+  if (d < 30) return `hace ${d} d`; const me = Math.round(d / 30);
+  if (me < 12) return `hace ${me} mes${me > 1 ? "es" : ""}`; return `hace ${Math.round(me / 12)} año(s)`;
+}
+const MODULOS: Record<string, { etq: string; icono: string }> = {
+  tickets: { etq: "Tickets", icono: "🎫" }, crm: { etq: "CRM", icono: "💼" },
+  conector: { etq: "XContact", icono: "⟳" }, nucleo: { etq: "Núcleo", icono: "•" },
+};
+const modInfo = (m: string) => MODULOS[m] ?? { etq: m, icono: "•" };
+const valorCampo = (v: unknown) => v == null ? "—" : typeof v === "boolean" ? (v ? "Sí" : "No") : typeof v === "object" ? JSON.stringify(v) : String(v);
 
 export default function Persona() {
   return (
@@ -35,6 +56,7 @@ function Contenido() {
   const [ficha, setFicha] = useState<Ficha | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [buscando, setBuscando] = useState(false);
+  const [filtro, setFiltro] = useState<string>("");
 
   async function buscar(term: string) {
     setQ(term); setError(null);
@@ -44,13 +66,24 @@ function Contenido() {
     catch (e) { setError((e as Error).message); } finally { setBuscando(false); }
   }
   async function abrir(id: string) {
-    setError(null);
+    setError(null); setFiltro("");
     try { setFicha(await apiFetch<Ficha>(`/cliente/personas/${id}`)); setRes([]); setQ(""); }
     catch (e) { setError((e as Error).message); }
   }
 
   const nombre = ficha?.persona.nombre || ficha?.identidades[0]?.identificador || ficha?.identidades[0]?.valor || "Persona";
   const inic = nombre.split(/[ @.]/).map((x) => x[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+
+  // Conteos por módulo para los chips del filtro + resumen temporal.
+  const tl = ficha?.lineaDeTiempo ?? [];
+  const porModulo = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const it of tl) m.set(it.modulo_origen, (m.get(it.modulo_origen) ?? 0) + 1);
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  }, [tl]);
+  const tlVisible = filtro ? tl.filter((it) => it.modulo_origen === filtro) : tl;
+  const primera = tl.length ? tl[tl.length - 1].ocurrio_en : null; // timeline viene desc → la última fila es la más antigua
+  const ultima = tl.length ? tl[0].ocurrio_en : null;
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-8">
@@ -84,15 +117,30 @@ function Contenido() {
         <Card><CardContent className="py-12 text-center text-muted-foreground text-sm">Busca una persona para ver su ficha 360.</CardContent></Card>
       ) : (
         <>
-          <div className="flex items-center gap-4 mb-5 mt-4">
+          <div className="flex items-center gap-4 mb-4 mt-4">
             <div className="h-14 w-14 rounded-full bg-secondary grid place-items-center text-lg font-semibold">{inic}</div>
             <div className="min-w-0">
               <h2 className="text-xl font-semibold tracking-tight truncate">{nombre}</h2>
               <div className="flex gap-1.5 mt-1 flex-wrap">
-                {ficha.identidades.map((i, k) => <Badge key={k} rol="neutro">{i.canal}: {i.identificador ?? i.valor}</Badge>)}
+                {ficha.identidades.map((i, k) => <Badge key={k} rol="neutro">{(CANAL_ETQ[i.canal] ?? i.canal)}: {i.identificador ?? i.valor}</Badge>)}
                 {ficha.etiquetas.map((e, k) => <Badge key={"e" + k} rol="senal">{e.nombre}</Badge>)}
               </div>
             </div>
+          </div>
+
+          {/* Resumen: la foto de un vistazo */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+            {[
+              { k: "Interacciones", v: String(tl.length) },
+              { k: "Tickets", v: String(ficha.tickets.length) },
+              { k: "Oportunidades", v: String(ficha.oportunidades.length) },
+              { k: "Primer contacto", v: primera ? relativo(primera) : "—" },
+            ].map((s) => (
+              <div key={s.k} className="rounded-lg border border-border bg-card px-3 py-2">
+                <div className="text-lg font-semibold tracking-tight leading-tight">{s.v}</div>
+                <div className="text-[10.5px] uppercase tracking-wide text-muted-foreground">{s.k}</div>
+              </div>
+            ))}
           </div>
 
           {ficha.fuente?.tipo === "xcontact" && (() => {
@@ -109,17 +157,28 @@ function Contenido() {
           })()}
 
           <div className="grid md:grid-cols-[1fr_260px] gap-4">
-            {/* Historia unificada */}
+            {/* Historia unificada, con filtro por módulo */}
             <Card><CardContent className="pt-5">
-              <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Historia (omnicanal)</div>
-              {ficha.lineaDeTiempo.length === 0 ? <div className="text-[13px] text-muted-foreground">Sin interacciones registradas.</div> : (
+              <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Historia (omnicanal)</div>
+                {ultima && <div className="text-[10.5px] text-muted-foreground">últ. actividad {relativo(ultima)}</div>}
+              </div>
+              {porModulo.length > 1 && (
+                <div className="flex gap-1.5 flex-wrap mb-3">
+                  <button onClick={() => setFiltro("")} className={`text-[11px] px-2 py-0.5 rounded-full border ${filtro === "" ? "bg-foreground text-background border-foreground" : "border-border text-muted-foreground hover:bg-secondary"}`}>Todo ({tl.length})</button>
+                  {porModulo.map(([m, n]) => (
+                    <button key={m} onClick={() => setFiltro(m === filtro ? "" : m)} className={`text-[11px] px-2 py-0.5 rounded-full border ${filtro === m ? "bg-foreground text-background border-foreground" : "border-border text-muted-foreground hover:bg-secondary"}`}>{modInfo(m).icono} {modInfo(m).etq} ({n})</button>
+                  ))}
+                </div>
+              )}
+              {tlVisible.length === 0 ? <div className="text-[13px] text-muted-foreground">Sin interacciones registradas.</div> : (
                 <div className="space-y-0">
-                  {ficha.lineaDeTiempo.map((it) => (
+                  {tlVisible.map((it) => (
                     <div key={it.seq} className="flex gap-3 py-2.5 border-t border-border first:border-t-0">
-                      <span className="text-base leading-none pt-0.5">{iconoMod(it.modulo_origen)}</span>
+                      <span className="text-base leading-none pt-0.5" title={modInfo(it.modulo_origen).etq}>{modInfo(it.modulo_origen).icono}</span>
                       <div className="min-w-0 flex-1">
                         <div className="text-[13px]">{it.resumen ?? it.tipo}</div>
-                        <div className="text-[10.5px] text-muted-foreground">{it.modulo_origen} · {it.tipo} · {fecha(it.ocurrio_en)}</div>
+                        <div className="text-[10.5px] text-muted-foreground">{modInfo(it.modulo_origen).etq} · {it.tipo} · {fecha(it.ocurrio_en)} · {relativo(it.ocurrio_en)}</div>
                       </div>
                     </div>
                   ))}
@@ -127,8 +186,19 @@ function Contenido() {
               )}
             </CardContent></Card>
 
-            {/* Tickets + Oportunidades de la persona */}
+            {/* Columna derecha: datos del cliente, tickets, oportunidades, enlaces */}
             <div className="flex flex-col gap-4">
+              {ficha.campos.length > 0 && (
+                <Card><CardContent className="pt-5">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Datos</div>
+                  {ficha.campos.map((cp, k) => (
+                    <div key={k} className="py-1.5 border-t border-border first:border-t-0">
+                      <div className="text-[10.5px] text-muted-foreground">{cp.nombre}</div>
+                      <div className="text-[12.5px] font-medium break-words">{valorCampo(cp.valor)}</div>
+                    </div>
+                  ))}
+                </CardContent></Card>
+              )}
               <Card><CardContent className="pt-5">
                 <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Tickets ({ficha.tickets.length})</div>
                 {ficha.tickets.length === 0 ? <div className="text-[12.5px] text-muted-foreground">—</div> : ficha.tickets.map((t) => (
@@ -147,6 +217,18 @@ function Contenido() {
                   </div>
                 ))}
               </CardContent></Card>
+              {ficha.enlaces.length > 0 && (
+                <Card><CardContent className="pt-5">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Enlaces ({ficha.enlaces.length})</div>
+                  {ficha.enlaces.map((e, k) => (
+                    <div key={k} className="py-1.5 border-t border-border first:border-t-0 text-[11.5px]">
+                      <span className="font-mono text-muted-foreground">{e.origen_tipo}</span>
+                      <span className="mx-1 text-[hsl(var(--senal))]">→ {e.tipo_enlace} →</span>
+                      <span className="font-mono text-muted-foreground">{e.destino_tipo}</span>
+                    </div>
+                  ))}
+                </CardContent></Card>
+              )}
             </div>
           </div>
         </>

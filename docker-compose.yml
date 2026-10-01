@@ -111,7 +111,7 @@ services:
       XHUB_MASTER_KEY: ${XHUB_MASTER_KEY:-}
       XHUB_MASTER_KEY_ANTERIOR: ${XHUB_MASTER_KEY_ANTERIOR:-}
       # Almacenamiento de adjuntos S3-compatible (#41). Backend interno MinIO.
-      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_BUCKET: ${S3_BUCKET:-xhub-adjuntos}
@@ -142,7 +142,7 @@ services:
       XHUB_MASTER_KEY: ${XHUB_MASTER_KEY:-}
       XHUB_MASTER_KEY_ANTERIOR: ${XHUB_MASTER_KEY_ANTERIOR:-}
       # Almacenamiento de adjuntos S3-compatible (#41). Backend interno MinIO.
-      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_BUCKET: ${S3_BUCKET:-xhub-adjuntos}
@@ -184,3 +184,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  miniodata:
