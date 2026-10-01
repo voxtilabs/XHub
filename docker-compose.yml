@@ -157,6 +157,32 @@ services:
       redis: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }
 
+  # Almacenamiento S3-compatible para adjuntos (#41): MinIO interno. Portable (ADR 0007):
+  # habla S3 contra lo que haya — en prod puede apuntarse a R2/S3 solo cambiando S3_* env.
+  # entrypoint en array JSON; $$ = $ literal en compose.
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin123}
+    volumes: [miniodata:/data]
+    restart: unless-stopped
+
+  # Crea el bucket al arrancar (idempotente). Corre una vez y termina.
+  minio-init:
+    image: minio/mc:latest
+    depends_on: [minio]
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin123}
+      S3_BUCKET: ${S3_BUCKET:-xhub-adjuntos}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - 'until mc alias set x http://minio:9000 "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY"; do echo esperando-minio; sleep 2; done; mc mb -p x/"$$S3_BUCKET" || true; echo bucket-listo'
+    restart: "no"
+
   panel:
     <<: *xhub
     environment:
