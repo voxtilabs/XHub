@@ -7,6 +7,7 @@ import {
   limiteUsuariosDe, contarUsuariosCliente, listarUsuariosCliente,
   permisosDe, fijarPermisos, usuarioDeCliente, CATALOGO_PERMISOS, entitlementsDe,
   contextoIADe, modeloIADe, fijarContextoCliente,
+  datosIADe, fijarDatosIA, ejemplosIADe, fijarEjemplosIA, type DatoIA, type EjemploIA,
 } from "@xhub/modulo-nucleo";
 import { auth } from "../auth.js";
 import { leerCookieSoporte } from "../soporte.js";
@@ -143,6 +144,22 @@ export function registrarRutasCliente(app: FastifyInstance): void {
       const contexto = typeof b?.contexto === "string" ? b.contexto.slice(0, 4000) : "";
       await conPlataforma((c) => fijarContextoCliente(c, clienteId, contexto));
       return { ok: true, contexto: contexto.trim() || null };
+    });
+
+    // Contexto IA RICO (más que el system prompt): datos estructurados + ejemplos few-shot.
+    // El admin del cliente edita LO SUYO; se antepone a los prompts de resumen/sugerencia.
+    cli.get("/ia-datos", async (req) => {
+      const { clienteId } = ctx(req);
+      return conPlataforma(async (c) => ({ datos: await datosIADe(c, clienteId), ejemplos: await ejemplosIADe(c, clienteId) }));
+    });
+    cli.put("/ia-datos", async (req) => {
+      const { clienteId } = ctx(req);
+      const b = req.body as { datos?: DatoIA[]; ejemplos?: EjemploIA[] };
+      await conPlataforma(async (c) => {
+        if (Array.isArray(b?.datos)) await fijarDatosIA(c, clienteId, b.datos);
+        if (Array.isArray(b?.ejemplos)) await fijarEjemplosIA(c, clienteId, b.ejemplos);
+      });
+      return conPlataforma(async (c) => ({ ok: true, datos: await datosIADe(c, clienteId), ejemplos: await ejemplosIADe(c, clienteId) }));
     });
   }, { prefix: "/cliente" });
 

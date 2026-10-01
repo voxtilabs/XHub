@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi, nuevaClave, urlSubida, urlDescarga, almacenConfigurado } from "@xhub/core";
 import { conCliente, conPlataforma, emitir } from "@xhub/db";
-import { permisosDe, CATALOGO_PERMISOS, listarUsuariosCliente, buscarPersonas, fichaDePersona, modeloIADe, contextoIADe,
+import { permisosDe, CATALOGO_PERMISOS, listarUsuariosCliente, buscarPersonas, fichaDePersona, modeloIADe, contextoIACompleto,
   crearRegla, activarRegla, aplicarReglas, aQuienAfectaria, listarReglas, type EjecutorAccion,
   listarEntregas, reintentarEntrega,
   crearLlave, listarLlaves, actualizarScopesLlave, entitlementsDe, cuotaDe, CATALOGO_SCOPES } from "@xhub/modulo-nucleo";
@@ -144,7 +144,7 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
     r.get("/tickets/:id/sugerencia", async (req) => {
       const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
       const { id } = req.params as { id: string };
-      const [modeloS, ctxIA_S] = await conPlataforma(async (c) => [await modeloIADe(c, ctx.clienteId), await contextoIADe(c, ctx.clienteId)] as const);
+      const [modeloS, ctxIA_S] = await conPlataforma(async (c) => [await modeloIADe(c, ctx.clienteId), await contextoIACompleto(c, ctx.clienteId, "respuesta")] as const);
       const sugerencia = await conCliente(ctx.clienteId, (c) => T.sugerirRespuesta(c, id, modeloS, ctxIA_S));
       return { sugerencia };
     });
@@ -195,7 +195,7 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
     r.post("/tickets/:id/resumir", async (req) => {
       const ctx = await guard(req); exigir(ctx, "bandeja.gestionar");
       const { id } = req.params as { id: string };
-      const [modeloR, ctxIA_R] = await conPlataforma(async (c) => [await modeloIADe(c, ctx.clienteId), await contextoIADe(c, ctx.clienteId)] as const);
+      const [modeloR, ctxIA_R] = await conPlataforma(async (c) => [await modeloIADe(c, ctx.clienteId), await contextoIACompleto(c, ctx.clienteId, "resumen")] as const);
       const resumen = await conCliente(ctx.clienteId, (c) => T.resumirConversacion(c, id, undefined, modeloR, ctxIA_R));
       return { resumen };
     });
