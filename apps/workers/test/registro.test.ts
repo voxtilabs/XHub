@@ -9,7 +9,9 @@ test("el registro lista los consumidores del outbox, con tipos e ids estables", 
   expect(tipos).toContain("conversacion.terminada");
   // cada entrada trae un manejador
   expect(reg.every((r) => typeof r.manejar === "function")).toBe(true);
-  // ids de consumidor únicos (la entrega única depende de que no colisionen)
-  const ids = reg.map((r) => r.consumidor);
-  expect(new Set(ids).size).toBe(ids.length);
+  // La entrega única depende de que no colisione el par (tipo, consumidor): un mismo
+  // consumidor (p.ej. nucleo:webhooks-salientes) puede atender VARIOS tipos a propósito;
+  // lo que no puede haber es dos manejadores para el MISMO tipo+consumidor.
+  const pares = reg.map((r) => `${r.tipo}|${r.consumidor}`);
+  expect(new Set(pares).size).toBe(pares.length);
 });

@@ -34,5 +34,5 @@ test("/docs sirve la página de documentación", async () => {
   const r = await app.inject({ method: "GET", url: "/docs" });
   expect(r.statusCode).toBe(200);
   expect(r.headers["content-type"]).toContain("text/html");
-  expect(r.body).toContain("/openapi.json");
+  expect(r.body).toContain("openapi.json"); // data-url RELATIVO (intencional, ver app.ts)
 });
