@@ -22,6 +22,7 @@ export function useYo() {
       .then((y) => { if (vivo) setYo(y); })
       .catch(() => { if (vivo) setYo(null); })
       .finally(() => { if (vivo) setCargando(false); });
+    return () => { vivo = false; };
   }, []);
   // Acceso total para plataforma y admin de cliente; el agente, por su lista de permisos.
   const puede = (p: string) => !!yo && (yo.esAdmin || yo.rol === "plataforma" || yo.permisos.includes(p));

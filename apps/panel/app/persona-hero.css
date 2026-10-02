@@ -1,0 +1,70 @@
+/* The contact header is decorative; the existing search and profile flow remain below. */
+main:has(> .xhub-shell) .crm-person-page>.crm-person-hero {
+  position:relative; isolation:isolate; min-height:386px; padding:90px 42px 34px;
+  justify-content:center; overflow:hidden; border-bottom:1px solid #263547;
+  background-color:#0b1420;
+  background-image:linear-gradient(90deg,#0a1320d9 0%,#0a132083 32%,#0a132000 59%),url('/voxia/xhub-personas-hero-champagne.webp');
+  background-size:cover; background-position:center;
+}
+main:has(> .xhub-shell) .crm-person-hero::after {
+  content:""; position:absolute; pointer-events:none; bottom:0; left:42px; width:106px; height:2px;
+  background:linear-gradient(90deg,#cebc89,#cebc8900);
+}
+main:has(> .xhub-shell) .crm-person-hero>.crm-person-hero-copy { width:52%; max-width:530px; position:relative; z-index:1; }
+main:has(> .xhub-shell) .crm-person-hero .xhub-eyebrow {
+  display:flex; align-items:center; gap:10px; margin-bottom:14px;
+  color:#bdcddd; font:500 10px/1.5 Inter,sans-serif; letter-spacing:2.6px; text-transform:uppercase;
+}
+.crm-person-hero .xhub-eyebrow>span { width:21px; height:1px; flex:none; background:#cebc89; }
+main:has(> .xhub-shell) .crm-person-hero h1 {
+  font:600 clamp(48px,4.8vw,72px)/1.04 Outfit,Inter,sans-serif; letter-spacing:-2.4px;
+  color:#f5f8fc; text-shadow:0 2px 20px #02070f28;
+}
+main:has(> .xhub-shell) .crm-person-hero p {
+  margin-top:16px; max-width:460px; color:#c2d0df; font:400 20px/1.5 Inter,sans-serif; letter-spacing:-.35px;
+}
+main:has(> .xhub-shell) .crm-person-hero p>span { color:#eee4c7; }
+.crm-person-hero-features { display:flex; align-items:center; flex-wrap:wrap; gap:12px 20px; margin-top:27px; }
+.crm-person-hero-features>span { display:inline-flex; align-items:center; gap:8px; font:400 11px/1.5 Inter,sans-serif; color:#d0dce9; }
+.crm-person-hero-features>span+span { border-left:1px solid #4d607268; padding-left:20px; }
+.crm-person-hero-features .ph { font-size:19px; color:#e3d5b1; }
+
+@media(max-width:1100px) {
+  main:has(> .xhub-shell) .crm-person-page>.crm-person-hero { padding-inline:30px; min-height:370px; background-position:57% center; }
+  main:has(> .xhub-shell) .crm-person-hero>.crm-person-hero-copy { width:55%; }
+  main:has(> .xhub-shell) .crm-person-hero h1 { font-size:58px; }
+  main:has(> .xhub-shell) .crm-person-hero p { font-size:18px; }
+  main:has(> .xhub-shell) .crm-person-hero::after { left:30px; }
+  .crm-person-hero-features { column-gap:12px; }
+  .crm-person-hero-features>span+span { padding-left:12px; }
+}
+@media(max-width:800px) {
+  main:has(> .xhub-shell) .crm-person-page>.crm-person-hero { min-height:354px; padding:86px 26px 30px; background-position:61% center; }
+  main:has(> .xhub-shell) .crm-person-hero>.crm-person-hero-copy { width:60%; }
+  main:has(> .xhub-shell) .crm-person-hero h1 { font-size:53px; }
+  main:has(> .xhub-shell) .crm-person-hero p { font-size:17px; }
+  main:has(> .xhub-shell) .crm-person-hero .xhub-eyebrow { font-size:9px; letter-spacing:1.8px; }
+  .crm-person-hero-features { gap:10px 14px; margin-top:23px; }
+  .crm-person-hero-features>span { font-size:10px; }
+  .crm-person-hero-features>span+span { padding-left:14px; }
+}
+@media(max-width:620px) {
+  main:has(> .xhub-shell) .crm-person-page>.crm-person-hero {
+    min-height:348px; padding:86px 24px 30px;
+    background-image:linear-gradient(90deg,#0a1320f2,#0a1320c7 56%,#0a132078),url('/voxia/xhub-personas-hero-champagne.webp');
+    background-position:center,64% center;
+  }
+  main:has(> .xhub-shell) .crm-person-hero>.crm-person-hero-copy { width:100%; }
+  main:has(> .xhub-shell) .crm-person-hero .xhub-eyebrow { letter-spacing:1.7px; margin-bottom:13px; }
+  main:has(> .xhub-shell) .crm-person-hero h1 { font-size:48px; letter-spacing:-1.7px; }
+  main:has(> .xhub-shell) .crm-person-hero p { font-size:17px; line-height:1.5; margin-top:13px; }
+  main:has(> .xhub-shell) .crm-person-hero::after { left:24px; }
+  .crm-person-hero-features { gap:10px 14px; margin-top:24px; }
+  .crm-person-hero-features .ph { font-size:17px; }
+}
+@media(max-width:360px) {
+  main:has(> .xhub-shell) .crm-person-page>.crm-person-hero { padding-inline:20px; }
+  main:has(> .xhub-shell) .crm-person-hero h1 { font-size:45px; }
+  .crm-person-hero-features { gap:10px; }
+  .crm-person-hero-features>span+span { padding-left:10px; }
+}

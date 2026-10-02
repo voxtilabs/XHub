@@ -1,0 +1,192 @@
+/* Daylight versions of the cinematic artwork. Layout, depth and timing stay shared. */
+html[data-tema="claro"] [data-hero="people"],
+html[data-tema="claro"] .crm-person-hero { --xhub-hero-art:url('/voxia/xhub-personas-hero-light-v1.webp'); }
+html[data-tema="claro"] [data-hero="attention"] { --xhub-hero-art:url('/voxia/xhub-attention-hero-light-v1.webp'); }
+html[data-tema="claro"] [data-hero="commerce"] { --xhub-hero-art:url('/voxia/xhub-commerce-hero-light-v1.webp'); }
+html[data-tema="claro"] [data-hero="analytics"] { --xhub-hero-art:url('/voxia/xhub-analytics-hero-light-v1.webp'); }
+html[data-tema="claro"] [data-hero="integration"] { --xhub-hero-art:url('/voxia/xhub-integration-hero-light-v1.webp'); }
+html[data-tema="claro"] [data-hero="intelligence"] { --xhub-hero-art:url('/voxia/xhub-intelligence-hero-light-v1.webp'); }
+html[data-tema="claro"] [data-hero="security"] { --xhub-hero-art:url('/voxia/xhub-security-hero-light-v1.webp'); }
+
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page > :is(.xhub-page-heading[data-hero],.crm-person-hero) {
+  --muted-foreground:213 17% 39%;
+  --xhub-divider-line:linear-gradient(90deg,transparent,#b29a6033 12%,#9b824d80 38%,#b29a6059 62%,#7fadb533 86%,transparent);
+  --xhub-divider-halo:radial-gradient(ellipse at 50% 100%,#b39b6426,transparent 72%);
+  --xhub-divider-beam:linear-gradient(90deg,transparent,#b29a601f 18%,#9d8042a6 48%,#8a703f 62%,#ba9e6459 76%,transparent);
+  background-color:#f5f4ee;
+  background-image:linear-gradient(90deg,#f7f6f0e6 0%,#f7f6f066 32%,#f7f6f000 59%),var(--xhub-hero-art);
+  color:#1d2b3a;
+  border-bottom-color:transparent;
+}
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page > .xhub-page-heading[data-hero-size="detail"] {
+  background-image:linear-gradient(90deg,#f7f6f0f5 0%,#f7f6f0d9 45%,#f7f6f040 100%),var(--xhub-hero-art);
+}
+html[data-tema="claro"] main:has(> .xhub-shell) :is(.xhub-page-heading[data-hero],.crm-person-hero) h1 {
+  color:#1d2b3a;
+  text-shadow:none;
+}
+html[data-tema="claro"] main:has(> .xhub-shell) :is(.xhub-page-heading[data-hero],.crm-person-hero) p {
+  color:#526273;
+}
+html[data-tema="claro"] main:has(> .xhub-shell) .crm-person-hero p > span { color:#665635; }
+html[data-tema="claro"] main:has(> .xhub-shell) :is(.xhub-page-heading[data-hero],.crm-person-hero) .xhub-eyebrow {
+  color:#6e5d39;
+}
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading[data-hero] div.xhub-eyebrow::before,
+html[data-tema="claro"] .crm-person-hero .xhub-eyebrow > span { background:#a68b52; }
+html[data-tema="claro"] :is(.xhub-hero-features,.crm-person-hero-features) > span { color:#435466; }
+html[data-tema="claro"] :is(.xhub-hero-features,.crm-person-hero-features) > span + span { border-left-color:#81909d4d; }
+html[data-tema="claro"] :is(.xhub-hero-features,.crm-person-hero-features) .ph { color:#8a703d; }
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading[data-hero] :is(.xhub-ticket-back,.crm-back-link,a.text-muted-foreground) {
+  color:#526273;
+}
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading[data-hero] :is(.xhub-ticket-back,.crm-back-link,a.text-muted-foreground):hover {
+  color:#765f31;
+}
+html[data-tema="claro"] .xhub-page-heading[data-hero] :is(.xhub-ticket-live-status,.xhub-ticket-heading-meta,.xhub-ticket-identity),
+html[data-tema="claro"] .xhub-ticket-detail-heading .xhub-ticket-status-line > span:first-child { color:#526273; }
+html[data-tema="claro"] .xhub-page-heading[data-hero] .xhub-ticket-contact { color:#24374a; }
+html[data-tema="claro"] .xhub-page-heading[data-hero] .xhub-ticket-heading-meta > span {
+  background:#e9e8e1;
+  color:#435466;
+}
+html[data-tema="claro"] .xhub-page-heading[data-hero] .xhub-ticket-live-status > span { color:hsl(var(--critico)); }
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading[data-hero] > div:not(:first-child):not(.xhub-segmented-control) {
+  --exito:158 78% 27%;
+  --critico:347 68% 39%;
+}
+
+/* Actions read as part of the ivory header instead of dark cards laid over it. */
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading .voxia-button-primary {
+  background:linear-gradient(130deg,#e8d9b1,#cebc89 85%);
+  border-color:#baa371;
+  color:#1d2b3a;
+  box-shadow:0 4px 14px #846d351a,inset 0 1px #fff8e3;
+}
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading .voxia-button-primary:hover {
+  background:linear-gradient(130deg,#eee2c3,#d8c99f);
+  box-shadow:0 6px 18px #846d3524,inset 0 1px #fffaf0;
+}
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading .voxia-button-surface {
+  color:#304254;
+  background:#ffffffc7;
+  border-color:#bbc5cd;
+  box-shadow:0 2px 8px #2e3b4808,inset 0 1px #fff;
+}
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading .voxia-button-surface:hover {
+  color:#705b32;
+  background:#fffaf0;
+  border-color:#ad9663;
+}
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading .xhub-segmented-control {
+  color:#415365;
+  background:#ffffffa6;
+  border-color:#c9d0d3;
+  box-shadow:inset 0 1px #fff;
+}
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading .xhub-segmented-control button { color:#526273; }
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading .xhub-segmented-control button.bg-secondary {
+  color:#5e4c28;
+  background:#e8dcb9;
+  box-shadow:0 1px 4px #78613414;
+}
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading :is(a,button):focus-visible {
+  outline:2px solid #8a703d;
+  outline-offset:3px;
+}
+
+/* The team artwork stays on its own masked plane and keeps its existing drift. */
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-team-page > .xhub-page-heading[data-hero] {
+  background-image:linear-gradient(110deg,#f7f6f0,#f2f5f5);
+}
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-team-page > .xhub-page-heading[data-hero]::before {
+  background-image:linear-gradient(90deg,#f7f6f0db,#f7f6f059 36%,transparent 65%),var(--xhub-hero-art);
+}
+@media(prefers-reduced-motion:no-preference) {
+  html[data-tema="claro"][data-xhub-motion="active"] :is(.xhub-page-heading[data-hero],.crm-person-hero)::after {
+    background-image:radial-gradient(280px circle at var(--xhub-pointer-x,78%) var(--xhub-pointer-y,58%),#b29a601a,transparent 75%),linear-gradient(110deg,transparent 35%,#7dafb900 43%,#7dafb91f 48%,#c0a97426 52%,transparent 65%),var(--xhub-divider-beam),var(--xhub-divider-halo),var(--xhub-divider-line);
+  }
+}
+
+/* Public privacy header shares the same light artwork without changing the document. */
+html[data-tema="claro"] .xhub-public-hero {
+  --muted-foreground:213 17% 39%;
+  color:#1d2b3a;
+  background-color:#f5f4ee;
+  background-image:linear-gradient(90deg,#f7f6f0f0,#f7f6f0bf 70%,#f7f6f073),var(--xhub-hero-art);
+  border-color:#d8d9d1;
+}
+html[data-tema="claro"] .xhub-public-hero > h1 { color:#1d2b3a; text-shadow:none; }
+html[data-tema="claro"] .xhub-public-hero::before {
+  background-image:linear-gradient(110deg,transparent 30%,#7dafb900 42%,#7dafb91f 47%,#c0a97426 50%,#b29a6010 55%,transparent 65%);
+}
+html[data-tema="claro"] .xhub-public-hero::after { background:linear-gradient(90deg,#a58a50,transparent); }
+
+/* The navigation remains navy; only controls sitting on the light page change. */
+html[data-tema="claro"] main:has(> .xhub-shell):has(.xhub-page-heading) .xhub-topbar { color:#26384b; }
+html[data-tema="claro"] main:has(> .xhub-shell):has(.xhub-page-heading) .xhub-topbar :is(.xhub-icon-button,.xhub-api-link) {
+  color:#415569;
+  border-color:transparent;
+  background:transparent;
+}
+html[data-tema="claro"] main:has(> .xhub-shell):has(.xhub-page-heading) .xhub-topbar :is(.xhub-icon-button,.xhub-api-link):hover {
+  color:#725c30;
+  background:#a48b5812;
+  border-color:#aa966736;
+}
+html[data-tema="claro"] .xhub-topbar :is(.xhub-icon-button,.xhub-api-link,.xhub-session-menu > summary,.xhub-session-signout):focus-visible {
+  outline:2px solid #8a703d;
+  outline-offset:3px;
+}
+html[data-tema="claro"] .xhub-topbar .xhub-session-menu::before {
+  background:linear-gradient(180deg,transparent,#70839540,transparent);
+}
+html[data-tema="claro"] .xhub-topbar .xhub-session-menu > summary,
+html[data-tema="claro"] .xhub-topbar .xhub-session-menu .xhub-user-label > span { color:#26384b; }
+html[data-tema="claro"] main:has(> .xhub-shell):has(.xhub-page-heading) .xhub-session-menu .xhub-user-label > small { color:#586c7e; }
+html[data-tema="claro"] .xhub-topbar .xhub-session-menu > summary > .ph { color:#5d7182; }
+html[data-tema="claro"] .xhub-topbar .xhub-session-menu[open] > summary > .ph { color:#786037; }
+html[data-tema="claro"] .xhub-topbar .xhub-session-menu .xhub-avatar {
+  color:var(--xhub-avatar-foreground);
+  border-color:var(--xhub-avatar-border);
+  background:var(--xhub-avatar-background);
+  box-shadow:var(--xhub-avatar-shadow);
+}
+html[data-tema="claro"] .xhub-topbar .xhub-session-menu > summary:hover .xhub-avatar,
+html[data-tema="claro"] .xhub-topbar .xhub-session-menu[open] > summary .xhub-avatar {
+  border-color:#a18a59;
+  box-shadow:inset 0 1px #fff,0 0 0 3px #baa36d0d;
+}
+html[data-tema="claro"] .xhub-topbar .xhub-session-menu > .xhub-session-popover {
+  color:#26384b;
+  border-color:#cbd1d3;
+  background:radial-gradient(ellipse at 100% 0,#d2bd8414,transparent 65%),linear-gradient(140deg,#fffefbfa,#f7f8f5fc 70%);
+  box-shadow:0 20px 55px #26374626,inset 0 1px #fff;
+}
+html[data-tema="claro"] .xhub-topbar .xhub-session-menu > .xhub-session-popover::before {
+  background:linear-gradient(90deg,transparent,#b09960,transparent);
+}
+html[data-tema="claro"] .xhub-topbar .xhub-session-heading > span:first-child { color:#5f7282; }
+html[data-tema="claro"] .xhub-topbar .xhub-session-role { color:#78623a; }
+html[data-tema="claro"] .xhub-topbar .xhub-session-identity { border-bottom-color:#8b9aa52e; }
+html[data-tema="claro"] .xhub-topbar .xhub-session-identity small { color:#586c7e; }
+html[data-tema="claro"] .xhub-topbar .xhub-session-menu .xhub-session-signout { color:#40566a; }
+html[data-tema="claro"] .xhub-topbar .xhub-session-menu .xhub-session-signout:hover {
+  color:#725c30;
+  background:#b9a16a12;
+  border-color:#b9a16a38;
+}
+
+@media(max-width:800px) {
+  html[data-tema="claro"] main:has(> .xhub-shell) .xhub-team-page > .xhub-page-heading[data-hero]::before {
+    background-image:linear-gradient(90deg,#f7f6f0ed,#f7f6f0c7 56%,#f7f6f080),var(--xhub-hero-art);
+  }
+}
+@media(max-width:620px) {
+  html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page > :is(.xhub-page-heading[data-hero],.crm-person-hero) {
+    background-image:linear-gradient(90deg,#f7f6f0f5,#f7f6f0e8 56%,#f7f6f0a8),var(--xhub-hero-art);
+  }
+  html[data-tema="claro"] main:has(> .xhub-shell) .xhub-team-page > .xhub-page-heading[data-hero] {
+    background-image:linear-gradient(110deg,#f7f6f0,#f2f5f5);
+  }
+}

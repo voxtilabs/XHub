@@ -1,12 +1,15 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AppShell } from "@/components/app-shell";
+import { Icon } from "@/components/icon";
+import { usePrompt } from "@/components/prompt-dialog";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import { getOportunidades, crearOportunidad, moverEtapa, cerrarOportunidad, getOrganizaciones, getPipelines, crearPipeline, agregarEtapa, borrarEtapa, type Embudo, type Etapa, type Oportunidad, type Organizacion, type Pipeline } from "@/lib/crm";
+import { HeroFeatures } from "@/components/hero-features";
 
 const CANALES = ["email", "telefono", "webchat", "instagram", "messenger"];
 const MONEDAS = ["CLP", "UF", "USD"];
@@ -22,6 +25,7 @@ export default function Oportunidades() {
 }
 
 function Contenido() {
+  const { ask, dialog } = usePrompt();
   const [data, setData] = useState<Embudo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -30,17 +34,34 @@ function Contenido() {
   const [orgs, setOrgs] = useState<Organizacion[]>([]);
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [pipeSel, setPipeSel] = useState<string>("");
+  const pipelineInicial = useRef<string | null>(null);
+  const solicitudCarga = useRef(0);
   const [config, setConfig] = useState(false);
   const [filtroEtq, setFiltroEtq] = useState<string | null>(null);
   const [drag, setDrag] = useState<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [scrollDisponible, setScrollDisponible] = useState({ anterior: false, siguiente: false });
 
   const cargar = useCallback(async () => {
+    const solicitud = ++solicitudCarga.current;
     setCargando(true); setError(null);
-    try { const d = await getOportunidades(pipeSel || undefined); setData(d); if (!pipeSel) setPipeSel(d.pipelineId); } catch (e) { setError((e as Error).message); } finally { setCargando(false); }
+    try {
+      const d = await getOportunidades(pipeSel || undefined);
+      if (solicitud !== solicitudCarga.current) return;
+      setData(d);
+      if (!pipeSel) { pipelineInicial.current = d.pipelineId; setPipeSel(d.pipelineId); }
+    } catch (e) { if (solicitud === solicitudCarga.current) setError((e as Error).message); }
+    finally { if (solicitud === solicitudCarga.current) setCargando(false); }
   }, [pipeSel]);
-  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => {
+    const resuelto = pipelineInicial.current;
+    pipelineInicial.current = null;
+    // Synchronizing the initial selection does not need to fetch that pipeline again.
+    if (pipeSel && pipeSel === resuelto) return;
+    cargar();
+  }, [cargar, pipeSel]);
   useEffect(() => { getOrganizaciones().then((r) => setOrgs(r.datos)).catch(() => {}); }, []);
   useEffect(() => { getPipelines().then((r) => setPipelines(r.datos)).catch(() => {}); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 2500); return () => clearTimeout(t); }, [toast]);
@@ -50,6 +71,29 @@ function Contenido() {
   const todasEtq = Array.from(new Set(ops.flatMap((o) => o.etiquetas ?? [])));
   const opsVis = filtroEtq ? ops.filter((o) => (o.etiquetas ?? []).includes(filtroEtq)) : ops;
   const puede = data?.puede.gestionar ?? false;
+
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+    const actualizar = () => {
+      const anterior = board.scrollLeft > 2;
+      const siguiente = board.scrollLeft + board.clientWidth < board.scrollWidth - 2;
+      setScrollDisponible((actual) => actual.anterior === anterior && actual.siguiente === siguiente ? actual : { anterior, siguiente });
+    };
+    const observer = new ResizeObserver(actualizar);
+    observer.observe(board);
+    if (board.firstElementChild) observer.observe(board.firstElementChild);
+    board.addEventListener("scroll", actualizar, { passive: true });
+    actualizar();
+    return () => { observer.disconnect(); board.removeEventListener("scroll", actualizar); };
+  }, [etapas.length]);
+
+  function desplazarEtapas(direccion: number) {
+    const board = boardRef.current;
+    if (!board) return;
+    const columna = board.querySelector<HTMLElement>(".crm-board-column");
+    board.scrollBy({ left: direccion * ((columna?.offsetWidth ?? 280) + 16), behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
 
   async function crear() {
     if (f.identidad.trim().length < 3 || f.titulo.trim().length < 2) return;
@@ -64,60 +108,72 @@ function Contenido() {
     try { await moverEtapa(id, etapaId); } catch (e) { setError((e as Error).message); cargar(); }
   }
   async function nuevoPipeline() {
-    const n = window.prompt("Nombre del nuevo pipeline:"); if (!n?.trim()) return;
+    const n = await ask("Nombre del nuevo pipeline:", "", { title: "Nuevo pipeline", icon: "kanban" }); if (!n?.trim()) return;
     try { const p = await crearPipeline(n.trim()); setPipelines((await getPipelines()).datos); setPipeSel(p.id); } catch (e) { setError((e as Error).message); }
   }
   async function nuevaEtapa() {
-    if (!data) return; const n = window.prompt("Nombre de la etapa:"); if (!n?.trim()) return;
-    const prob = Math.max(0, Math.min(100, Number(window.prompt("Probabilidad % (0-100):", "50")) || 50));
+    if (!data) return; const n = await ask("Nombre de la etapa:", "", { title: "Nueva etapa", icon: "stack" }); if (!n?.trim()) return;
+    const prob = Math.max(0, Math.min(100, Number(await ask("Probabilidad % (0-100):", "50", { title: "Probabilidad de cierre", icon: "chart-line", cancelLabel: "Usar 50%" })) || 50));
     try { await agregarEtapa(data.pipelineId, n.trim(), prob); await cargar(); setPipelines((await getPipelines()).datos); } catch (e) { setError((e as Error).message); }
   }
   async function quitarEtapa(eid: string) { try { await borrarEtapa(eid); await cargar(); } catch (e) { setError((e as Error).message); } }
   async function cerrar(o: Oportunidad, estado: "ganada" | "perdida") {
     let motivo: string | undefined;
-    if (estado === "perdida") { motivo = window.prompt("Motivo de pérdida (opcional):") ?? undefined; }
+    if (estado === "perdida") { motivo = await ask("Motivo de pérdida (opcional):", "", { title: "Cerrar como perdida", description: "Puedes registrar el motivo o continuar sin uno.", icon: "flag", confirmLabel: "Cerrar oportunidad", cancelLabel: "Continuar sin motivo" }) ?? undefined; }
     try { await cerrarOportunidad(o.id, estado, motivo); setToast(`Oportunidad ${estado}`); await cargar(); } catch (e) { setError((e as Error).message); }
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-7">
-      <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+    <div className="xhub-page xhub-crm-page crm-opportunities-page">
+      <div className="xhub-page-heading" data-hero="commerce" data-hero-size="long">
         <div>
+          <div className="xhub-eyebrow">TU PRÓXIMA GRAN CONVERSACIÓN</div>
           <h1 className="text-2xl font-semibold tracking-tight">Oportunidades</h1>
-          <div className="text-muted-foreground text-sm mt-0.5">
-            {cargando ? "cargando…" : data && <>{data.resumen.abiertas} abiertas · <span className="text-[hsl(var(--senal))]">{money(data.resumen.valorAbierto, "CLP")}</span> en el embudo · {data.resumen.ganadas} ganadas ({money(data.resumen.valorGanado, "CLP")})</>}
+          <p>Cada relación, un paso más cerca.</p>
+
+        <HeroFeatures variant="oportunidades" />
           </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        {puede && <Button size="sm" onClick={() => setNuevo((v) => !v)}><Icon name={nuevo ? "x" : "plus"} weight="regular" />{nuevo ? "Cerrar" : "Nueva oportunidad"}</Button>}
+      </div>
+
+      <div className="crm-pipeline-summary">
+        <div><span className="crm-summary-icon"><Icon name="kanban" weight="duotone" /></span><div><strong>{data?.resumen.abiertas ?? "—"}</strong><span>Oportunidades abiertas</span></div></div>
+        <div><span className="crm-summary-icon"><Icon name="chart-line" weight="duotone" /></span><div><strong>{data ? money(data.resumen.valorAbierto, "CLP") : "—"}</strong><span>Valor en el embudo</span></div></div>
+        <div><span className="crm-summary-icon"><Icon name="check-circle" weight="duotone" /></span><div><strong>{data?.resumen.ganadas ?? "—"}</strong><span>{data ? `${money(data.resumen.valorGanado, "CLP")} ganados` : "Oportunidades ganadas"}</span></div></div>
+      </div>
+
+      <section className="crm-pipeline-workspace" aria-labelledby="crm-pipeline-title">
+      <div className="crm-pipeline-toolbar">
+        <div className="crm-pipeline-intro"><div className="crm-section-title"><Icon name="kanban" /><h2 id="crm-pipeline-title">Embudo comercial</h2></div><p>{cargando ? "Cargando tu embudo…" : `${opsVis.length} ${opsVis.length === 1 ? "oportunidad" : "oportunidades"} en esta vista · ${etapas.length} etapas`}</p></div>
+        <div className="crm-toolbar-actions">
           {pipelines.length > 0 && (
-            <select value={pipeSel} onChange={(e) => setPipeSel(e.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-[13px]">
+            <select aria-label="Pipeline" value={pipeSel} onChange={(e) => setPipeSel(e.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-[13px]">
               {pipelines.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
             </select>
           )}
-          {puede && <Button size="sm" variant="secondary" onClick={nuevoPipeline}>+ Pipeline</Button>}
-          {puede && <Button size="sm" variant="secondary" onClick={() => setConfig((v) => !v)}>Configurar</Button>}
-          {puede && <Button size="sm" onClick={() => setNuevo((v) => !v)}>{nuevo ? "Cerrar" : "+ Nueva oportunidad"}</Button>}
+          {puede && <Button size="sm" variant="secondary" onClick={nuevoPipeline}><Icon name="plus" weight="regular" />Nuevo pipeline</Button>}
+          {puede && <Button size="sm" variant="secondary" aria-expanded={config} aria-controls="crm-pipeline-config" onClick={() => setConfig((v) => !v)}><Icon name="sliders-horizontal" weight="regular" />Configurar</Button>}
         </div>
       </div>
 
-      {error && <div className="mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}>▲ {error}</div>}
+      {error && <div role="alert" className="crm-error mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}><Icon name="warning-circle" weight="regular" /> {error}</div>}
 
       {config && puede && data && (
-        <Card className="mb-4"><CardContent className="pt-4">
+        <Card id="crm-pipeline-config" className="crm-config-card mb-4"><CardContent className="pt-4">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Etapas del pipeline</span>
-            <Button size="sm" variant="secondary" onClick={nuevaEtapa}>+ Etapa</Button>
+            <Button size="sm" variant="secondary" onClick={nuevaEtapa}><Icon name="plus" weight="regular" />Etapa</Button>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {data.etapas.map((e) => (
-              <span key={e.id} className="inline-flex items-center gap-1.5 rounded-pill bg-secondary px-2.5 py-1 text-[12px]">{e.nombre} <span className="text-[10px] text-muted-foreground">{e.probabilidad}%</span><button onClick={() => quitarEtapa(e.id)} className="text-muted-foreground hover:text-[hsl(var(--critico))]" aria-label={`borrar ${e.nombre}`}>×</button></span>
+              <span key={e.id} className="inline-flex items-center gap-1.5 rounded-pill bg-secondary px-2.5 py-1 text-[12px]">{e.nombre} <span className="text-[10px] text-muted-foreground">{e.probabilidad}%</span><button onClick={() => quitarEtapa(e.id)} className="text-muted-foreground hover:text-[hsl(var(--critico))]" aria-label={`borrar ${e.nombre}`}><Icon name="x" /></button></span>
             ))}
           </div>
         </CardContent></Card>
       )}
 
       {nuevo && puede && (
-        <Card className="mb-5"><CardContent className="pt-5 flex flex-col sm:flex-row gap-2 sm:items-end flex-wrap">
+        <Card className="crm-form-card mb-5"><CardContent className="crm-create-form pt-5">
           <label className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Canal</span>
             <select value={f.canal} onChange={(e) => setF({ ...f, canal: e.target.value })} className="mt-1 h-10 rounded-md border border-border bg-background px-2 text-sm capitalize">{CANALES.map((c) => <option key={c} value={c}>{c}</option>)}</select></label>
           <label className="flex flex-col flex-1 min-w-[150px]"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Persona (identidad)</span><Input value={f.identidad} onChange={(e) => setF({ ...f, identidad: e.target.value })} placeholder="juan@empresa.cl" className="mt-1" /></label>
@@ -135,50 +191,58 @@ function Contenido() {
       )}
 
       {todasEtq.length > 0 && (
-        <div className="flex gap-1.5 flex-wrap mb-3 items-center">
+        <div className="crm-label-filters flex gap-1.5 flex-wrap mb-3 items-center">
           <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mr-1">Etiquetas</span>
           {todasEtq.map((e) => (
-            <button key={e} onClick={() => setFiltroEtq(filtroEtq === e ? null : e)} className={"px-2.5 h-7 rounded-pill text-[12px] border " + (filtroEtq === e ? "bg-[hsl(var(--senal)/0.15)] border-[hsl(var(--senal)/0.5)] text-foreground" : "border-border text-muted-foreground hover:text-foreground")}>{e}</button>
+            <button key={e} aria-pressed={filtroEtq === e} onClick={() => setFiltroEtq(filtroEtq === e ? null : e)} className={"px-2.5 h-7 rounded-pill text-[12px] border " + (filtroEtq === e ? "bg-[hsl(var(--senal)/0.15)] border-[hsl(var(--senal)/0.5)] text-foreground" : "border-border text-muted-foreground hover:text-foreground")}>{e}</button>
           ))}
         </div>
       )}
-      <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
-        <div className="flex gap-3 items-start w-max">
-          {etapas.map((etapa) => {
+      {cargando && <div className="crm-loading" role="status"><Icon name="spinner-gap" />Cargando oportunidades…</div>}
+      <div className="crm-board-navigation">
+        <div className="crm-board-guidance"><Icon name="stack" /><span>De la primera conversación al cierre</span>{puede && <span className="crm-board-drag-hint"><Icon name="arrows-out-cardinal" />Arrastra para cambiar de etapa</span>}</div>
+        {(scrollDisponible.anterior || scrollDisponible.siguiente) && <div className="crm-board-nav-buttons"><button type="button" aria-label="Ver etapas anteriores" aria-controls="crm-opportunities-board" disabled={!scrollDisponible.anterior} onClick={() => desplazarEtapas(-1)}><Icon name="arrow-left" /></button><button type="button" aria-label="Ver siguientes etapas" aria-controls="crm-opportunities-board" disabled={!scrollDisponible.siguiente} onClick={() => desplazarEtapas(1)}><Icon name="arrow-right" /></button></div>}
+      </div>
+      <div ref={boardRef} id="crm-opportunities-board" className="crm-board-scroll" role="region" aria-label="Etapas del embudo" tabIndex={0}>
+        <div className="crm-board">
+          {etapas.map((etapa, indice) => {
             const items = opsVis.filter((o) => o.etapa_id === etapa.id);
-            const valor = items.reduce((a, o) => a + o.valor, 0);
+            const valores = Array.from(items.reduce((totales, o) => totales.set(o.moneda, (totales.get(o.moneda) ?? 0) + o.valor), new Map<string, number>()));
             const activo = drag !== null && sobre === etapa.id;
             return (
-              <div key={etapa.id}
+              <div key={etapa.id} role="group" data-drop-active={activo} data-populated={items.length > 0} aria-label={etapa.nombre}
                 onDragOver={(e) => { if (drag) { e.preventDefault(); setSobre(etapa.id); } }}
                 onDragLeave={() => setSobre((s) => (s === etapa.id ? null : s))}
                 onDrop={(e) => { e.preventDefault(); if (drag) mover(drag, etapa.id); setSobre(null); }}
-                className={"w-[82vw] max-w-[300px] shrink-0 sm:w-[230px] sm:max-w-none flex flex-col rounded-md border min-h-[140px] transition-colors " + (activo ? "border-[hsl(var(--senal)/0.7)] bg-[hsl(var(--senal)/0.08)] " : "border-border bg-card ")}>
-                <div className="flex items-center gap-2 px-3.5 py-3 border-b border-border">
-                  <span className="font-semibold text-[13px]">{etapa.nombre}</span>
-                  <span className="text-[9px] text-muted-foreground rounded-pill bg-secondary px-1.5">{etapa.probabilidad}%</span>
-                  <span className="ml-auto text-[10.5px] text-muted-foreground tabular-nums">{items.length} · {money(valor, "CLP")}</span>
-                </div>
-                <div className="p-2.5 flex flex-col gap-2 flex-1 min-h-[52px]">
+                className="crm-board-column">
+                <header className="crm-board-column-heading">
+                  <div className="crm-lane-title"><h3>{etapa.nombre}</h3><span aria-label={`Etapa ${indice + 1}`}>{String(indice + 1).padStart(2, "0")}</span></div>
+                  <div className="crm-lane-summary"><div className="crm-lane-count"><strong>{items.length}</strong><span>{items.length === 1 ? "oportunidad" : "oportunidades"}</span></div><div className="crm-lane-value"><span>Valor en etapa</span>{valores.length ? valores.map(([moneda, valor]) => <strong key={moneda}>{money(valor, moneda)}</strong>) : <strong>$0</strong>}</div></div>
+                  <div className="crm-lane-probability"><div><span>Probabilidad de la etapa</span><strong>{etapa.probabilidad}%</strong></div><div className="crm-lane-probability-track" aria-hidden="true"><span style={{ width: `${Math.min(100, Math.max(0, etapa.probabilidad))}%` }} /></div></div>
+                </header>
+                <div className="crm-lane-body">
                   {items.map((o) => (
                     <div key={o.id} draggable={puede}
                       onDragStart={() => setDrag(o.id)} onDragEnd={() => { setDrag(null); setSobre(null); }}
-                      className={"rounded-[0.55rem] border border-border bg-secondary/50 p-2.5 " + (puede ? "cursor-grab active:cursor-grabbing hover:-translate-y-px hover:shadow-lg transition " : "") + (drag === o.id ? "opacity-40 " : "")}>
-                      <Link href={`/oportunidades/${o.id}`} className="block font-medium text-[12.5px] leading-snug hover:text-[hsl(var(--senal))]">{o.titulo}</Link>
-                      <div className="text-[11px] text-[hsl(var(--senal))] font-semibold tabular-nums mt-0.5">{money(o.valor, o.moneda)}</div>
-                      {o.org_nombre && <div className="text-[10.5px] text-muted-foreground truncate mt-0.5">🏢 {o.org_nombre}</div>}
-                      {o.persona_email && <div className="text-[10.5px] text-muted-foreground truncate mt-0.5">{o.persona_email}</div>}
-                      {(o.etiquetas ?? []).length > 0 && <div className="flex gap-1 flex-wrap mt-1">{(o.etiquetas ?? []).map((e) => <span key={e} className="rounded-pill bg-secondary px-1.5 text-[9.5px]">{e}</span>)}</div>}
-                      {o.cierre_esperado && <div className="text-[10px] text-muted-foreground mt-0.5">cierre {o.cierre_esperado}</div>}
+                      className={"crm-deal-card " + (drag === o.id ? "opacity-40" : "")}>
+                      <div className="crm-deal-eyebrow"><span>Oportunidad</span>{puede && <Icon name="arrows-out-cardinal" />}</div>
+                      <Link href={`/oportunidades/${o.id}`} draggable={false} className="crm-deal-title"><span>{o.titulo}</span><Icon name="arrow-up-right" /></Link>
+                      <div className="crm-deal-value"><span>Valor del negocio</span><strong>{money(o.valor, o.moneda)}</strong></div>
+                      {(o.org_nombre || o.persona_email || o.cierre_esperado) && <div className="crm-deal-details">
+                        {o.org_nombre && <div><Icon name="building-office" /><span>{o.org_nombre}</span></div>}
+                        {o.persona_email && <div><Icon name="user" /><span>{o.persona_email}</span></div>}
+                        {o.cierre_esperado && <div><Icon name="clock" /><span>Cierre esperado: {o.cierre_esperado}</span></div>}
+                      </div>}
+                      {(o.etiquetas ?? []).length > 0 && <div className="crm-deal-labels">{(o.etiquetas ?? []).map((e) => <span key={e}>{e}</span>)}</div>}
                       {puede && (
-                        <div className="flex gap-1.5 mt-2">
-                          <button onClick={() => cerrar(o, "ganada")} className="text-[10.5px] rounded-pill px-2 py-0.5 font-semibold" style={{ background: "hsl(var(--exito)/0.15)", color: "hsl(var(--exito))" }}>Ganar</button>
-                          <button onClick={() => cerrar(o, "perdida")} className="text-[10.5px] rounded-pill px-2 py-0.5 font-semibold text-muted-foreground hover:text-[hsl(var(--critico))]">Perder</button>
+                        <div className="crm-deal-actions">
+                          <button className="crm-deal-win" onClick={() => cerrar(o, "ganada")}><Icon name="check-circle" />Ganar</button>
+                          <button className="crm-deal-lose" onClick={() => cerrar(o, "perdida")}><Icon name="flag" />Perder</button>
                         </div>
                       )}
                     </div>
                   ))}
-                  {items.length === 0 && <div className="text-[11px] text-muted-foreground/70 font-mono text-center py-2">vacío</div>}
+                  {items.length === 0 && <div className="crm-board-empty"><div className="crm-lane-empty-art" aria-hidden="true"><span className="crm-lane-empty-sheet" /><span className="crm-lane-empty-front"><Icon name="chart-line" /><i /><i /></span></div><strong>{filtroEtq ? "Sin coincidencias" : "Sin oportunidades"}</strong><p>{filtroEtq ? "No hay oportunidades con esta etiqueta en la etapa." : "Las oportunidades de esta etapa aparecerán aquí."}</p></div>}
                 </div>
               </div>
             );
@@ -186,11 +250,13 @@ function Contenido() {
         </div>
       </div>
 
-      <div className="flex gap-2 items-start mt-5 p-3 rounded-md bg-[hsl(var(--senal)/0.08)] border border-border text-[12.5px] text-muted-foreground">
-        <span>▸</span>
-        <span>Embudo estilo <b className="text-[hsl(var(--senal))]">Pipedrive</b>: etapas configurables con probabilidad, deals con moneda y cierre esperado. Cada oportunidad cuelga de la misma persona del núcleo — aparece en su ficha 360 y en sus tickets.</span>
+      <div className="crm-pipeline-footnote">
+        <Icon name="info" weight="regular" />
+        <span>Cada oportunidad mantiene sus actividades y tickets conectados a la misma ficha de persona.</span>
       </div>
+      </section>
 
+      {dialog}
       {toast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-pill border border-border bg-secondary text-sm shadow-2xl"><span className="h-2 w-2 rounded-full" style={{ background: "hsl(var(--exito))" }} /><span>{toast}</span></div>}
     </div>
   );

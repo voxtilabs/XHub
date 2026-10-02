@@ -29,14 +29,14 @@ main:has(> .xhub-shell) { padding-left: 232px; }
 .xhub-sidebar .xhub-brand { font-size: 36px; min-height: 40px; }
 .xhub-brand-caption { display:block; margin-top: 5px; font-size:9px; letter-spacing:3.3px; color:#94a0b2; }
 .xhub-workspace { margin: 32px 0 28px; padding: 14px 12px; border: 1px solid #2a303c; border-radius: 12px; gap:10px; background:#171d27; }
-.xhub-workspace-icon { width:30px; height:34px; color:#ff994d; }
+.xhub-workspace-icon { width:30px; height:34px; color:#e3d5b1; }
 .xhub-workspace .xhub-eyebrow { color: #9da7b7; font:500 10px/1.4 Inter,sans-serif; letter-spacing:0; text-transform:none; }
 .xhub-workspace strong { font:500 12px/1.5 Inter,sans-serif; margin-top:3px; color:#ebedf2; }
 .xhub-nav-caption { color:#8993a4; font-size:9px; font-weight:500; letter-spacing:1.45px; margin:0 12px 12px; }
 .xhub-nav { gap:5px; }
 .xhub-nav-link { min-height:46px; border-radius:10px; padding:11px 13px; gap:12px; font-size:13px; color:#aeb8c7; }
 .xhub-nav-link:hover { color:#fff; background:#202734; }
-.xhub-nav-link.is-active { color:#ffb782; background:#ff7c191c; border-color:#ff8a362c; box-shadow:none; }
+.xhub-nav-link.is-active { color:#e3d5b1; background:#cebc891c; border-color:#cebc892c; box-shadow:none; }
 .xhub-nav-link .ph { font-size:21px; }
 .xhub-nav-link .xhub-nav-chevron { font-size:13px; }
 .xhub-sidebar-footer { display:block; padding:24px 12px 0; margin-top:auto; }

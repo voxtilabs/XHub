@@ -1,0 +1,92 @@
+/* Open decorative icons share the approved team styling. Keep their existing
+   dimensions, semantic colors and motion; control surfaces remain independent. */
+html[data-tema] body .xhub-page :is(
+  .xhub-stat-icon,
+  .xhub-feature-icon,
+  .xhub-timeline-icon,
+  .xhub-metric-glyph,
+  .xhub-console-glyph,
+  .xhub-conversation-glyph,
+  .xhub-board-stage-icon,
+  .xhub-board-empty-icon,
+  .xhub-ticket-card-glyph,
+  .xhub-ticket-help-glyph,
+  .xhub-distribution-symbol,
+  .xhub-distribution-label > .ph,
+  .crm-record-icon,
+  .crm-summary-icon,
+  .crm-timeline-icon,
+  .crm-section-title > .ph,
+  .crm-empty > .ph,
+  .crm-board-empty > .ph,
+  .crm-person-result > .ph:first-child,
+  .xhub-platform-glyph,
+  .xhub-platform-page .xhub-section-heading > .ph,
+  .xhub-probe-result,
+  .xhub-empty-glyph,
+  .xhub-ticket-agent[data-assigned="false"] .xhub-ticket-agent-avatar
+) {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* These decorative slots can render outside a workspace page. */
+html[data-tema] body :is(.xhub-prompt-icon, .xhub-permission-icon),
+html[data-tema] body .xhub-login-screen .xhub-login-input > .ph {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Open section glyphs align with their copy without the old box padding. */
+html[data-tema] body :is(
+  .xhub-platform-page .xhub-section-heading,
+  .xhub-team-form > .xhub-section-heading,
+  .xhub-crm-page .crm-section-title
+) {
+  gap: 12px;
+}
+html[data-tema] body :is(
+  .xhub-platform-page .xhub-section-heading,
+  .xhub-team-form > .xhub-section-heading,
+  .xhub-crm-page .crm-section-title
+) > .ph {
+  box-sizing: border-box;
+  inline-size: 24px;
+  block-size: 24px;
+  padding: 0;
+  flex: 0 0 24px;
+}
+
+/* One identity palette for the account menu and every real person avatar. */
+:root {
+  --xhub-avatar-background: linear-gradient(145deg, #1f303b, #13212c 75%);
+  --xhub-avatar-border: #b7a77c59;
+  --xhub-avatar-foreground: #dfd2af;
+  --xhub-avatar-shadow: inset 0 1px 0 #ffffff08;
+}
+html[data-tema="claro"] {
+  --xhub-avatar-background: linear-gradient(145deg, #fffef9, #f0f1ec 75%);
+  --xhub-avatar-border: #b8c3c8;
+  --xhub-avatar-foreground: #394d5f;
+  --xhub-avatar-shadow: inset 0 1px 0 #fff;
+}
+
+/* Keep each placement's dimensions; the finish matches the account profile. */
+html[data-tema] body .xhub-page :is(
+  .xhub-team-avatar,
+  .crm-person-avatar,
+  .xhub-person-avatar,
+  .xhub-message-avatar,
+  .xhub-ticket-agent[data-assigned="true"] .xhub-ticket-agent-avatar
+) {
+  border: 1px solid var(--xhub-avatar-border);
+  border-radius: 50%;
+  color: var(--xhub-avatar-foreground);
+  background: var(--xhub-avatar-background);
+  box-shadow: var(--xhub-avatar-shadow);
+  font-weight: 500;
+}

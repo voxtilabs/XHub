@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AppShell } from "@/components/app-shell";
+import { Icon } from "@/components/icon";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import { getLeads, crearLead, convertirLead, archivarLead, type Lead } from "@/lib/crm";
+import { HeroFeatures } from "@/components/hero-features";
 
 const CANALES = ["email", "telefono", "webchat", "instagram", "messenger"];
 const MONEDAS = ["CLP", "UF", "USD"];
@@ -49,19 +51,21 @@ function Contenido() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-8">
-      <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+    <div className="xhub-page xhub-crm-page crm-leads-page">
+      <div className="xhub-page-heading" data-hero="people">
         <div>
+          <div className="xhub-eyebrow">RELACIONES COMERCIALES</div>
           <h1 className="text-2xl font-semibold tracking-tight">Leads</h1>
           <p className="text-muted-foreground text-sm mt-0.5">{cargando ? "cargando…" : `${leads.length} prospectos por calificar`}</p>
-        </div>
-        <Button size="sm" onClick={() => setNuevo((v) => !v)}>{nuevo ? "Cerrar" : "+ Nuevo lead"}</Button>
+        <HeroFeatures variant="leads" />
+          </div>
+        <Button size="sm" onClick={() => setNuevo((v) => !v)}><Icon name={nuevo ? "x" : "plus"} weight="regular" />{nuevo ? "Cerrar" : "Nuevo lead"}</Button>
       </div>
 
-      {error && <div className="mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", color: "hsl(var(--critico))" }}>▲ {error}</div>}
+      {error && <div role="alert" className="crm-error mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", color: "hsl(var(--critico))" }}><Icon name="warning-circle" weight="regular" /> {error}</div>}
 
       {nuevo && (
-        <Card className="mb-5"><CardContent className="pt-5 flex flex-col sm:flex-row gap-2 sm:items-end flex-wrap">
+        <Card className="crm-form-card mb-5"><CardContent className="crm-create-form pt-5">
           <label className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Canal</span>
             <select value={f.canal} onChange={(e) => setF({ ...f, canal: e.target.value })} className="mt-1 h-10 rounded-md border border-border bg-background px-2 text-sm capitalize">{CANALES.map((c) => <option key={c} value={c}>{c}</option>)}</select></label>
           <label className="flex flex-col flex-1 min-w-[140px]"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Persona (identidad)</span><Input value={f.identidad} onChange={(e) => setF({ ...f, identidad: e.target.value })} placeholder="prospecto@gmail.com" className="mt-1" /></label>
@@ -74,19 +78,21 @@ function Contenido() {
         </CardContent></Card>
       )}
 
+      {cargando && <div className="crm-loading" role="status"><Icon name="spinner-gap" />Cargando leads…</div>}
       {leads.length === 0 && !cargando ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground text-sm">Bandeja de leads vacía. Crea el primero o llegan de tus canales.</CardContent></Card>
+        <Card><CardContent className="crm-empty py-12 text-center text-muted-foreground text-sm"><Icon name="user-plus" weight="duotone" />Bandeja de leads vacía. Crea el primero o llegan de tus canales.</CardContent></Card>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="crm-record-list">
           {leads.map((l) => (
-            <Card key={l.id}><CardContent className="py-4 flex items-center gap-3 flex-wrap">
+            <Card key={l.id} className="crm-record-card"><CardContent className="crm-record-row">
+              <span className="crm-record-icon"><Icon name="user-plus" weight="duotone" /></span>
               <div className="min-w-0 flex-1">
-                <div className="font-medium">{l.titulo}</div>
+                <div className="crm-record-title">{l.titulo}</div>
                 <div className="text-[11.5px] text-muted-foreground">{[l.persona_email, l.origen].filter(Boolean).join(" · ") || "—"}</div>
               </div>
-              <div className="text-[13px] text-[hsl(var(--senal))] font-semibold tabular-nums">{money(l.valor, l.moneda)}</div>
-              <div className="flex gap-1.5">
-                <Button size="sm" onClick={() => convertir(l)}>Convertir a deal</Button>
+              <div className="crm-record-value tabular-nums">{money(l.valor, l.moneda)}</div>
+              <div className="crm-record-actions">
+                <Button size="sm" onClick={() => convertir(l)}><Icon name="arrow-up-right" weight="regular" />Convertir a deal</Button>
                 <Button size="sm" variant="secondary" onClick={() => archivar(l)}>Archivar</Button>
               </div>
             </CardContent></Card>

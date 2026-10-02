@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/api";
 import { AppShell } from "@/components/app-shell";
 import { useYo } from "@/lib/permisos";
+import { HeroFeatures } from "@/components/hero-features";
 
 type Regla = { id: string; nombre: string; evento: string; condicion: Record<string, unknown>; accion: Record<string, unknown>; moduloDestino?: string | null; activa: boolean };
 type Plantilla = { clave: string; nombre: string; evento: string; moduloDestino?: string | null; condicion: Record<string, unknown>; accion: Record<string, unknown>; descripcion: string };
@@ -66,31 +67,32 @@ export default function Automatizaciones() {
     const ac = ACCIONES[(r.accion?.tipo as string)] ?? (r.accion?.tipo as string);
     const cond = r.condicion ?? {};
     const filtro = (cond as Record<string, unknown>).prioridad ? ` de prioridad ${(cond as Record<string, unknown>).prioridad}` : "";
-    return `${ev}${filtro} → ${ac}`;
+    return <>{ev}{filtro} <Icon name="arrow-right" className="xhub-inline-icon" /> {ac}</>;
   };
 
   return (
     <main className="min-h-screen">
       <AppShell />
-      <div className="xhub-page">
-        <div className="xhub-page-heading">
+      <div className="xhub-page xhub-platform-page xhub-automations-page">
+        <div className="xhub-page-heading" data-hero="integration" data-hero-size="long">
           <div>
             <div className="xhub-eyebrow">ADMINISTRACIÓN DEL ESPACIO</div>
             <h1>Automatizaciones</h1>
             <p>Reglas que conectan tus módulos: cuando pasa algo en un ticket, xHub reacciona solo. Nacen apagadas y puedes ver a quién afectarían antes de encenderlas.</p>
+          <HeroFeatures variant="automatizaciones" />
           </div>
         </div>
 
         {error && <div className="p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}><Icon name="warning-circle" className="xhub-inline-icon" /> {error}</div>}
         {msg && <div className="p-2.5 rounded-md text-[13px]" style={{ background: "hsl(var(--exito)/0.1)", color: "hsl(var(--exito))" }}><Icon name="check-circle" className="xhub-inline-icon" /> {msg}</div>}
 
-        <h2 className="xhub-section-heading">Tus automatizaciones</h2>
-        {reglas.length === 0 && <Card className="p-6 text-sm text-muted-foreground">Aún no tienes automatizaciones. Activa una plantilla más abajo para empezar.</Card>}
+        <h2 className="xhub-section-heading"><Icon name="lightning" weight="regular" /> Tus automatizaciones</h2>
+        {reglas.length === 0 && <Card className="xhub-automation-empty p-6 text-sm text-muted-foreground">Aún no tienes automatizaciones. Activa una plantilla más abajo para empezar.</Card>}
         {reglas.map((r) => {
           const apagado = moduloApagado(r.moduloDestino);
           const pv = preview[r.id];
           return (
-            <Card key={r.id} className="mb-2"><CardContent className="pt-5">
+            <Card key={r.id} className="xhub-automation-rule mb-2"><CardContent className="pt-5">
               <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -118,14 +120,15 @@ export default function Automatizaciones() {
           );
         })}
 
-        <h2 className="xhub-section-heading mt-6">Plantillas</h2>
+        <h2 className="xhub-section-heading mt-6"><Icon name="stack" weight="regular" /> Plantillas</h2>
         <p className="text-[13px] text-muted-foreground mb-2">Automatizaciones listas para usar. Al activarlas se crean apagadas: enciéndelas cuando quieras.</p>
-        <div className="grid gap-2 md:grid-cols-2">
+        <div className="xhub-automations-grid grid gap-2 md:grid-cols-2">
           {plantillas.map((pl) => {
             const creada = yaCreada(pl);
             const apagado = moduloApagado(pl.moduloDestino);
             return (
-              <Card key={pl.clave}><CardContent className="pt-5">
+              <Card key={pl.clave} className="xhub-automation-template"><CardContent className="pt-5">
+                <span className="xhub-platform-glyph" aria-hidden="true"><Icon name="lightning" weight="duotone" /></span>
                 <h3 className="text-[15px] font-semibold">{pl.nombre}</h3>
                 <p className="text-[13px] text-muted-foreground mt-1">{pl.descripcion}</p>
                 <p className="text-[12px] text-muted-foreground mt-1 font-mono">{describir(pl)}</p>

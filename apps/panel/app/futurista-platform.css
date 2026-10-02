@@ -1,0 +1,291 @@
+/* Module details for the live workspace. All status and usage values remain API driven. */
+.xhub-platform-page .xhub-section-heading {
+  gap: 12px;
+  font-family: Outfit, Inter, sans-serif;
+  font-weight: 600;
+  letter-spacing: -.3px;
+}
+
+.xhub-platform-page .xhub-section-heading > .ph {
+  box-sizing: content-box;
+  padding: 9px;
+  border: 1px solid var(--xhub-line);
+  border-radius: 11px;
+  background: var(--xhub-orange-soft);
+  color: var(--voxia-action-text);
+}
+
+.xhub-platform-glyph {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  border: 1px solid var(--voxia-action-border);
+  border-radius: 15px;
+  background: linear-gradient(140deg, var(--xhub-orange-soft), var(--xhub-panel-raised));
+  box-shadow: inset 0 1px 0 hsl(var(--foreground) / .06), 0 5px 15px rgb(206 188 137 / .06);
+}
+
+.xhub-platform-glyph .ph { font-size: 28px; }
+.xhub-platform-glyph[data-critical="true"] {
+  border-color: hsl(var(--critico) / .23);
+  background: linear-gradient(140deg, var(--voxia-bad-soft), var(--xhub-panel-raised));
+}
+
+.xhub-platform-stats { gap: 14px; }
+.xhub-platform-page .xhub-platform-stat {
+  position: relative;
+  border-radius: 18px;
+  background: radial-gradient(ellipse at 100% 0, var(--xhub-orange-soft), transparent 75%), var(--xhub-panel);
+}
+.xhub-platform-stat::before {
+  content: "";
+  position: absolute;
+  inset: 0 22px auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--voxia-action-border), transparent);
+  pointer-events: none;
+}
+.xhub-platform-page .xhub-platform-stat:nth-child(2),
+.xhub-platform-page .xhub-platform-stat:last-child {
+  background: radial-gradient(ellipse at 100% 0, var(--xhub-cyan-soft), transparent 75%), var(--xhub-panel);
+}
+.xhub-platform-stat:last-child .xhub-platform-glyph {
+  color: var(--xhub-cyan);
+  border-color: var(--xhub-line-strong);
+  background: linear-gradient(140deg, var(--xhub-cyan-soft), var(--xhub-panel-raised));
+}
+.xhub-platform-stat .xhub-platform-glyph + div { font-size: 12px; font-weight: 500; }
+.xhub-platform-stat .text-4xl { letter-spacing: -1.3px; font-variant-numeric: tabular-nums; }
+.xhub-platform-stat .xhub-platform-glyph ~ div:last-child { line-height: 1.7; }
+
+.xhub-platform-description {
+  align-items: center;
+  border-color: var(--xhub-line);
+  border-left: 3px solid var(--xhub-cyan);
+  border-radius: 14px;
+  background: linear-gradient(100deg, var(--xhub-cyan-soft), transparent 80%), var(--xhub-panel);
+}
+.xhub-platform-description > .ph { color: var(--xhub-cyan); font-size: 25px; }
+.xhub-platform-count {
+  border: 1px solid var(--xhub-line);
+  background: var(--xhub-panel-inset);
+  font-variant-numeric: tabular-nums;
+}
+
+.xhub-plan-row {
+  padding: 17px 18px;
+  border-color: var(--xhub-line);
+  border-radius: 12px;
+  background: var(--xhub-panel-inset);
+}
+.xhub-plan-row > span:first-child { font-weight: 600; }
+.xhub-plan-form { gap: 18px 14px; }
+.xhub-plan-name > span, .xhub-plan-number > span { font-size: 12px; font-weight: 500; }
+.xhub-platform-client-head { padding-bottom: 18px; border-bottom: 1px solid var(--xhub-line); }
+.xhub-platform-client-head > a:first-of-type { font-size: 21px; letter-spacing: -.3px; }
+.xhub-platform-client-head ~ div { padding-top: 3px; }
+.xhub-platform-client-head > a:not(:first-of-type) {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+}
+.xhub-platform-page .xhub-platform-client,
+.xhub-platform-page .xhub-fleet-card,
+.xhub-platform-page .xhub-webhook-endpoint {
+  border-color: var(--xhub-line-strong);
+  background: linear-gradient(115deg, var(--xhub-cyan-soft), transparent 35%), var(--xhub-panel);
+}
+.xhub-client-settings-grid { gap: 22px; }
+.xhub-client-settings-grid .voxia-card > div > .space-y-2 > div {
+  border: 1px solid var(--xhub-line);
+  background: var(--xhub-panel-inset);
+}
+.xhub-client-settings-grid .font-mono { font-size: 12px; }
+.xhub-client-settings-grid input[type="range"] { min-height: 24px; }
+.xhub-brand-editor { border-color: var(--xhub-line); }
+.xhub-brand-preview { border: 1px solid var(--xhub-line-strong); overflow: hidden; }
+
+.xhub-probe-form { gap: 22px; }
+.xhub-probe-form > label > span,
+.xhub-platform-field-label { font-weight: 600; }
+.xhub-platform-page .xhub-fleet-summary {
+  border-color: var(--xhub-line-strong);
+  background: linear-gradient(105deg, var(--xhub-cyan-soft), transparent 75%), var(--xhub-panel);
+}
+.xhub-fleet-card > div > div:last-child { padding-top: 16px; }
+.xhub-probe-result {
+  width: 36px;
+  height: 36px;
+  border: 1px solid hsl(var(--critico) / .25);
+  border-radius: 11px;
+}
+.xhub-probe-result[data-ok="true"] { border-color: hsl(var(--exito) / .25); }
+.xhub-retry-card { border-left-width: 3px; }
+.xhub-platform-page .xhub-empty-glyph {
+  box-sizing: content-box;
+  padding: 16px;
+  width: 38px;
+  height: 38px;
+  border-radius: 20px;
+  border: 1px solid hsl(var(--exito) / .2);
+  background: var(--voxia-good-soft);
+}
+
+.xhub-event-options { gap: 10px; }
+.xhub-event-options > button {
+  min-height: 40px;
+  padding: 9px 13px;
+  border-radius: 10px;
+}
+.xhub-webhook-endpoint .xhub-platform-glyph { width: 48px; height: 48px; }
+.xhub-webhook-endpoint > div > div.min-w-0 > div:first-child { font-size: 13px; line-height: 1.8; }
+.xhub-webhook-endpoint .rounded-pill { padding: 4px 7px; border: 1px solid var(--xhub-line); border-radius: 6px; }
+.xhub-webhook-endpoint button { padding-inline: 11px; border-radius: 8px; }
+.xhub-webhook-endpoint button:hover { background: var(--xhub-panel-raised); }
+.xhub-platform-table th { background: var(--xhub-panel-inset); }
+.xhub-platform-table td { border-color: var(--xhub-line); padding-block: 18px; }
+.xhub-platform-table tbody > tr:hover { background: var(--xhub-cyan-soft); }
+.xhub-audit-page .xhub-filter-bar {
+  border-color: var(--xhub-line-strong);
+  border-radius: 16px;
+  background: var(--xhub-panel);
+  box-shadow: var(--xhub-shadow);
+}
+
+/* Account protection is one clear task, with a distinct identity and form area. */
+.xhub-security-page > .voxia-card { max-width: 920px; }
+.xhub-security-heading {
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--xhub-line);
+  gap: 16px;
+}
+.xhub-security-heading h2 { font: 600 22px/1.3 Outfit, Inter, sans-serif; letter-spacing: -.4px; }
+.xhub-security-heading p { max-width: 650px; margin-top: 6px; line-height: 1.7; }
+.xhub-security-form { max-width: 620px; gap: 16px; }
+.xhub-security-form > label { line-height: 1.7; font-weight: 500; }
+.xhub-security-form > label .voxia-input { margin-top: 8px; }
+.xhub-security-page > p { max-width: 920px; line-height: 1.8; }
+
+/* Genuine API configuration, usage and access controls. */
+.xhub-developer-page .xhub-api-reference {
+  background: linear-gradient(120deg, var(--xhub-cyan-soft), transparent 65%), var(--xhub-panel);
+  border-color: var(--xhub-line-strong);
+}
+.xhub-api-reference pre {
+  padding: 20px;
+  border: 1px solid var(--xhub-line-strong);
+  border-radius: 12px;
+  background: var(--xhub-panel-inset);
+  color: var(--xhub-cyan);
+  line-height: 1.9;
+  tab-size: 2;
+}
+.xhub-api-reference code { padding: 5px 8px; border-radius: 6px; }
+.xhub-api-reference .flex > code { min-width: 0; padding: 12px; border: 1px solid var(--xhub-line); }
+.xhub-api-reference button { min-height: 40px; padding: 8px; }
+.xhub-api-consumption > div > .flex:first-child { gap: 15px; flex-wrap: wrap; }
+.xhub-api-consumption > div > .flex:first-child > div:first-child { font: 600 28px/1.3 Outfit, Inter, sans-serif; }
+.xhub-api-consumption .h-2 { height: 8px; margin-top: 12px; margin-bottom: 10px; box-shadow: inset 0 1px 3px rgb(0 0 0 / .1); }
+.xhub-api-scopes { gap: 9px; margin-top: 12px; margin-bottom: 22px; }
+.xhub-api-scopes > button {
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--xhub-line);
+  border-radius: 12px;
+  background: var(--xhub-panel-inset);
+}
+.xhub-api-scopes > button > span:first-child { margin-top: 2px; }
+.xhub-api-scopes > button[aria-checked="true"] { border-color: var(--voxia-action-border); background: var(--xhub-orange-soft); }
+.xhub-api-scopes > button > span:last-child { line-height: 1.7; overflow-wrap: anywhere; }
+.xhub-api-scopes > button > span:last-child > span:last-child { margin-top: 3px; font-size: 12px; }
+.xhub-developer-page > details {
+  padding: 15px 18px;
+  border: 1px solid var(--xhub-line);
+  border-radius: 12px;
+  background: var(--xhub-panel-inset);
+}
+.xhub-developer-page > details summary { min-height: 24px; line-height: 24px; }
+.xhub-developer-page > details > div > div { gap: 8px 20px; flex-wrap: wrap; padding-block: 7px; }
+
+.xhub-automations-grid { gap: 18px; }
+.xhub-automation-template > div { display: flex; flex-direction: column; height: 100%; }
+.xhub-automation-template .xhub-platform-glyph { margin-bottom: 20px; }
+.xhub-automation-template h3 { font: 600 20px/1.4 Outfit, Inter, sans-serif; }
+.xhub-automation-template p { line-height: 1.8; }
+.xhub-automation-template p.font-mono {
+  margin-top: 16px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--xhub-line);
+  border-left: 2px solid var(--voxia-action-text);
+  border-radius: 9px;
+  background: var(--xhub-panel-inset);
+  color: var(--xhub-cyan);
+  font-size: 11px;
+  line-height: 1.9;
+}
+.xhub-automation-template > div > div:last-child { margin-top: auto; padding-top: 4px; }
+.xhub-automation-rule h3 { font: 600 19px/1.4 Outfit, Inter, sans-serif; }
+.xhub-automation-rule p { line-height: 1.8; }
+.xhub-automation-rule > div > div:last-child { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--xhub-line); }
+.xhub-automations-page > .xhub-automation-empty { padding: 24px; border-style: dashed; line-height: 1.8; }
+
+.xhub-ai-context-heading { display: flex; align-items: center; gap: 15px; margin-bottom: 22px; }
+.xhub-ai-context-heading .xhub-platform-glyph { color: var(--xhub-cyan); background: var(--xhub-cyan-soft); border-color: var(--xhub-line-strong); }
+.xhub-ai-context-heading > span:last-child { font: 600 21px/1.4 Outfit, Inter, sans-serif; }
+.xhub-ai-context-heading > span:last-child > span { display: block; margin-top: 4px; font: 400 12px/1.6 Inter, sans-serif; }
+.xhub-settings-ia-page textarea { min-height: 210px; padding: 18px; border-radius: 13px; background: var(--xhub-panel-inset); border-color: var(--xhub-line-strong); line-height: 1.9; }
+.xhub-ai-model > div > div { gap: 10px; line-height: 1.7; }
+.xhub-ai-model > div > div > .ph { color: var(--xhub-cyan); font-size: 24px; }
+.xhub-ai-model code { padding: 6px 9px; border: 1px solid var(--xhub-line); overflow-wrap: anywhere; }
+.xhub-ai-model p { margin-top: 12px; line-height: 1.8; }
+.xhub-ai-page .xhub-activity-row { border: 1px solid var(--xhub-line); background: var(--xhub-panel-inset); border-radius: 11px; }
+
+/* Public policy remains a readable document, with the workspace's visual identity. */
+.xhub-privacy-topbar { border: 1px solid #243549; box-shadow: 0 12px 40px rgb(4 12 22 / .15); }
+.xhub-privacy-page section {
+  padding: 24px;
+  border: 1px solid var(--xhub-line);
+  border-radius: 16px;
+  background: var(--xhub-panel);
+  box-shadow: var(--xhub-shadow);
+}
+.xhub-privacy-page section h2 { font-family: Outfit, Inter, sans-serif; letter-spacing: -.2px; }
+.xhub-privacy-page section h2::after {
+  content: "";
+  display: block;
+  width: 30px;
+  height: 2px;
+  margin: 12px 0 15px;
+  background: var(--voxia-action-text);
+}
+
+@media (max-width: 740px) {
+  .xhub-security-heading { align-items: flex-start; gap: 12px; padding-bottom: 20px; }
+  .xhub-security-heading h2 { font-size: 19px; }
+  .xhub-security-heading > .xhub-platform-glyph { width: 44px; height: 44px; border-radius: 12px; }
+  .xhub-security-heading > .xhub-platform-glyph .ph { font-size: 25px; }
+  .xhub-security-heading > .min-w-0 { flex-basis: calc(100% - 62px); }
+  .xhub-security-form > div > button { min-height: 44px; }
+  .xhub-ai-context-heading { gap: 12px; align-items: flex-start; }
+  .xhub-ai-context-heading > span:last-child { font-size: 19px; }
+  .xhub-api-consumption > div > .flex:first-child > div:first-child { font-size: 25px; }
+  .xhub-platform-client-head { padding-bottom: 14px; }
+  .xhub-platform-page .xhub-platform-stat { border-radius: 15px; }
+  .xhub-privacy-page section { padding: 20px; border-radius: 13px; }
+}
+
+@media (max-width: 620px) {
+  .xhub-platform-table td:not([colspan]) { padding-block: 0; }
+  .xhub-platform-table tbody > tr { border-color: var(--xhub-line); }
+  .xhub-platform-page .xhub-section-heading { gap: 10px; font-size: 18px; }
+  .xhub-platform-page .xhub-section-heading > .ph { padding: 7px; font-size: 21px; }
+  .xhub-api-scopes > button { padding: 12px; }
+  .xhub-api-reference pre { padding: 14px; font-size: 11px; }
+  .xhub-api-reference .flex > code { font-size: 11px; padding: 10px; }
+  .xhub-settings-ia-page textarea { padding: 14px; font-size: 16px; }
+  .xhub-automation-template .xhub-platform-glyph { margin-bottom: 15px; }
+}

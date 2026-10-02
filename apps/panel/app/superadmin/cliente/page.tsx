@@ -1,11 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
 import { AppShell } from "@/components/app-shell";
+import { Icon } from "@/components/icon";
+import { HeroFeatures } from "@/components/hero-features";
 
 type Cliente = { id: string; nombre: string; estado: string; modulos: string[]; ia_modelo?: string | null; ia_contexto?: string | null };
 type IAConfig = { modeloDefault: string | null; proveedor: string; modeloEnv: string | null; iaActiva: boolean };
@@ -57,17 +60,21 @@ export default function ClienteDetalle() {
 
   async function cargar(cid: string) {
     try {
-      const lista = await apiFetch<{ datos: Cliente[] }>("/admin/clientes");
-      const yo = lista.datos.find((x) => x.id === cid) ?? null;
-      setCli(yo); setModeloCliente(yo?.ia_modelo ?? ""); setContextoCliente(yo?.ia_contexto ?? "");
-      const ia = await apiFetch<IAConfig>("/admin/ia/config"); setIaCfg(ia); setModeloDefault(ia.modeloDefault ?? "");
-      const co = await apiFetch<Consumo>(`/admin/clientes/${cid}/consumo`); setConsumo(co); setCuota(String(co.cuotaMensual));
-      setTriage(await apiFetch<Triage>(`/admin/clientes/${cid}/triage`));
-      setAutos((await apiFetch<{ datos: Automatizacion[] }>(`/admin/clientes/${cid}/automatizaciones`)).datos);
-      const us = await apiFetch<Usuarios>(`/admin/clientes/${cid}/usuarios`); setUsuarios(us); setLim(String(us.limite));
-      setIa(await apiFetch<ResumenIA>(`/admin/clientes/${cid}/ia?dias=30`));
-      setScopesCat((await apiFetch<{ datos: ScopeDef[] }>("/admin/scopes")).datos);
-      setLlaves((await apiFetch<{ datos: Llave[] }>(`/admin/clientes/${cid}/llaves`)).datos);
+      // Each section can render as soon as its independent read completes.
+      await Promise.all([
+        apiFetch<{ datos: Cliente[] }>("/admin/clientes").then((lista) => {
+          const yo = lista.datos.find((x) => x.id === cid) ?? null;
+          setCli(yo); setModeloCliente(yo?.ia_modelo ?? ""); setContextoCliente(yo?.ia_contexto ?? "");
+        }),
+        apiFetch<IAConfig>("/admin/ia/config").then((ia) => { setIaCfg(ia); setModeloDefault(ia.modeloDefault ?? ""); }),
+        apiFetch<Consumo>(`/admin/clientes/${cid}/consumo`).then((co) => { setConsumo(co); setCuota(String(co.cuotaMensual)); }),
+        apiFetch<Triage>(`/admin/clientes/${cid}/triage`).then(setTriage),
+        apiFetch<{ datos: Automatizacion[] }>(`/admin/clientes/${cid}/automatizaciones`).then((r) => setAutos(r.datos)),
+        apiFetch<Usuarios>(`/admin/clientes/${cid}/usuarios`).then((us) => { setUsuarios(us); setLim(String(us.limite)); }),
+        apiFetch<ResumenIA>(`/admin/clientes/${cid}/ia?dias=30`).then(setIa),
+        apiFetch<{ datos: ScopeDef[] }>("/admin/scopes").then((r) => setScopesCat(r.datos)),
+        apiFetch<{ datos: Llave[] }>(`/admin/clientes/${cid}/llaves`).then((r) => setLlaves(r.datos)),
+      ]);
     } catch (e) { setError((e as Error).message); }
   }
   const recargarLlaves = async () => { try { setLlaves((await apiFetch<{ datos: Llave[] }>(`/admin/clientes/${id}/llaves`)).datos); } catch { /* noop */ } };
@@ -114,15 +121,15 @@ export default function ClienteDetalle() {
     <main className="min-h-screen">
       <AppShell />
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-8 pt-6 flex items-center gap-3 flex-wrap">
-        <a href="/superadmin" className="text-sm text-muted-foreground hover:text-foreground">← Clientes</a>
-        <span className="font-semibold text-xl tracking-tight">{cli?.nombre ?? "Cliente"}</span>
-        {cli && <Badge rol={estRol(cli.estado)}>{cli.estado.replace("_", " ")}</Badge>}
-      </div>
-
-      <div className="max-w-3xl mx-auto p-4 sm:p-8 flex flex-col gap-5">
-        {error && <div className="p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}>▲ {error}</div>}
-        {msg && <div className="p-2.5 rounded-md text-[13px]" style={{ background: "hsl(var(--exito)/0.1)", color: "hsl(var(--exito))" }}>✓ {msg}</div>}
+      <div className="xhub-page xhub-platform-page xhub-client-detail-page">
+        <div className="xhub-page-heading" data-hero="commerce" data-hero-size="detail">
+          <div><Link href="/superadmin" className="xhub-eyebrow inline-flex items-center gap-2"><Icon name="arrow-left" /> TODOS LOS CLIENTES</Link><h1>{cli?.nombre ?? "Cliente"}</h1><p>Accesos, módulos e integraciones. Todo bajo control.</p><HeroFeatures variant="cliente" />
+          </div>
+          {cli && <Badge rol={estRol(cli.estado)}>{cli.estado.replace("_", " ")}</Badge>}
+        </div>
+        <div className="xhub-client-settings-grid">
+        {error && <div className="p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}><Icon name="warning-circle" className="xhub-inline-icon" weight="regular" /> {error}</div>}
+        {msg && <div className="p-2.5 rounded-md text-[13px]" style={{ background: "hsl(var(--exito)/0.1)", color: "hsl(var(--exito))" }}><Icon name="check-circle" className="xhub-inline-icon" weight="regular" /> {msg}</div>}
         {llave && (
           <Card style={{ borderColor: "hsl(var(--senal)/0.5)" }}><CardContent className="pt-5">
             <div className="text-xs font-black uppercase tracking-widest text-[hsl(var(--senal))] mb-2">Llave de API creada</div>
@@ -132,17 +139,17 @@ export default function ClienteDetalle() {
                 {llaveScopes.map((s) => <span key={s} className="text-[10.5px] font-mono px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{s}</span>)}
               </div>
             )}
-            <p className="text-[11px] text-muted-foreground mt-2">⚠ Se muestra una sola vez — cópiala ahora. Alcances: {llaveScopes.length ? `${llaveScopes.length} (todos los módulos activos)` : "ninguno"}.</p>
+            <p className="text-[11px] text-muted-foreground mt-2"><Icon name="warning" className="xhub-inline-icon" weight="regular" /> Se muestra una sola vez — cópiala ahora. Alcances: {llaveScopes.length ? `${llaveScopes.length} (todos los módulos activos)` : "ninguno"}.</p>
             <Button size="sm" variant="secondary" className="mt-3" onClick={() => setLlave(null)}>La copié</Button>
           </CardContent></Card>
         )}
 
         {/* Estado */}
         <Card><CardContent className="pt-5">
-          <div className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-3">Estado del cliente</div>
+          <h2 className="xhub-section-heading mb-4"><Icon name="pulse" weight="regular" /> Estado del cliente</h2>
           <div className="flex flex-wrap gap-2">
             {ESTADOS.map((e) => (
-              <button key={e} onClick={() => setEstado(e)}
+              <button key={e} aria-pressed={cli?.estado === e} onClick={() => setEstado(e)}
                 className={"px-3 h-8 rounded-pill text-[13px] font-medium border capitalize " + (cli?.estado === e ? "bg-secondary border-border text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{e.replace("_", " ")}</button>
             ))}
           </div>
@@ -150,41 +157,41 @@ export default function ClienteDetalle() {
 
         {/* Módulos */}
         <Card><CardContent className="pt-5">
-          <div className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-3">Módulos</div>
+          <h2 className="xhub-section-heading mb-4"><Icon name="squares-four" weight="regular" /> Módulos</h2>
           <div className="flex flex-wrap gap-2">
             {MODULOS.map((m) => {
               const on = cli?.modulos.includes(m.k);
-              return <button key={m.k} onClick={() => toggle(m.k)} className={"px-3 h-9 rounded-pill text-[13px] font-medium border " + (on ? "bg-secondary border-border text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
-                <span className="mr-1.5" style={{ color: on ? "hsl(var(--exito))" : "hsl(var(--muted-foreground))" }}>{on ? "●" : "○"}</span>{m.n}</button>;
+              return <button key={m.k} aria-pressed={!!on} onClick={() => toggle(m.k)} className={"px-3 h-9 rounded-pill text-[13px] font-medium border " + (on ? "bg-secondary border-border text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
+                <span className="mr-1.5" style={{ color: on ? "hsl(var(--exito))" : "hsl(var(--muted-foreground))" }}><Icon name={on ? "check-circle" : "circle"} className="xhub-inline-icon" weight="regular" /></span>{m.n}</button>;
             })}
           </div>
         </CardContent></Card>
 
         {/* Cuota + consumo */}
         <Card><CardContent className="pt-5">
-          <div className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-3">API · cuota y consumo</div>
+          <h2 className="xhub-section-heading mb-4"><Icon name="gauge" weight="regular" /> API · cuota y consumo</h2>
           <div className="flex items-end justify-between mb-2 text-sm">
             <span className="text-muted-foreground">Consumo de hoy</span>
             <span className="tabular-nums">{consumo ? consumo.total.toLocaleString("es-CL") : "…"} / {consumo ? consumo.cuotaMensual.toLocaleString("es-CL") : "…"}</span>
           </div>
           <div className="h-2 rounded-pill bg-secondary overflow-hidden"><div className="h-full rounded-pill" style={{ width: `${pct}%`, background: pct >= 80 ? "hsl(var(--aviso))" : "hsl(var(--senal))" }} /></div>
           <div className="flex flex-col sm:flex-row gap-2 mt-4">
-            <Input type="number" value={cuota} onChange={(e) => setCuota(e.target.value)} placeholder="Tope mensual" className="sm:flex-1" />
+            <Input aria-label="Cuota mensual de API" type="number" value={cuota} onChange={(e) => setCuota(e.target.value)} placeholder="Tope mensual" className="sm:flex-1" />
             <Button variant="secondary" onClick={guardarCuota}>Fijar cuota</Button>
           </div>
         </CardContent></Card>
 
         {/* Usuarios y tope — la jerarquía del negocio hecha visible */}
-        <Card><CardContent className="pt-5">
+        <Card className="xhub-config-users"><CardContent className="pt-5">
           <div className="flex items-center justify-between mb-1">
-            <div className="text-xs font-black uppercase tracking-widest text-muted-foreground">Usuarios y accesos</div>
+            <h2 className="xhub-section-heading"><Icon name="users" weight="regular" /> Usuarios y accesos</h2>
             {usuarios && <span className="text-[13px] tabular-nums text-muted-foreground">{usuarios.usados} / {usuarios.limite}</span>}
           </div>
           <p className="text-[12px] text-muted-foreground mb-3">La <b className="text-foreground">plataforma</b> fija el tope. El <b className="text-foreground">admin del cliente</b> crea y da permisos a sus usuarios dentro de ese tope.</p>
 
           {/* Tope (lo fija plataforma) */}
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
-            <Input type="number" value={lim} onChange={(e) => setLim(e.target.value)} placeholder="Tope de usuarios" className="sm:flex-1" />
+            <Input aria-label="Tope de usuarios" type="number" value={lim} onChange={(e) => setLim(e.target.value)} placeholder="Tope de usuarios" className="sm:flex-1" />
             <Button variant="secondary" onClick={guardarLimite}>Fijar tope</Button>
           </div>
 
@@ -211,11 +218,11 @@ export default function ClienteDetalle() {
             <div className="flex flex-col gap-2 border-t border-border pt-3">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Nuevo administrador del cliente</div>
               <div className="flex flex-col sm:flex-row gap-2">
-                <Input value={nu.nombre} onChange={(e) => setNu({ ...nu, nombre: e.target.value })} placeholder="Nombre" className="sm:flex-1" />
-                <Input type="email" value={nu.email} onChange={(e) => setNu({ ...nu, email: e.target.value })} placeholder="Email" className="sm:flex-1" />
+                <Input aria-label="Nombre del administrador" value={nu.nombre} onChange={(e) => setNu({ ...nu, nombre: e.target.value })} placeholder="Nombre" className="sm:flex-1" />
+                <Input aria-label="Correo del administrador" type="email" value={nu.email} onChange={(e) => setNu({ ...nu, email: e.target.value })} placeholder="Email" className="sm:flex-1" />
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
-                <Input type="password" value={nu.password} onChange={(e) => setNu({ ...nu, password: e.target.value })} placeholder="Contraseña (mín. 10)" className="sm:flex-1" />
+                <Input aria-label="Contraseña del administrador" type="password" value={nu.password} onChange={(e) => setNu({ ...nu, password: e.target.value })} placeholder="Contraseña (mín. 10)" className="sm:flex-1" />
                 <Button onClick={crearUsuario} disabled={nu.email.length < 3 || nu.password.length < 10 || nu.nombre.length < 2}>Crear admin</Button>
               </div>
             </div>
@@ -224,18 +231,18 @@ export default function ClienteDetalle() {
 
         {/* Triage IA */}
         <Card><CardContent className="pt-5">
-          <div className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">Triage con IA</div>
+          <h2 className="xhub-section-heading mb-2"><Icon name="cpu" weight="regular" /> Triage con IA</h2>
           <p className="text-[12px] text-muted-foreground mb-3">No todo contacto de XContact es un ticket. La IA da una confianza; tú fijas el umbral.</p>
           <div className="flex flex-wrap gap-2 mb-4">
             {MODOS.map((m) => (
-              <button key={m.k} onClick={() => triage && guardarTriage({ ...triage, modo: m.k })} title={m.d}
+              <button key={m.k} aria-pressed={triage?.modo === m.k} onClick={() => triage && guardarTriage({ ...triage, modo: m.k })} title={m.d}
                 className={"px-3 h-9 rounded-pill text-[13px] font-medium border " + (triage?.modo === m.k ? "bg-secondary border-border text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{m.n}</button>
             ))}
           </div>
           {triage && (
             <div>
               <div className="flex justify-between text-sm mb-1"><span className="text-muted-foreground">Umbral de confianza</span><span className="tabular-nums font-semibold text-[hsl(var(--senal))]">{Math.round(triage.umbral * 100)}%</span></div>
-              <input type="range" min={0} max={100} value={Math.round(triage.umbral * 100)}
+              <input aria-label="Umbral de confianza de IA" type="range" min={0} max={100} value={Math.round(triage.umbral * 100)}
                 onChange={(e) => setTriage({ ...triage, umbral: Number(e.target.value) / 100 })}
                 onMouseUp={() => guardarTriage(triage)} onTouchEnd={() => guardarTriage(triage)}
                 className="w-full accent-[hsl(var(--primary))]" />
@@ -246,7 +253,7 @@ export default function ClienteDetalle() {
 
         {/* Automatizaciones (reglas de negocio toggleables por cliente) */}
         <Card><CardContent className="pt-5">
-          <div className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">Automatizaciones</div>
+          <h2 className="xhub-section-heading mb-2"><Icon name="lightning" weight="regular" /> Automatizaciones</h2>
           <p className="text-[12px] text-muted-foreground mb-3">Reglas de negocio que enciendes por cliente. El catálogo crece a medida que los clientes las piden.</p>
           {autos.length === 0 ? (
             <p className="text-[13px] text-muted-foreground">No hay automatizaciones en el catálogo todavía.</p>
@@ -254,7 +261,7 @@ export default function ClienteDetalle() {
             <div className="space-y-3">
               {autos.map((a) => (
                 <div key={a.clave} className="flex items-start gap-3 pt-3 border-t border-border first:border-t-0 first:pt-0">
-                  <button type="button" role="switch" aria-checked={a.activa} onClick={() => toggleAuto(a)} className="shrink-0 mt-0.5">
+                  <button type="button" role="switch" aria-label={a.nombre} aria-checked={a.activa} onClick={() => toggleAuto(a)} className="shrink-0 mt-0.5">
                     <span className={"h-5 w-9 rounded-full relative transition block " + (a.activa ? "bg-[hsl(var(--exito))]" : "bg-secondary border border-border")}>
                       <span className={"absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all " + (a.activa ? "left-[18px]" : "left-0.5")} />
                     </span>
@@ -273,9 +280,9 @@ export default function ClienteDetalle() {
         </CardContent></Card>
 
         {/* Consumo de IA del cliente (qué hizo, cuánto) */}
-        <Card><CardContent className="pt-5">
+        <Card className="xhub-config-ia"><CardContent className="pt-5">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-xs font-black uppercase tracking-widest text-muted-foreground">IA · actividad (30 días)</div>
+            <h2 className="xhub-section-heading"><Icon name="chart-line" weight="regular" /> IA · actividad</h2>
             {ia && ia.total > 0 && <span className="text-[13px] tabular-nums text-muted-foreground">{(ia.tokensPrompt + ia.tokensSalida).toLocaleString("es-CL")} tokens</span>}
           </div>
           {!ia || ia.total === 0 ? (
@@ -298,9 +305,9 @@ export default function ClienteDetalle() {
         </CardContent></Card>
 
         {/* IA — proveedor + modelo por defecto y override por cliente */}
-        <Card><CardContent className="pt-5">
+        <Card className="xhub-config-model"><CardContent className="pt-5">
           <div className="flex items-center justify-between mb-1">
-            <div className="text-xs font-black uppercase tracking-widest text-muted-foreground">Inteligencia artificial</div>
+            <h2 className="xhub-section-heading"><Icon name="cpu" weight="regular" /> Inteligencia artificial</h2>
             {iaCfg && <Badge rol={iaCfg.iaActiva ? "exito" : "neutro"}>{iaCfg.iaActiva ? `${iaCfg.proveedor} activo` : "IA apagada"}</Badge>}
           </div>
           <p className="text-[12px] text-muted-foreground mb-3">La llave del proveedor vive en el entorno (nunca acá). Solo se configura el <b>modelo</b>. Sin modelo del cliente, se usa el por defecto{iaCfg?.modeloEnv ? ` (env: ${iaCfg.modeloEnv})` : ""}.</p>
@@ -330,8 +337,8 @@ export default function ClienteDetalle() {
         {/* Llaves de API — listar, crear, editar scopes, revocar */}
         <Card><CardContent className="pt-5">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-xs font-black uppercase tracking-widest text-muted-foreground">Llaves de API</div>
-            <Button size="sm" variant="secondary" onClick={nuevaLlave}>+ Nueva llave</Button>
+            <h2 className="xhub-section-heading"><Icon name="key" weight="regular" /> Llaves de API</h2>
+            <Button size="sm" variant="secondary" onClick={nuevaLlave}><Icon name="plus" /> Nueva llave</Button>
           </div>
           {llaves.length === 0 ? (
             <div className="text-[13px] text-muted-foreground">Sin llaves. Al crear una recibe todos los scopes de los módulos activos del cliente; podés restringirla acá.</div>
@@ -364,10 +371,10 @@ export default function ClienteDetalle() {
                   {editando === l.id ? (
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {scopesCat.map((s) => (
-                        <button key={s.scope} onClick={() => toggleScope(s.scope)} title={s.descripcion}
+                        <button key={s.scope} aria-pressed={editScopes.includes(s.scope)} onClick={() => toggleScope(s.scope)} title={s.descripcion}
                           className={"text-[11px] font-mono px-2 py-1 rounded border " + (editScopes.includes(s.scope) ? "border-[hsl(var(--senal))] text-foreground" : "border-border text-muted-foreground")}
                           style={editScopes.includes(s.scope) ? { background: "hsl(var(--senal)/0.1)" } : undefined}>
-                          {editScopes.includes(s.scope) ? "✓ " : ""}{s.scope}
+                          {editScopes.includes(s.scope) && <Icon name="check" className="xhub-inline-icon" />}{s.scope}
                         </button>
                       ))}
                     </div>
@@ -384,6 +391,7 @@ export default function ClienteDetalle() {
             </div>
           )}
         </CardContent></Card>
+        </div>
       </div>
     </main>
   );
