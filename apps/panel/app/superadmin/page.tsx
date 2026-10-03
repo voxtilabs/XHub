@@ -1,12 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
 import { AppShell } from "@/components/app-shell";
+import { Icon } from "@/components/icon";
+import { usePrompt } from "@/components/prompt-dialog";
 import { EditorMarca } from "@/components/editor-marca";
+import { HeroFeatures } from "@/components/hero-features";
 
 type Cliente = { id: string; nombre: string; estado: string; modulos: string[] };
 type Panorama = {
@@ -24,6 +28,7 @@ const estRol = (e: string): "exito" | "senal" | "critico" | "neutro" =>
   e === "activo" ? "exito" : e === "en_alta" ? "senal" : e === "moroso" ? "critico" : "neutro";
 
 export default function Superadmin() {
+  const { ask, dialog } = usePrompt();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +84,7 @@ export default function Superadmin() {
     catch (e) { setError((e as Error).message); }
   }
   async function entrarSoporte(cl: Cliente) {
-    const motivo = window.prompt(`Motivo del acceso de soporte a "${cl.nombre}" (queda auditado):`);
+    const motivo = await ask(`Motivo del acceso de soporte a "${cl.nombre}" (queda auditado):`, "", { title: "Acceso de soporte", icon: "headset", confirmLabel: "Entrar a soporte" });
     if (!motivo || motivo.trim().length < 4) return;
     try { await apiFetch("/admin/soporte", { method: "POST", body: JSON.stringify({ clienteId: cl.id, motivo: motivo.trim() }) }); window.location.href = "/tickets"; }
     catch (e) { setError((e as Error).message); }
@@ -97,10 +102,15 @@ export default function Superadmin() {
   return (
     <main className="min-h-screen">
       <AppShell />
+      {dialog}
 
-      <div className="max-w-5xl mx-auto p-4 sm:p-8">
-        <div className="flex justify-end mb-2"><a href="/superadmin/xcontact" className="text-[13px] text-[hsl(var(--senal))] hover:underline">Probar XContact →</a></div>
-        <div className="flex gap-3 mb-8 flex-wrap">
+      <div className="xhub-page xhub-platform-page">
+        <div className="xhub-page-heading" data-hero="commerce">
+          <div><div className="xhub-eyebrow">ADMINISTRACIÓN · PLATAFORMA</div><h1>Clientes</h1><p>Una vista completa de tu operación. Cada cliente, conectado.</p><HeroFeatures variant="clientes" />
+          </div>
+          <Link href="/superadmin/xcontact" className="voxia-button-primary inline-flex items-center gap-2"><Icon name="plugs-connected" weight="regular" /> Probar XContact</Link>
+        </div>
+        <div className="xhub-platform-stats">
           {([
             ["Clientes", pan ? pan.clientes.total : clientes.length, "--senal"],
             ["Activos", pan ? pan.clientes.activos : activos, "--exito"],
@@ -108,8 +118,9 @@ export default function Superadmin() {
             ["SLA vencidos", pan ? pan.tickets.vencidos : null, (pan && pan.tickets.vencidos > 0) ? "--critico" : "--muted-foreground"],
             ["IA · 30 días", pan ? pan.ia.total : null, "--senal"],
           ] as const).map(([l, n, col]) => (
-            <Card key={l} className="flex-1 min-w-[150px]">
+            <Card key={l} className="xhub-platform-stat">
               <CardContent className="pt-6">
+                <span className="xhub-platform-glyph" data-critical={l === "SLA vencidos" && !!pan?.tickets.vencidos}><Icon name={l === "Clientes" ? "buildings" : l === "Activos" ? "check-circle" : l === "Tickets abiertos" ? "chats-circle" : l === "SLA vencidos" ? "warning-circle" : "cpu"} weight="regular" /></span>
                 <div className="text-[11px] font-black tracking-widest uppercase text-muted-foreground">{l}</div>
                 <div className="text-4xl font-semibold tracking-tight mt-1 tabular-nums" style={{ color: `hsl(var(${col}))` }}>{n == null ? (cargando ? "·" : "·") : n}</div>
                 {l === "IA · 30 días" && pan && <div className="text-[10.5px] text-muted-foreground mt-1">{(pan.ia.tokensPrompt + pan.ia.tokensSalida).toLocaleString("es-CL")} tokens</div>}
@@ -119,12 +130,12 @@ export default function Superadmin() {
         </div>
 
         {/* Planes (plantillas de suscripción) */}
-        <Card className="mb-6"><CardContent className="pt-6">
-          <div className="text-xs font-black tracking-widest uppercase text-muted-foreground mb-3">Planes</div>
+        <Card className="mb-6 xhub-platform-panel"><CardContent className="pt-6">
+          <h2 className="xhub-section-heading mb-4"><Icon name="stack" weight="regular" /> Planes de suscripción</h2>
           {planes.length > 0 && (
             <div className="flex flex-col gap-1.5 mb-4">
               {planes.map((p) => (
-                <div key={p.id} className="flex items-center gap-2 text-[13px] rounded-md bg-secondary/40 px-3 py-1.5">
+                <div key={p.id} className="xhub-plan-row flex items-center gap-2 text-[13px] rounded-md bg-secondary/40 px-3 py-1.5">
                   <span className="font-medium">{p.nombre}</span>
                   <span className="text-muted-foreground">· {p.modulos.length ? p.modulos.join(", ") : "sin módulos"} · {p.limiteUsuarios} usuarios · {p.cuotaMensual.toLocaleString("es-CL")} API/mes</span>
                   <button onClick={() => borrarPlan(p.id)} className="ml-auto text-muted-foreground hover:text-[hsl(var(--critico))] text-xs">eliminar</button>
@@ -132,41 +143,41 @@ export default function Superadmin() {
               ))}
             </div>
           )}
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-end flex-wrap">
-            <Input value={pf.nombre} onChange={(e) => setPf({ ...pf, nombre: e.target.value })} placeholder="Nombre del plan (ej: Pro)" className="sm:flex-1 min-w-[140px]" />
+          <div className="xhub-plan-form">
+            <label className="xhub-plan-name"><span>Nombre del plan</span><Input aria-label="Nombre del plan" value={pf.nombre} onChange={(e) => setPf({ ...pf, nombre: e.target.value })} placeholder="Por ejemplo, Pro" className="sm:flex-1 min-w-[140px]" /></label>
             <label className="flex items-center gap-1.5 text-[13px]"><input type="checkbox" checked={pf.tickets} onChange={(e) => setPf({ ...pf, tickets: e.target.checked })} /> xTickets</label>
             <label className="flex items-center gap-1.5 text-[13px]"><input type="checkbox" checked={pf.crm} onChange={(e) => setPf({ ...pf, crm: e.target.checked })} /> xCRM</label>
-            <Input type="number" value={pf.limiteUsuarios} onChange={(e) => setPf({ ...pf, limiteUsuarios: Number(e.target.value) })} className="w-24" title="Tope usuarios" />
-            <Input type="number" value={pf.cuotaMensual} onChange={(e) => setPf({ ...pf, cuotaMensual: Number(e.target.value) })} className="w-32" title="Cuota API/mes" />
-            <Button variant="secondary" onClick={crearPlan}>+ Plan</Button>
+            <label className="xhub-plan-number"><span>Usuarios</span><Input aria-label="Tope de usuarios del plan" type="number" value={pf.limiteUsuarios} onChange={(e) => setPf({ ...pf, limiteUsuarios: Number(e.target.value) })} className="w-24" title="Tope usuarios" /></label>
+            <label className="xhub-plan-number"><span>API / mes</span><Input aria-label="Cuota mensual de API del plan" type="number" value={pf.cuotaMensual} onChange={(e) => setPf({ ...pf, cuotaMensual: Number(e.target.value) })} className="w-32" title="Cuota API/mes" /></label>
+            <Button variant="secondary" onClick={crearPlan}><Icon name="plus" /> Crear plan</Button>
           </div>
         </CardContent></Card>
 
         {/* Crear cliente — REAL, pega a POST /admin/clientes */}
-        <Card className="mb-6"><CardContent className="pt-6">
-          <div className="text-xs font-black tracking-widest uppercase text-muted-foreground mb-3">Crear cliente</div>
+        <Card className="mb-6 xhub-platform-panel"><CardContent className="pt-6">
+          <h2 className="xhub-section-heading mb-4"><Icon name="building-office" weight="regular" /> Crear cliente</h2>
           <div className="flex flex-col sm:flex-row gap-2">
-            <Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del cliente (ej: Retail Andes SpA)"
+            <Input aria-label="Nombre del nuevo cliente" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del cliente (ej: Retail Andes SpA)"
               onKeyDown={(e) => e.key === "Enter" && crear()} className="sm:flex-1" />
-            <Button onClick={crear} disabled={nombre.trim().length < 2 || creando}>{creando ? "Creando…" : "+ Crear cliente"}</Button>
+            <Button onClick={crear} disabled={nombre.trim().length < 2 || creando}><Icon name={creando ? "spinner-gap" : "plus"} />{creando ? "Creando…" : "Crear cliente"}</Button>
           </div>
           <p className="text-[11px] text-muted-foreground mt-2">Encender un módulo no migra datos: la historia de cada persona ya vive en el núcleo.</p>
         </CardContent></Card>
 
-        {error && <div className="mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}>▲ {error}</div>}
+        {error && <div className="mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}><Icon name="warning-circle" className="xhub-inline-icon" weight="regular" /> {error}</div>}
 
         {llave && (
           <Card className="mb-4" style={{ borderColor: "hsl(var(--senal)/0.5)" }}><CardContent className="pt-6">
             <div className="text-xs font-black tracking-widest uppercase text-[hsl(var(--senal))] mb-2">Llave de API creada · {llave.cliente}</div>
             <div className="font-mono text-[12px] break-all bg-secondary rounded-md p-3">{llave.token}</div>
-            <p className="text-[11px] text-muted-foreground mt-2">⚠ Se muestra <b>una sola vez</b> — cópiala ahora. En la base solo queda su hash.</p>
+            <p className="text-[11px] text-muted-foreground mt-2"><Icon name="warning" className="xhub-inline-icon" weight="regular" /> Se muestra <b>una sola vez</b> — cópiala ahora. En la base solo queda su hash.</p>
             <Button size="sm" variant="secondary" className="mt-3" onClick={() => setLlave(null)}>Listo, la copié</Button>
           </CardContent></Card>
         )}
 
         <div className="flex justify-between items-center mb-3">
-          <h2 className="font-semibold text-lg tracking-tight">Clientes</h2>
-          <button onClick={cargar} className="text-xs text-muted-foreground hover:text-foreground">↻ Actualizar</button>
+          <h2 className="xhub-section-heading"><Icon name="buildings" weight="regular" /> Directorio de clientes</h2>
+          <button onClick={cargar} className="text-xs text-muted-foreground hover:text-foreground"><Icon name="arrows-clockwise" className="xhub-inline-icon" weight="regular" /> Actualizar</button>
         </div>
 
         {cargando ? (
@@ -174,19 +185,20 @@ export default function Superadmin() {
         ) : clientes.length === 0 ? (
           <Card><CardContent className="py-10 text-center text-muted-foreground text-sm">Aún no hay clientes. Crea el primero arriba ↑</CardContent></Card>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="xhub-platform-clients">
             {clientes.map((cl) => (
-              <Card key={cl.id}><CardContent className="pt-5 pb-5">
-                <div className="flex flex-wrap items-center gap-3">
-                  <a href={`/superadmin/cliente?id=${cl.id}`} className="font-medium hover:text-[hsl(var(--senal))]">{cl.nombre}</a>
+              <Card key={cl.id} className="xhub-platform-client"><CardContent className="pt-5 pb-5">
+                <div className="xhub-platform-client-head flex flex-wrap items-center gap-3">
+                  <span className="xhub-platform-glyph"><Icon name="building-office" weight="regular" /></span>
+                  <Link href={`/superadmin/cliente?id=${cl.id}`} className="font-medium hover:text-[hsl(var(--senal))]">{cl.nombre}</Link>
                   <Badge rol={estRol(cl.estado)}>{cl.estado.replace("_", " ")}</Badge>
                   <div className="flex-1" />
-                  <a href={`/superadmin/cliente?id=${cl.id}`} className="text-xs text-[hsl(var(--senal))] hover:underline">Gestionar →</a>
-                  <Button variant="secondary" size="sm" onClick={() => entrarSoporte(cl)}>Soporte</Button>
-                  <Button variant="secondary" size="sm" onClick={() => setMarcaAbierta(marcaAbierta === cl.id ? null : cl.id)}>Marca</Button>
-                  <Button variant="secondary" size="sm" onClick={() => nuevaLlave(cl)}>+ Llave API</Button>
+                  <Link href={`/superadmin/cliente?id=${cl.id}`} className="text-xs text-[hsl(var(--senal))] hover:underline">Gestionar <Icon name="arrow-up-right" className="xhub-inline-icon" /></Link>
+                  <Button variant="secondary" size="sm" onClick={() => entrarSoporte(cl)}><Icon name="headset" weight="regular" /> Soporte</Button>
+                  <Button variant="secondary" size="sm" aria-expanded={marcaAbierta === cl.id} onClick={() => setMarcaAbierta(marcaAbierta === cl.id ? null : cl.id)}><Icon name="sliders-horizontal" weight="regular" /> Marca</Button>
+                  <Button variant="secondary" size="sm" onClick={() => nuevaLlave(cl)}><Icon name="key" weight="regular" /> Llave API</Button>
                   {planes.length > 0 && (
-                    <select defaultValue="" onChange={(e) => { const v = e.target.value; e.currentTarget.value = ""; aplicarPlan(cl, v); }}
+                    <select aria-label={`Aplicar plan a ${cl.nombre}`} defaultValue="" onChange={(e) => { const v = e.target.value; e.currentTarget.value = ""; aplicarPlan(cl, v); }}
                       className="h-8 rounded-md border border-border bg-background px-2 text-[12px]">
                       <option value="">Aplicar plan…</option>
                       {planes.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
@@ -198,9 +210,9 @@ export default function Superadmin() {
                   {MODULOS.map((m) => {
                     const on = cl.modulos.includes(m.k);
                     return (
-                      <button key={m.k} onClick={() => toggle(cl, m.k)}
+                      <button key={m.k} aria-pressed={on} onClick={() => toggle(cl, m.k)}
                         className={"px-3 h-8 rounded-pill text-[13px] font-medium border transition " + (on ? "bg-secondary border-border text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
-                        <span className="mr-1.5" style={{ color: on ? "hsl(var(--exito))" : "hsl(var(--muted-foreground))" }}>{on ? "●" : "○"}</span>{m.nombre}
+                        <span className="mr-1.5" style={{ color: on ? "hsl(var(--exito))" : "hsl(var(--muted-foreground))" }}><Icon name={on ? "check-circle" : "circle"} className="xhub-inline-icon" weight="regular" /></span>{m.nombre}
                       </button>
                     );
                   })}

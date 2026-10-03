@@ -17,24 +17,24 @@
 @font-face { font-family: 'JetBrains Mono'; src: url('/voxia/fonts/mono-500.woff2') format('woff2'); font-style: normal; font-weight: 500; font-display: swap; }
 @font-face { font-family: 'JetBrains Mono'; src: url('/voxia/fonts/mono-600.woff2') format('woff2'); font-style: normal; font-weight: 600; font-display: swap; }
 
-/* Identidad X5 / XContact: acción naranja y señal cian.
+/* Identidad xHub: acción champán y señal cian; logos oficiales sin cambios.
    Valores canónicos: packages/ui/src/tokens.css. Composición Studio de Voxia. */
 :root {
   --background: 216 33.3333% 2.9412%;
   --foreground: 0 0% 100%;
   --card: 210 41.1765% 6.6667%;
   --card-foreground: 0 0% 100%;
-  --primary: 25.1528 100% 55.098%;
-  --primary-foreground: 228.5714 84% 4.902%;
+  --primary: 44.3478 41.3174% 67.2549%;
+  --primary-foreground: 218.0000 39.4737% 14.9020%;
   --secondary: 208.6957 36.5079% 12.3529%;
   --secondary-foreground: 0 0% 100%;
   --muted: 208.6957 36.5079% 12.3529%;
   --muted-foreground: 211.7647 18.6813% 64.3137%;
-  --accent: 25 41.3793% 11.3725%;
-  --accent-foreground: 25.5944 100% 71.9608%;
+  --accent: 46.1538 16.4557% 15.4902%;
+  --accent-foreground: 43.2000 47.1698% 79.2157%;
   --border: 210 26.5306% 19.2157%;
   --input: 210 22.0779% 30.1961%;
-  --ring: 25.1528 100% 55.098%;
+  --ring: 44.3478 41.3174% 67.2549%;
   --senal: 190.9091 78.0645% 69.6078%;
   --exito: 158.1132 64.3725% 51.5686%;
   --aviso: 36.067 100% 65.098%;
@@ -42,10 +42,10 @@
   --voxia-field: #071017;
   --voxia-body: #c3cbd5;
   --voxia-faint: #93a3b5;
-  --voxia-action-hover: #e8631a;
-  --voxia-action-text: #ffad70;
-  --voxia-action-soft: #291b11;
-  --voxia-action-border: #694020;
+  --voxia-action-hover: #ddcea6;
+  --voxia-action-text: #e3d5b1;
+  --voxia-action-soft: #28251d;
+  --voxia-action-border: #675b3e;
   --voxia-good-soft: #10281f;
   --voxia-good-border: #1e4536;
   --voxia-warn-soft: #2a2012;
@@ -64,13 +64,13 @@
   --foreground: 228.5714 84% 4.902%;
   --card: 0 0% 100%;
   --card-foreground: 228.5714 84% 4.902%;
-  --primary-foreground: 228.5714 84% 4.902%;
+  --primary-foreground: 218.0000 39.4737% 14.9020%;
   --secondary: 214.2857 31.8182% 91.3725%;
   --secondary-foreground: 228.5714 84% 4.902%;
   --muted: 214.2857 31.8182% 91.3725%;
   --muted-foreground: 214.7368 18.8119% 39.6078%;
-  --accent: 26.6667 100% 94.7059%;
-  --accent-foreground: 23.6066 100% 35.8824%;
+  --accent: 47.1429 50.0000% 94.5098%;
+  --accent-foreground: 41.3115 35.6725% 33.5294%;
   --border: 210 30.303% 87.0588%;
   --input: 210.9677 19.4969% 68.8235%;
   --senal: 191.5 81.0811% 29.0196%;
@@ -80,10 +80,10 @@
   --voxia-field: #fff;
   --voxia-body: #475569;
   --voxia-faint: #526278;
-  --voxia-action-hover: #e8631a;
-  --voxia-action-text: #b74800;
-  --voxia-action-soft: #fff0e4;
-  --voxia-action-border: #e9bea0;
+  --voxia-action-hover: #ddcea6;
+  --voxia-action-text: #746137;
+  --voxia-action-soft: #f8f5ea;
+  --voxia-action-border: #ded1af;
   --voxia-good-soft: #e7faf3;
   --voxia-good-border: #c6f0df;
   --voxia-warn-soft: #fff6e6;
@@ -92,8 +92,8 @@
   --voxia-bad-border: #fcd6de;
   --voxia-highlight: #fff;
   --voxia-shade: #dce4ed;
-  --primary: 25.1528 100% 55.098%;
-  --ring: 23.6066 100% 35.8824%;
+  --primary: 44.3478 41.3174% 67.2549%;
+  --ring: 41.3115 35.6725% 33.5294%;
   --xhub-signal-soft: #e5f6fa;
   --xhub-signal-border: #a8d8e1;
 }

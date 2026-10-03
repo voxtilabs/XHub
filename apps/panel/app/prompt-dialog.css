@@ -1,0 +1,22 @@
+/* Modal prompts share the Horizon surfaces while the native dialog manages focus. */
+.xhub-prompt-dialog { padding:0; width:calc(100% - 32px); max-width:460px; max-height:calc(100dvh - 32px); margin:auto; overflow:auto; overscroll-behavior:contain; border:1px solid hsl(var(--border)); border-radius:19px; background:hsl(var(--card)); color:hsl(var(--foreground)); box-shadow:0 26px 90px #0006; }
+.xhub-prompt-dialog::backdrop { background:#07111fcc; backdrop-filter:blur(5px); }
+.xhub-prompt-dialog form { padding:30px; }
+.xhub-prompt-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:20px; }
+.xhub-prompt-icon { display:grid; place-items:center; width:54px; height:54px; border-radius:13px; background:var(--voxia-action-soft); color:var(--voxia-action-text); }
+.xhub-prompt-icon .ph { font-size:29px; }
+.xhub-prompt-close { display:grid; place-items:center; min-width:36px; min-height:36px; border-radius:10px; color:hsl(var(--muted-foreground)); }
+.xhub-prompt-close:hover { background:hsl(var(--secondary)); color:hsl(var(--foreground)); }
+.xhub-prompt-close .ph { font-size:21px; }
+.xhub-prompt-dialog h2 { margin:0; font:600 29px/1.25 Outfit,sans-serif; letter-spacing:-.6px; overflow-wrap:anywhere; }
+.xhub-prompt-dialog p { margin:12px 0 0; font:400 13px/1.7 Inter,sans-serif; color:hsl(var(--muted-foreground)); }
+.xhub-prompt-dialog label { display:block; margin:25px 0 9px; font:500 13px/1.6 Inter,sans-serif; overflow-wrap:anywhere; }
+.xhub-prompt-dialog .voxia-input { width:100%; border:1px solid hsl(var(--input)); border-radius:10px; background:hsl(var(--background)); font:400 16px/1.4 Inter,sans-serif; box-shadow:none; }
+.xhub-prompt-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:10px; margin-top:27px; }
+.xhub-prompt-actions>button { min-height:44px; border-radius:10px; font:500 12px/1.4 Inter,sans-serif; padding-inline:18px; }
+.xhub-prompt-actions .voxia-button-primary { background:#cebc89; border-color:#cebc89; color:#14100d; }
+.xhub-prompt-actions .voxia-button-primary:hover { background:#ddcea6; }
+.xhub-prompt-actions .voxia-button-surface { background:hsl(var(--card)); border-color:hsl(var(--border)); color:hsl(var(--foreground)); }
+.xhub-prompt-dialog :is(input,button):focus-visible { outline:2px solid hsl(var(--ring)); outline-offset:3px; }
+@media(max-width:480px) { .xhub-prompt-dialog form { padding:24px 21px; } .xhub-prompt-dialog h2 { font-size:26px; } .xhub-prompt-actions { gap:9px; } .xhub-prompt-actions>button { flex:1 1 auto; padding-inline:13px; } }
+@media(max-height:520px) { .xhub-prompt-dialog form { padding-block:20px; } .xhub-prompt-heading { margin-bottom:12px; } .xhub-prompt-dialog label { margin-top:16px; } .xhub-prompt-actions { margin-top:18px; } }

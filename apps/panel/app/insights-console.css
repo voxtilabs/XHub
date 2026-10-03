@@ -1,0 +1,97 @@
+/* Value, activity and configured probability are separate readings of each stage. */
+.crm-insights-page {
+  --stage-panel:radial-gradient(ellipse at 0 0,#2e464d38,transparent 60%),linear-gradient(135deg,#152433,#101c29);
+  --stage-card:linear-gradient(145deg,#1b2c3c,#162533);
+  --stage-card-active:radial-gradient(ellipse at 0 0,#c9b78118,transparent 75%),linear-gradient(145deg,#233441,#192b38);
+  --stage-card-edge:#96aec12e;
+  --stage-shadow:0 8px 22px #02091221,inset 0 1px 0 #ffffff07;
+}
+html[data-tema="claro"] .crm-insights-page {
+  --stage-panel:radial-gradient(ellipse at 0 0,#eae0c52e,transparent 60%),linear-gradient(135deg,#fff,#f7f9f8);
+  --stage-card:linear-gradient(145deg,#fff,#fafbfa);
+  --stage-card-active:radial-gradient(ellipse at 0 0,#e9dec655,transparent 75%),linear-gradient(145deg,#fffdf7,#fcfdfb);
+  --stage-card-edge:#cdd7df;
+  --stage-shadow:0 6px 18px #2637470b,inset 0 1px 0 #fff;
+}
+html[data-tema] body .crm-insights-page .crm-stage-analysis { position:relative; border:1px solid var(--xhub-line-strong); border-radius:20px; background:var(--stage-panel); box-shadow:0 18px 42px #02081015; }
+.crm-stage-analysis::before { content:""; position:absolute; inset:0 22% auto 28px; height:1px; pointer-events:none; background:linear-gradient(90deg,transparent,var(--voxia-action-text),transparent); opacity:.5; }
+.crm-insights-page .crm-stage-analysis > .crm-stage-content { padding:28px; }
+.crm-stage-heading { display:flex; align-items:center; justify-content:space-between; gap:32px; padding-bottom:25px; border-bottom:1px solid var(--xhub-line); }
+.crm-stage-intro { min-width:0; }
+.crm-stage-kicker { display:flex; align-items:center; gap:8px; margin-bottom:13px; color:var(--voxia-action-text); font:500 9px/1.5 Inter,sans-serif; letter-spacing:1.6px; }
+.crm-stage-kicker > .ph { width:18px; height:18px; flex:none; }
+.crm-stage-heading h2 { color:hsl(var(--foreground)); font:500 28px/1.25 Outfit,Inter,sans-serif; letter-spacing:-.5px; }
+.crm-stage-intro p { max-width:400px; margin-top:9px; color:hsl(var(--muted-foreground)); font-size:12px; line-height:1.7; }
+.crm-stage-overview { display:flex; flex:none; align-items:center; gap:26px; }
+.crm-stage-overview > div { min-width:70px; padding-left:25px; border-left:1px solid var(--xhub-line); }
+.crm-stage-overview dt { color:hsl(var(--muted-foreground)); font-size:10px; line-height:1.5; }
+.crm-stage-overview dd { margin-top:8px; color:hsl(var(--foreground)); font:500 30px/1.1 Outfit,Inter,sans-serif; font-variant-numeric:tabular-nums; letter-spacing:-.5px; overflow-wrap:anywhere; }
+.crm-stage-overview > div:first-child dd { color:var(--voxia-action-text); }
+.crm-stage-zero-note { display:flex; align-items:center; gap:9px; margin:21px 0 0; color:hsl(var(--muted-foreground)); font-size:11px; line-height:1.65; }
+.crm-stage-zero-note > .ph { width:17px; height:17px; flex:none; color:var(--voxia-action-text); }
+.crm-stage-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:stretch; gap:16px; margin-top:24px; }
+.crm-stage-card { position:relative; min-width:0; padding:21px; border:1px solid var(--stage-card-edge); border-radius:14px; background:var(--stage-card); box-shadow:var(--stage-shadow); }
+.crm-stage-card[data-populated="true"] { border-color:var(--voxia-action-border); background:var(--stage-card-active); }
+.crm-stage-card[data-populated="true"]::before { content:""; position:absolute; top:-1px; left:20px; right:20px; height:2px; background:linear-gradient(90deg,var(--voxia-action-text),transparent); border-radius:0 0 2px 2px; pointer-events:none; opacity:.65; }
+.crm-stage-card-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; min-height:25px; }
+.crm-stage-card-heading h3 { min-width:0; color:hsl(var(--foreground)); font:500 17px/1.4 Outfit,Inter,sans-serif; letter-spacing:-.15px; overflow-wrap:anywhere; }
+.crm-stage-count { flex:none; margin-top:2px; color:hsl(var(--muted-foreground)); font-size:10px; line-height:1.8; white-space:nowrap; }
+.crm-stage-card[data-populated="true"] .crm-stage-count { color:var(--voxia-action-text); }
+.crm-stage-card-body { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-top:24px; }
+.crm-stage-value { min-width:0; flex:1; }
+.crm-stage-value > span { display:block; color:hsl(var(--muted-foreground)); font-size:10px; line-height:1.5; }
+.crm-stage-value > strong { display:block; margin-top:8px; color:hsl(var(--foreground)); font:500 clamp(25px,2.2vw,32px)/1.15 Outfit,Inter,sans-serif; letter-spacing:-.7px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.crm-stage-probability { display:flex; flex-direction:column; align-items:center; gap:7px; flex:none; }
+.crm-stage-ring { position:relative; display:grid; place-items:center; width:62px; height:62px; }
+.crm-stage-ring > svg { position:absolute; inset:0; width:100%; height:100%; fill:none; stroke-width:3; }
+.crm-stage-ring-track { stroke:var(--xhub-line); }
+.crm-stage-ring-fill { stroke:var(--voxia-action-text); stroke-linecap:round; }
+.crm-stage-ring-fill[data-zero="true"] { display:none; }
+.crm-stage-ring > span { color:var(--voxia-action-text); font:500 16px/1 Outfit,Inter,sans-serif; font-variant-numeric:tabular-nums; }
+.crm-stage-ring small { margin-left:1px; font-size:9px; }
+.crm-stage-probability-label { color:hsl(var(--muted-foreground)); text-align:center; font-size:9px; line-height:1.5; }
+.crm-stage-share { margin-top:21px; padding-top:15px; border-top:1px solid var(--xhub-line); }
+.crm-stage-share > div:first-child { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; color:hsl(var(--muted-foreground)); font-size:10px; }
+.crm-stage-share strong { color:hsl(var(--foreground)); font-weight:500; font-variant-numeric:tabular-nums; }
+.crm-stage-share-track { height:4px; border-radius:4px; overflow:hidden; background:var(--xhub-line); }
+.crm-stage-share-track > span { display:block; height:100%; border-radius:inherit; background:var(--voxia-action-text); }
+.crm-stage-footnote { display:flex; align-items:flex-start; gap:8px; margin-top:24px; padding-top:20px; border-top:1px solid var(--xhub-line); color:hsl(var(--muted-foreground)); font-size:10px; line-height:1.65; }
+.crm-stage-footnote > .ph { width:16px; height:16px; margin-top:1px; flex:none; color:var(--voxia-action-text); }
+.crm-stage-empty { display:flex; flex-direction:column; align-items:center; gap:10px; padding:36px 20px; text-align:center; }
+.crm-stage-empty > .ph { color:var(--voxia-action-text); font-size:34px; }
+.crm-stage-empty h3 { color:hsl(var(--foreground)); font:500 18px/1.4 Outfit,Inter,sans-serif; }
+.crm-stage-empty p { color:hsl(var(--muted-foreground)); font-size:12px; line-height:1.6; }
+@media(max-width:1250px) {
+  .crm-stage-heading { align-items:flex-start; flex-direction:column; gap:24px; }
+  .crm-stage-overview { width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
+  .crm-stage-overview > div:first-child { padding-left:0; border-left:0; }
+  .crm-stage-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:620px) {
+  .crm-insights-page .crm-stage-analysis > .crm-stage-content { padding:23px 18px 20px; }
+  .crm-stage-analysis::before { left:18px; }
+  .crm-stage-heading { gap:22px; padding-bottom:20px; }
+  .crm-stage-heading h2 { font-size:25px; }
+  .crm-stage-intro p { font-size:11px; }
+  .crm-stage-kicker { font-size:8px; letter-spacing:1.3px; }
+  .crm-stage-overview { gap:12px; }
+  .crm-stage-overview > div { min-width:0; padding-left:12px; }
+  .crm-stage-overview dt { font-size:9px; }
+  .crm-stage-overview dd { font-size:25px; }
+  .crm-stage-zero-note { align-items:flex-start; margin-top:18px; font-size:10px; }
+  .crm-stage-zero-note > .ph { margin-top:1px; }
+  .crm-stage-grid { grid-template-columns:1fr; gap:12px; margin-top:20px; }
+  .crm-stage-card { padding:18px; }
+  .crm-stage-card-heading h3 { font-size:17px; }
+  .crm-stage-card-body { margin-top:18px; }
+  .crm-stage-value > strong { font-size:30px; }
+  .crm-stage-probability { flex-direction:row; gap:10px; }
+  .crm-stage-ring { width:50px; height:50px; }
+  .crm-stage-probability-label { text-align:left; font-size:8px; }
+  .crm-stage-footnote { margin-top:20px; padding-top:18px; font-size:9px; }
+}
+@media(max-width:360px) {
+  .crm-stage-card-heading { flex-wrap:wrap; gap:3px; }
+  .crm-stage-probability { flex-direction:column; gap:5px; }
+  .crm-stage-probability-label { text-align:center; }
+}

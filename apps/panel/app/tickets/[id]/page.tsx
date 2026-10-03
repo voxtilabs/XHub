@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { AppShell } from "@/components/app-shell";
+import { Icon } from "@/components/icon";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import {
   getTicket, getMensajes, getContexto, getSugerencia, responder, notaInterna, cambiarEstado,
@@ -93,7 +94,7 @@ function Contenido() {
   }
   async function transicionar(e: Estado) {
     setError(null);
-    try { await cambiarEstado(id, e); setT((prev) => prev && { ...prev, estado: e }); const m = await getMensajes(id); setMsgs(m.datos); setToast(`Estado → ${e}`); }
+    try { await cambiarEstado(id, e); setT((prev) => prev && { ...prev, estado: e }); const m = await getMensajes(id); setMsgs(m.datos); setToast(`Estado: ${e}`); }
     catch (err) { setError((err as Error).message); }
   }
   async function asignarA(u: string) {
@@ -103,7 +104,7 @@ function Contenido() {
   }
   async function ponerPrioridad(p: Prioridad) {
     setError(null);
-    try { await cambiarPrioridad(id, p); setT((prev) => prev && { ...prev, prioridad: p }); setToast(`Prioridad → ${p}`); }
+    try { await cambiarPrioridad(id, p); setT((prev) => prev && { ...prev, prioridad: p }); setToast(`Prioridad: ${p}`); }
     catch (err) { setError((err as Error).message); }
   }
   async function fijarEtiquetas(lista: string[]) {
@@ -122,15 +123,15 @@ function Contenido() {
     catch (err) { setError((err as Error).message); }
   }
 
-  if (cargando) return <div className="max-w-5xl mx-auto p-10 text-sm text-muted-foreground font-mono">Cargando ticket…</div>;
-  if (!t) return <div className="max-w-5xl mx-auto p-8"><div className="p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", color: "hsl(var(--critico))" }}>▲ {error ?? "No se pudo cargar el ticket"}</div><Link href="/tickets" className="text-[hsl(var(--senal))] text-sm underline mt-3 inline-block">← Volver a la bandeja</Link></div>;
+  if (cargando) return <div role="status" className="xhub-ticket-loading"><Icon name="spinner-gap" weight="regular" className="animate-spin" />Cargando ticket…</div>;
+  if (!t) return <div className="xhub-ticket-loading"><div role="alert" className="xhub-ticket-alert p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", color: "hsl(var(--critico))" }}><Icon name="warning-circle" weight="regular" />{error ?? "No se pudo cargar el ticket"}</div><Link href="/tickets" className="text-[hsl(var(--senal))] text-sm underline mt-3 inline-block">← Volver a la bandeja</Link></div>;
 
   return (
-    <div className="max-w-5xl mx-auto p-4 sm:p-7">
-      <Link href="/tickets" className="text-[13px] text-muted-foreground hover:text-foreground">← Bandeja</Link>
-      <div className="flex items-start justify-between gap-3 mt-2 mb-4 flex-wrap">
+    <div className="xhub-page xhub-ticket-detail">
+      <div className="xhub-page-heading xhub-ticket-detail-heading" data-hero="attention" data-hero-size="detail">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+          <Link href="/tickets" className="xhub-ticket-back"><Icon name="arrow-left" weight="regular" />Bandeja</Link>
+          <div className="xhub-ticket-status-line flex items-center gap-2 flex-wrap">
             <span className="font-mono text-sm text-muted-foreground">#{t.numero}</span>
             <Badge rol={estT[t.estado]}>{t.estado}</Badge>
             <Badge rol={priT[t.prioridad]}>{t.prioridad}</Badge>
@@ -139,22 +140,24 @@ function Contenido() {
           </div>
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight mt-1.5">{t.asunto}</h1>
           {(t.persona_nombre || (t.persona_identidades && t.persona_identidades.length > 0)) && (
-            <div className="text-[13px] mt-1 flex items-center gap-x-3 gap-y-0.5 flex-wrap">
+            <div className="xhub-ticket-contact text-[13px] mt-1 flex items-center gap-x-3 gap-y-0.5 flex-wrap">
               {t.persona_nombre && <span className="font-medium">{t.persona_nombre}</span>}
               {t.persona_identidades?.map((i) => (
-                <span key={i.canal + i.identificador} className="text-muted-foreground tabular-nums">
-                  {i.canal === "telefono" ? "📞" : i.canal === "email" ? "✉" : i.canal === "rut" ? "🆔" : i.canal === "xcontact" ? "⟳" : "•"} {i.identificador}
+                <span key={i.canal + i.identificador} className="xhub-ticket-identity text-muted-foreground tabular-nums">
+                  <Icon name={i.canal === "telefono" ? "phone" : i.canal === "email" ? "envelope" : i.canal === "rut" ? "identification-card" : i.canal === "xcontact" ? "arrows-clockwise" : "user-circle"} weight="regular" /> {i.identificador}
                 </span>
               ))}
             </div>
           )}
-          <div className="text-[12.5px] text-muted-foreground mt-1">
+          <div className="xhub-ticket-heading-meta text-[12.5px] text-muted-foreground mt-1">
             {t.canal_origen ?? "sin canal"}{t.categoria ? ` · ${t.categoria}` : ""} · creado {fecha(t.creado_en)} · {t.asignado_usuario ? (agentes.find((a) => a.id === t.asignado_usuario)?.nombre || agentes.find((a) => a.id === t.asignado_usuario)?.email || "asignado") : "sin asignar"}
             {(t.etiquetas ?? []).map((e) => <span key={e} className="ml-1.5 rounded-pill bg-secondary px-1.5 py-0.5 text-[10.5px]">{e}</span>)}
           </div>
         </div>
+      </div>
         {puede && (
-          <div className="flex gap-1.5 flex-wrap items-center">
+          <div className="xhub-ticket-management flex gap-1.5 flex-wrap items-center">
+            <span className="xhub-ticket-management-caption"><Icon name="sliders-horizontal" weight="regular" />Gestionar ticket</span>
             <select value={t.asignado_usuario ?? ""} onChange={(e) => asignarA(e.target.value)} title="Asignar a"
               className="h-9 rounded-md border border-border bg-background px-2 text-[13px] max-w-[160px]">
               <option value="">Sin asignar</option>
@@ -170,55 +173,55 @@ function Contenido() {
             ))}
           </div>
         )}
-      </div>
 
-      {error && <div className="mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}>▲ {error}</div>}
+      {error && <div role="alert" className="xhub-ticket-alert mb-4 p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}><Icon name="warning-circle" weight="regular" />{error}</div>}
 
       {puede && (
-        <div className="flex items-center gap-1.5 flex-wrap mb-4">
-          <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mr-1">Categoría</span>
-          <select value={t.categoria ?? ""} onChange={(e) => fijarCategoria(e.target.value)} className="h-7 rounded-md border border-border bg-background px-2 text-[12px] max-w-[160px]">
+        <div className="xhub-ticket-classification flex items-center gap-1.5 flex-wrap mb-4">
+          <span className="xhub-ticket-category-label text-[11px] font-black uppercase tracking-widest text-muted-foreground mr-1">Categoría</span>
+          <select value={t.categoria ?? ""} onChange={(e) => fijarCategoria(e.target.value)} aria-label="Categoría" className="h-7 rounded-md border border-border bg-background px-2 text-[12px] max-w-[160px]">
             <option value="">— sin categoría —</option>
             {categorias.map((c) => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
             {t.categoria && !categorias.some((c) => c.nombre === t.categoria) && <option value={t.categoria}>{t.categoria}</option>}
           </select>
           <span className="w-px h-6 bg-border mx-1" />
-          <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mr-1">Etiquetas</span>
+          <span className="xhub-ticket-tags-label text-[11px] font-black uppercase tracking-widest text-muted-foreground mr-1">Etiquetas</span>
           {(t.etiquetas ?? []).map((e) => (
             <span key={e} className="inline-flex items-center gap-1 rounded-pill bg-secondary px-2 py-0.5 text-[11.5px]">
-              {e}<button onClick={() => fijarEtiquetas((t.etiquetas ?? []).filter((x) => x !== e))} className="text-muted-foreground hover:text-[hsl(var(--critico))]" aria-label={`quitar ${e}`}>×</button>
+              {e}<button onClick={() => fijarEtiquetas((t.etiquetas ?? []).filter((x) => x !== e))} className="text-muted-foreground hover:text-[hsl(var(--critico))]" aria-label={`quitar ${e}`}><Icon name="x" weight="regular" /></button>
             </span>
           ))}
           <input value={nuevaEtq} onChange={(e) => setNuevaEtq(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && nuevaEtq.trim()) { fijarEtiquetas([...(t.etiquetas ?? []), nuevaEtq.trim()]); setNuevaEtq(""); } }}
-            placeholder="+ etiqueta y Enter" className="h-7 w-36 rounded-pill border border-border bg-background px-2.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-ring" />
+            placeholder="+ etiqueta y Enter" aria-label="Agregar etiqueta" className="h-7 w-36 rounded-pill border border-border bg-background px-2.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
       )}
 
-      <div className="grid lg:grid-cols-[1fr_300px] gap-4">
+      <div className="xhub-ticket-detail-grid grid lg:grid-cols-[1fr_300px] gap-4">
         {/* Conversación */}
-        <div className="flex flex-col gap-3">
-          <Card><CardContent className="pt-4">
+        <div className="xhub-ticket-conversation-column flex flex-col gap-3">
+          <Card className="xhub-ticket-ai-summary"><CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Resumen IA</span>
-              {puede && <button onClick={resumir} disabled={resumiendo} className="text-[11.5px] text-[hsl(var(--senal))] hover:underline disabled:opacity-50">{resumiendo ? "resumiendo…" : "✦ resumir"}</button>}
+              <span className="xhub-ticket-section-label"><Icon name="lightning" weight="regular" />Resumen IA</span>
+              {puede && <button onClick={resumir} disabled={resumiendo} className="xhub-ticket-inline-action text-[11.5px] text-[hsl(var(--senal))] hover:underline disabled:opacity-50"><Icon name="arrows-clockwise" weight="regular" />{resumiendo ? "resumiendo…" : "resumir"}</button>}
             </div>
             <div className="text-[13px] text-muted-foreground">{t.resumen || "Sin resumen. Pulsa «resumir» para generarlo con IA."}</div>
           </CardContent></Card>
-          <Card><CardContent className="pt-5 space-y-3">
+          <Card className="xhub-ticket-conversation"><CardContent className="pt-5 space-y-3">
+            <div className="xhub-ticket-card-heading"><span className="xhub-ticket-card-glyph"><Icon name="chats-circle" weight="regular" /></span><div><h2>Conversación</h2><p>La atención, en un solo lugar.</p></div><span className="xhub-ticket-message-count">{msgs.length} mensajes</span></div>
             {msgs.length === 0 && <div className="text-[13px] text-muted-foreground">Sin mensajes todavía.</div>}
             {msgs.map((m) => {
               if (m.interno) return (
-                <div key={m.seq} className="rounded-md border p-3" style={{ background: "hsl(var(--aviso)/0.08)", borderColor: "hsl(var(--aviso)/0.35)" }}>
-                  <div className="flex items-center gap-2 mb-1"><span className="text-[10px] font-black uppercase tracking-widest" style={{ color: "hsl(var(--aviso))" }}>Nota interna</span><span className="text-[10.5px] text-muted-foreground ml-auto">{fecha(m.creado_en)}</span></div>
+                <div key={m.seq} className="xhub-ticket-message xhub-ticket-message-note rounded-md border p-3" style={{ background: "hsl(var(--aviso)/0.08)", borderColor: "hsl(var(--aviso)/0.35)" }}>
+                  <div className="xhub-ticket-message-meta flex items-center gap-2 mb-1"><span className="xhub-ticket-message-author" style={{ color: "hsl(var(--aviso))" }}><Icon name="note-pencil" weight="regular" />Nota interna</span><span className="text-[10.5px] text-muted-foreground ml-auto">{fecha(m.creado_en)}</span></div>
                   <div className="text-[13.5px] whitespace-pre-wrap">{m.cuerpo}</div>
                 </div>
               );
               const dePersona = m.autor_tipo === "persona";
               return (
                 <div key={m.seq} className={"flex " + (dePersona ? "justify-start" : "justify-end")}>
-                  <div className={"max-w-[85%] rounded-lg p-3 " + (dePersona ? "bg-secondary/60 border border-border" : "bg-[hsl(var(--senal)/0.1)] border border-[hsl(var(--senal)/0.3)]")}>
-                    <div className="flex items-center gap-2 mb-1"><span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{dePersona ? "Cliente" : m.autor_tipo === "sistema" ? "Sistema" : "Agente"}</span><span className="text-[10.5px] text-muted-foreground ml-auto">{fecha(m.creado_en)}</span></div>
+                  <div className={"xhub-ticket-message max-w-[85%] rounded-lg p-3 " + (dePersona ? "bg-secondary/60 border border-border" : "bg-[hsl(var(--senal)/0.1)] border border-[hsl(var(--senal)/0.3)]")}>
+                    <div className="xhub-ticket-message-meta flex items-center gap-2 mb-1"><span className="xhub-ticket-message-author text-muted-foreground"><Icon name={dePersona ? "user-circle" : m.autor_tipo === "sistema" ? "cpu" : "headset"} weight="regular" />{dePersona ? "Cliente" : m.autor_tipo === "sistema" ? "Sistema" : "Agente"}</span><span className="text-[10.5px] text-muted-foreground ml-auto">{fecha(m.creado_en)}</span></div>
                     <div className="text-[13.5px] whitespace-pre-wrap">{m.cuerpo}</div>
                   </div>
                 </div>
@@ -228,21 +231,21 @@ function Contenido() {
 
           {/* Composer */}
           {puede ? (
-            <Card><CardContent className="pt-4">
+            <Card className="xhub-ticket-composer"><CardContent className="pt-4">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <div className="inline-flex gap-0.5 bg-secondary/60 p-0.5 rounded-md border border-border">
+                <div className="xhub-segmented-control inline-flex gap-0.5 bg-secondary/60 p-0.5 rounded-md border border-border">
                   {[["pública", false], ["nota interna", true]].map(([lbl, val]) => (
                     <button key={String(val)} onClick={() => setInterno(val as boolean)} aria-pressed={interno === val}
                       className={"px-3 h-8 rounded-[0.4rem] text-[13px] font-medium capitalize " + (interno === val ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground")}>
-                      {lbl as string}
+                      <Icon name={val ? "note-pencil" : "chat-circle"} weight="regular" />{lbl as string}
                     </button>
                   ))}
                 </div>
                 {macros.length > 0 && (
                   <div className="relative">
-                    <button onClick={() => setVerMacros((v) => !v)} className="h-8 px-3 rounded-md border border-border bg-secondary/60 text-[13px] font-medium hover:text-foreground text-muted-foreground">Macros ▾</button>
+                    <button onClick={() => setVerMacros((v) => !v)} aria-expanded={verMacros} className="xhub-ticket-macros-button h-8 px-3 rounded-md border border-border bg-secondary/60 text-[13px] font-medium hover:text-foreground text-muted-foreground"><Icon name="stack" weight="regular" />Macros<Icon name="caret-down" weight="regular" /></button>
                     {verMacros && (
-                      <div className="absolute z-20 mt-1 w-72 max-h-64 overflow-auto rounded-md border border-border bg-card shadow-2xl p-1">
+                      <div className="xhub-ticket-macros-menu absolute z-20 mt-1 w-72 max-h-64 overflow-auto rounded-md border border-border bg-card shadow-2xl p-1">
                         {macros.map((mc) => (
                           <button key={mc.id} onClick={() => { setTexto(mc.cuerpo); setVerMacros(false); }}
                             className="block w-full text-left rounded-md px-2.5 py-1.5 hover:bg-secondary">
@@ -256,11 +259,12 @@ function Contenido() {
                 )}
               </div>
               <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={4}
+                aria-label={interno ? "Nota interna" : "Respuesta al cliente"}
                 placeholder={interno ? "Nota privada para el equipo (la persona no la ve)…" : "Escribe tu respuesta al cliente…"}
                 className="w-full rounded-md border border-border bg-background p-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring" />
               <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <Button size="sm" onClick={enviar} disabled={enviando || !texto.trim()}>{enviando ? "Enviando…" : interno ? "Guardar nota" : "Enviar respuesta"}</Button>
-                {!interno && <Button size="sm" variant="secondary" onClick={sugerir} disabled={sugiriendo}>{sugiriendo ? "Pensando…" : "✦ Sugerir con IA"}</Button>}
+                <Button size="sm" onClick={enviar} disabled={enviando || !texto.trim()}><Icon name={interno ? "floppy-disk" : "paper-plane-tilt"} weight="regular" />{enviando ? "Enviando…" : interno ? "Guardar nota" : "Enviar respuesta"}</Button>
+                {!interno && <Button size="sm" variant="secondary" onClick={sugerir} disabled={sugiriendo}><Icon name="lightning" weight="regular" />{sugiriendo ? "Pensando…" : "Sugerir con IA"}</Button>}
                 <span className="text-[11px] text-muted-foreground ml-auto">{interno ? "Solo el equipo la verá." : "La primera respuesta marca el SLA."}</span>
               </div>
             </CardContent></Card>
@@ -270,13 +274,13 @@ function Contenido() {
         </div>
 
         {/* Contexto 360 */}
-        <div className="flex flex-col gap-3">
+        <div className="xhub-ticket-context flex flex-col gap-3">
           {crm?.habilitado && (
             <Card><CardContent className="pt-5">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">CRM · Oportunidades</div>
+                <div className="xhub-ticket-section-label"><Icon name="chart-line" weight="regular" />CRM · Oportunidades</div>
                 {crm.puedeGestionar && (
-                  <button onClick={crearOpp} disabled={creandoOpp} className="text-[11.5px] text-[hsl(var(--senal))] hover:underline disabled:opacity-50">{creandoOpp ? "creando…" : "＋ nueva"}</button>
+                  <button onClick={crearOpp} disabled={creandoOpp} className="xhub-ticket-inline-action text-[11.5px] text-[hsl(var(--senal))] hover:underline disabled:opacity-50"><Icon name="plus" weight="regular" />{creandoOpp ? "creando…" : "nueva"}</button>
                 )}
               </div>
               {crm.oportunidades.length === 0 ? (
@@ -297,7 +301,7 @@ function Contenido() {
             </CardContent></Card>
           )}
           <Card><CardContent className="pt-5">
-            <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Reincidencia</div>
+            <div className="xhub-ticket-section-label mb-2"><Icon name="clock-counter-clockwise" weight="regular" />Reincidencia</div>
             {ctx ? (
               <div className="space-y-1.5 text-[13px]">
                 <div className="flex justify-between"><span className="text-muted-foreground">Tickets totales</span><span className="tabular-nums font-medium">{ctx.reincidencia.totalTickets}</span></div>
@@ -307,17 +311,17 @@ function Contenido() {
             ) : <div className="text-[12.5px] text-muted-foreground">—</div>}
           </CardContent></Card>
           <Card><CardContent className="pt-5">
-            <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Satisfacción (CSAT)</div>
+            <div className="xhub-ticket-section-label mb-2"><Icon name="user-circle" weight="regular" />Satisfacción (CSAT)</div>
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button key={n} disabled={!puede} onClick={() => calificar(n)} aria-label={`${n} estrellas`}
-                  className={"text-xl leading-none " + ((t.satisfaccion ?? 0) >= n ? "text-[hsl(var(--aviso))]" : "text-muted-foreground/40") + (puede ? " hover:text-[hsl(var(--aviso))]" : "")}>★</button>
+                  className={"text-xl leading-none " + ((t.satisfaccion ?? 0) >= n ? "text-[hsl(var(--aviso))]" : "text-muted-foreground/40") + (puede ? " hover:text-[hsl(var(--aviso))]" : "")}><Icon name="star" weight={(t.satisfaccion ?? 0) >= n ? "fill" : "regular"} /></button>
               ))}
               <span className="text-[11px] text-muted-foreground ml-2">{t.satisfaccion ? `${t.satisfaccion}/5` : (t.estado === "resuelto" || t.estado === "cerrado" ? "sin calificar" : "al resolver")}</span>
             </div>
           </CardContent></Card>
           <Card><CardContent className="pt-5">
-            <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Historia omnicanal</div>
+            <div className="xhub-ticket-section-label mb-2"><Icon name="plugs-connected" weight="regular" />Historia omnicanal</div>
             <div className="space-y-0">
               {ctx && ctx.omnicanal.length > 0 ? ctx.omnicanal.map((o, i) => (
                 <div key={i} className="flex gap-2 py-2 border-t border-border first:border-t-0">
@@ -334,7 +338,7 @@ function Contenido() {
       </div>
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-pill border border-border bg-secondary text-sm shadow-2xl">
+        <div role="status" className="xhub-ticket-toast fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-pill border border-border bg-secondary text-sm shadow-2xl">
           <span className="h-2 w-2 rounded-full flex-none" style={{ background: "hsl(var(--exito))" }} /><span>{toast}</span>
         </div>
       )}

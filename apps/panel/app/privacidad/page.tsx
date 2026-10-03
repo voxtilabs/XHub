@@ -1,4 +1,5 @@
 import { Brand } from "@/components/brand";
+import Link from "next/link";
 
 export const metadata = { title: "Política de privacidad · xHub" };
 
@@ -6,16 +7,18 @@ export const metadata = { title: "Política de privacidad · xHub" };
 // corchetes [así] los completa el área legal de X5 / VoxTi Labs.
 export default function Privacidad() {
   return (
-    <main style={{ minHeight: "100vh", background: "hsl(var(--background))", color: "hsl(var(--foreground))" }}>
+    <main className="xhub-privacy-page" style={{ minHeight: "100vh", background: "hsl(var(--background))", color: "hsl(var(--foreground))" }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 20px 80px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+        <div className="xhub-privacy-topbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
           <Brand />
-          <a href="/login" style={{ fontSize: 13, color: "hsl(var(--senal))", textDecoration: "none" }}>← Volver al inicio de sesión</a>
+          <Link href="/login" style={{ fontSize: 13, color: "hsl(var(--senal))", textDecoration: "none" }}>← Volver al inicio de sesión</Link>
         </div>
 
+        <header className="xhub-public-hero" data-hero="security">
         <div style={{ fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase", color: "hsl(var(--muted-foreground))" }}>Legal</div>
         <h1 style={{ fontSize: 28, fontWeight: 600, margin: "4px 0 6px" }}>Política de privacidad</h1>
         <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 14, margin: 0 }}>Última actualización: 30 de septiembre de 2026 · Conforme a la Ley N.º 21.719 sobre protección de datos personales (Chile).</p>
+        </header>
 
         <div style={{ marginTop: 16, padding: "10px 14px", borderRadius: 8, background: "hsl(var(--aviso)/0.1)", border: "1px solid hsl(var(--aviso)/0.3)", fontSize: 13 }}>
           <b>Borrador para revisión legal.</b> Los campos entre corchetes deben completarse y todo el documento debe validarse con el área legal antes de su publicación.

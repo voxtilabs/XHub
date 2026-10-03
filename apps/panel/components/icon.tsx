@@ -1,10 +1,15 @@
 import { ArrowBendUpLeftIcon } from "@phosphor-icons/react/dist/ssr/ArrowBendUpLeft";
+import { StarIcon } from "@phosphor-icons/react/dist/ssr/Star";
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr/ArrowLeft";
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr/ArrowRight";
 import { ArrowUpRightIcon } from "@phosphor-icons/react/dist/ssr/ArrowUpRight";
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise";
 import { ArrowsOutCardinalIcon } from "@phosphor-icons/react/dist/ssr/ArrowsOutCardinal";
 import { BuildingOfficeIcon } from "@phosphor-icons/react/dist/ssr/BuildingOffice";
+import { BroadcastIcon } from "@phosphor-icons/react/dist/ssr/Broadcast";
+import { ArrowDownIcon } from "@phosphor-icons/react/dist/ssr/ArrowDown";
+import { EqualsIcon } from "@phosphor-icons/react/dist/ssr/Equals";
+import { ArrowUpIcon } from "@phosphor-icons/react/dist/ssr/ArrowUp";
 import { BuildingsIcon } from "@phosphor-icons/react/dist/ssr/Buildings";
 import { CaretDownIcon } from "@phosphor-icons/react/dist/ssr/CaretDown";
 import { CaretRightIcon } from "@phosphor-icons/react/dist/ssr/CaretRight";
@@ -29,6 +34,9 @@ import { EyeIcon } from "@phosphor-icons/react/dist/ssr/Eye";
 import { EyeSlashIcon } from "@phosphor-icons/react/dist/ssr/EyeSlash";
 import { FingerprintIcon } from "@phosphor-icons/react/dist/ssr/Fingerprint";
 import { FlagIcon } from "@phosphor-icons/react/dist/ssr/Flag";
+import { FlagBannerIcon } from "@phosphor-icons/react/dist/ssr/FlagBanner";
+import { FolderSimpleIcon } from "@phosphor-icons/react/dist/ssr/FolderSimple";
+import { FolderSimpleDashedIcon } from "@phosphor-icons/react/dist/ssr/FolderSimpleDashed";
 import { FloppyDiskIcon } from "@phosphor-icons/react/dist/ssr/FloppyDisk";
 import { GaugeIcon } from "@phosphor-icons/react/dist/ssr/Gauge";
 import { GhostIcon } from "@phosphor-icons/react/dist/ssr/Ghost";
@@ -55,6 +63,7 @@ import { PulseIcon } from "@phosphor-icons/react/dist/ssr/Pulse";
 import { QuestionIcon } from "@phosphor-icons/react/dist/ssr/Question";
 import { ShieldCheckIcon } from "@phosphor-icons/react/dist/ssr/ShieldCheck";
 import { ShieldWarningIcon } from "@phosphor-icons/react/dist/ssr/ShieldWarning";
+import { SidebarSimpleIcon } from "@phosphor-icons/react/dist/ssr/SidebarSimple";
 import { SignOutIcon } from "@phosphor-icons/react/dist/ssr/SignOut";
 import { SlidersHorizontalIcon } from "@phosphor-icons/react/dist/ssr/SlidersHorizontal";
 import { SpinnerGapIcon } from "@phosphor-icons/react/dist/ssr/SpinnerGap";
@@ -62,6 +71,7 @@ import { SquaresFourIcon } from "@phosphor-icons/react/dist/ssr/SquaresFour";
 import { StackIcon } from "@phosphor-icons/react/dist/ssr/Stack";
 import { SunDimIcon } from "@phosphor-icons/react/dist/ssr/SunDim";
 import { TextAlignLeftIcon } from "@phosphor-icons/react/dist/ssr/TextAlignLeft";
+import { TagIcon } from "@phosphor-icons/react/dist/ssr/Tag";
 import { TicketIcon } from "@phosphor-icons/react/dist/ssr/Ticket";
 import { TimerIcon } from "@phosphor-icons/react/dist/ssr/Timer";
 import { UserIcon } from "@phosphor-icons/react/dist/ssr/User";
@@ -79,6 +89,8 @@ import { XIcon } from "@phosphor-icons/react/dist/ssr/X";
 
 /** Official Phosphor SVGs: duotone illustrations and clear control strokes. */
 const icons = {
+  "sidebar-simple": SidebarSimpleIcon,
+  "star": StarIcon,
   "arrow-bend-up-left": ArrowBendUpLeftIcon,
   "arrow-left": ArrowLeftIcon,
   "arrow-right": ArrowRightIcon,
@@ -86,6 +98,10 @@ const icons = {
   "arrows-clockwise": ArrowsClockwiseIcon,
   "arrows-out-cardinal": ArrowsOutCardinalIcon,
   "building-office": BuildingOfficeIcon,
+  "broadcast": BroadcastIcon,
+  "arrow-down": ArrowDownIcon,
+  "equals": EqualsIcon,
+  "arrow-up": ArrowUpIcon,
   "buildings": BuildingsIcon,
   "caret-down": CaretDownIcon,
   "caret-right": CaretRightIcon,
@@ -110,6 +126,9 @@ const icons = {
   "eye-slash": EyeSlashIcon,
   "fingerprint": FingerprintIcon,
   "flag": FlagIcon,
+  "flag-banner": FlagBannerIcon,
+  "folder-simple": FolderSimpleIcon,
+  "folder-simple-dashed": FolderSimpleDashedIcon,
   "floppy-disk": FloppyDiskIcon,
   "gauge": GaugeIcon,
   "ghost": GhostIcon,
@@ -143,6 +162,7 @@ const icons = {
   "stack": StackIcon,
   "sun-dim": SunDimIcon,
   "text-align-left": TextAlignLeftIcon,
+  "tag": TagIcon,
   "ticket": TicketIcon,
   "timer": TimerIcon,
   "user": UserIcon,

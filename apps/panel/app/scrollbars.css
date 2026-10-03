@@ -1,0 +1,88 @@
+/* Native scrolling, shared champagne accents. Login keeps its independent hidden scrollbar. */
+html[data-tema]:has(.xhub-shell) {
+  --xhub-scroll-track:#26374455;
+  --xhub-scroll-thumb:#998559;
+  --xhub-scroll-highlight:#c2ae7b;
+  --xhub-scroll-hover:#d5c393;
+  --xhub-scroll-active:#e3d5b1;
+}
+html[data-tema="claro"]:has(.xhub-shell) {
+  --xhub-scroll-track:#788ca326;
+  --xhub-scroll-thumb:#9b8451;
+  --xhub-scroll-highlight:#bca66d;
+  --xhub-scroll-hover:#806b3d;
+  --xhub-scroll-active:#6d5a31;
+}
+.xhub-sidebar {
+  --xhub-scroll-track:#26374455;
+  --xhub-scroll-thumb:#998559;
+  --xhub-scroll-highlight:#c2ae7b;
+  --xhub-scroll-hover:#d5c393;
+  --xhub-scroll-active:#e3d5b1;
+}
+html[data-tema]:has(.xhub-shell),
+html[data-tema]:has(.xhub-shell) * {
+  scrollbar-width:thin;
+  scrollbar-color:var(--xhub-scroll-thumb) var(--xhub-scroll-track);
+}
+
+/* Standard scrollbar-color takes priority over WebKit styling in Chromium. */
+@supports selector(::-webkit-scrollbar) and (not (-moz-appearance:none)) {
+ @media(forced-colors:none) {
+  html[data-tema]:has(.xhub-shell),
+  html[data-tema]:has(.xhub-shell) * { scrollbar-width:auto; scrollbar-color:auto; }
+
+  html[data-tema]:has(.xhub-shell)::-webkit-scrollbar,
+  html[data-tema]:has(.xhub-shell) *::-webkit-scrollbar { width:12px; height:12px; }
+  html[data-tema]:has(.xhub-shell)::-webkit-scrollbar-track,
+  html[data-tema]:has(.xhub-shell) *::-webkit-scrollbar-track {
+    border:3px solid transparent; border-radius:999px;
+    background:var(--xhub-scroll-track); background-clip:padding-box;
+  }
+  html[data-tema]:has(.xhub-shell)::-webkit-scrollbar-thumb,
+  html[data-tema]:has(.xhub-shell) *::-webkit-scrollbar-thumb {
+    min-width:38px; min-height:38px; border:3px solid transparent; border-radius:999px;
+    background:linear-gradient(180deg,var(--xhub-scroll-highlight),var(--xhub-scroll-thumb));
+    background-clip:padding-box;
+  }
+  html[data-tema]:has(.xhub-shell)::-webkit-scrollbar-thumb:horizontal,
+  html[data-tema]:has(.xhub-shell) *::-webkit-scrollbar-thumb:horizontal {
+    background-image:linear-gradient(90deg,var(--xhub-scroll-thumb),var(--xhub-scroll-highlight));
+  }
+  html[data-tema]:has(.xhub-shell)::-webkit-scrollbar-thumb:hover,
+  html[data-tema]:has(.xhub-shell) *::-webkit-scrollbar-thumb:hover { background:var(--xhub-scroll-hover); background-clip:padding-box; }
+  html[data-tema]:has(.xhub-shell)::-webkit-scrollbar-thumb:active,
+  html[data-tema]:has(.xhub-shell) *::-webkit-scrollbar-thumb:active { background:var(--xhub-scroll-active); background-clip:padding-box; }
+  html[data-tema]:has(.xhub-shell)::-webkit-scrollbar-button,
+  html[data-tema]:has(.xhub-shell) *::-webkit-scrollbar-button { display:none; width:0; height:0; }
+  html[data-tema]:has(.xhub-shell)::-webkit-scrollbar-corner,
+  html[data-tema]:has(.xhub-shell) *::-webkit-scrollbar-corner { background:transparent; }
+ }
+}
+
+@media(forced-colors:active) {
+  html[data-tema]:has(.xhub-shell),
+  html[data-tema]:has(.xhub-shell) * { scrollbar-width:auto; scrollbar-color:auto; }
+  html[data-tema]:has(.xhub-shell)::-webkit-scrollbar-track,
+  html[data-tema]:has(.xhub-shell) *::-webkit-scrollbar-track { background:Canvas; border-color:Canvas; }
+  html[data-tema]:has(.xhub-shell)::-webkit-scrollbar-thumb,
+  html[data-tema]:has(.xhub-shell) *::-webkit-scrollbar-thumb { background:ButtonText; border-color:Canvas; }
+}
+
+/* Hide only the outer page scrollbar; native scrolling and inner scroll areas remain available. */
+html[data-tema]:has(.xhub-shell),
+html[data-tema]:has(.xhub-shell) > body { scrollbar-width:none; }
+html[data-tema]:has(.xhub-shell)::-webkit-scrollbar,
+html[data-tema]:has(.xhub-shell) > body::-webkit-scrollbar {
+  display:none;
+  width:0;
+  height:0;
+}
+
+/* Keep the navigation scrollable without drawing a track beside the workspace. */
+html[data-tema]:has(.xhub-shell) .xhub-sidebar { scrollbar-width:none; }
+html[data-tema]:has(.xhub-shell) .xhub-sidebar::-webkit-scrollbar {
+  display:none;
+  width:0;
+  height:0;
+}

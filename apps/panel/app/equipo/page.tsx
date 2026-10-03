@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
 import { AppShell } from "@/components/app-shell";
+import { HeroFeatures } from "@/components/hero-features";
 
 type Permiso = { clave: string; nombre: string; descripcion: string; modulo: string };
 type Usuario = { id: string; email: string; nombre: string; rol: string; permisos: string[] };
@@ -82,46 +83,57 @@ export default function Equipo() {
     <main className="min-h-screen">
       <AppShell />
       <div className="xhub-page xhub-team-page">
-        <div className="xhub-page-heading">
+        <div className="xhub-page-heading" data-hero="people">
           <div>
             <div className="xhub-eyebrow">ADMINISTRACIÓN DEL ESPACIO</div>
             <h1>Mi equipo</h1>
             <p>Crea usuarios y decide qué puede hacer cada uno.</p>
+          <HeroFeatures variant="equipo" />
           </div>
           <Button asChild size="sm"><a href="#nuevo-usuario"><Icon name="user-plus" /> Nuevo usuario</a></Button>
         </div>
 
-        {data && <div className="xhub-capacity"><Icon name="users-three" /><div><strong>{data.usados} miembros en tu equipo</strong><p>{lleno ? "Has alcanzado el límite de usuarios." : `${data.limite - data.usados} lugares disponibles de ${data.limite}.`}</p></div><div className="xhub-capacity-track" role="meter" aria-label="Usuarios utilizados" aria-valuenow={data.usados} aria-valuemin={0} aria-valuemax={data.limite}><span style={{ width: `${Math.min(100, data.limite > 0 ? data.usados / data.limite * 100 : 0)}%` }} /></div></div>}
+        {data && <div className="xhub-capacity">
+          <Icon name="users-three" />
+          <div className="xhub-capacity-copy"><strong>{data.usados} miembros en tu equipo</strong><p>{lleno ? "Has alcanzado el límite de usuarios." : `${data.limite - data.usados} lugares disponibles de ${data.limite}.`}</p></div>
+          <div className="xhub-capacity-meter">
+            <div className="xhub-capacity-meter-label"><span>Capacidad utilizada</span><strong>{data.usados}<span> / {data.limite}</span></strong></div>
+            <div className="xhub-capacity-track" role="meter" aria-label="Usuarios utilizados" aria-valuenow={data.usados} aria-valuemin={0} aria-valuemax={data.limite}><span style={{ width: `${Math.min(100, data.limite > 0 ? data.usados / data.limite * 100 : 0)}%` }} /></div>
+          </div>
+        </div>}
 
         {error && <div className="p-3 rounded-md text-[13px]" style={{ background: "hsl(var(--critico)/0.09)", border: "1px solid hsl(var(--critico)/0.35)", color: "hsl(var(--critico))" }}><Icon name="warning-circle" className="xhub-inline-icon" /> {error}</div>}
         {msg && <div className="p-2.5 rounded-md text-[13px]" style={{ background: "hsl(var(--exito)/0.1)", color: "hsl(var(--exito))" }}><Icon name="check-circle" className="xhub-inline-icon" /> {msg}</div>}
 
+        <div className="xhub-team-section-head">
+          <h2 className="xhub-section-heading">Miembros y permisos</h2>
+          {data && <span className="xhub-team-count">{data.usuarios.length} {data.usuarios.length === 1 ? "miembro" : "miembros"}</span>}
+        </div>
         <div className="xhub-team-layout">
         <div className="xhub-team-members">
-        <h2 className="xhub-section-heading">Miembros y permisos</h2>
         {!data && !error && <Card className="p-6 text-sm text-muted-foreground" role="status">Cargando tu equipo…</Card>}
         {data?.usuarios.length === 0 && <Card className="p-6 text-sm text-muted-foreground">Tu equipo aún no tiene miembros.</Card>}
         {data?.usuarios.map((u) => (
-          <Card key={u.id} className="xhub-team-card"><CardContent className="pt-5">
+          <Card key={u.id} className="xhub-team-card" data-member-role={u.rol}><CardContent className="xhub-team-card-content">
             <div className="xhub-team-member-head">
               <span className="xhub-team-avatar">
                 {(u.nombre || u.email).split(/[ @.]/).map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()}
               </span>
               <div className="min-w-0 flex-1">
-                <h2>{u.nombre || u.email}</h2>
+                <h3>{u.nombre || u.email}</h3>
                 <p>{u.email}</p>
               </div>
-              <Badge rol={u.rol === "admin_cliente" ? "senal" : "neutro"}>{u.rol === "admin_cliente" ? "Admin" : "Usuario"}</Badge>
+              <Badge className="xhub-team-role" rol={u.rol === "admin_cliente" ? "accion" : "neutro"}>{u.rol === "admin_cliente" ? "Admin" : "Usuario"}</Badge>
             </div>
             {u.rol === "admin_cliente" ? (
-              <p className="xhub-context-note"><Icon name="shield-check" />Acceso completo a los módulos y la administración del equipo.</p>
+              <p className="xhub-context-note xhub-team-admin-note"><Icon name="shield-check" />Acceso completo a los módulos y la administración del equipo.</p>
             ) : (
-              <details className="xhub-team-permissions"><summary>Gestionar permisos <span>{u.permisos.length} habilitados</span><Icon name="caret-down" /></summary><div className="flex flex-col gap-1.5">
+              <details className="xhub-team-permissions"><summary><span className="xhub-team-permission-title"><Icon name="shield-check" />Gestionar permisos</span><span className="xhub-team-permission-count">{u.permisos.length} habilitados</span><Icon name="caret-down" /></summary><div className="xhub-team-permission-grid">
                 {catalogo.map((p) => {
                   const on = u.permisos.includes(p.clave);
                   return (
                     <button key={p.clave} type="button" role="switch" aria-checked={on} aria-label={`${p.nombre} · ${u.nombre || u.email}`} onClick={() => togglePermiso(u, p.clave)}
-                      className="flex items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-secondary/50 transition">
+                      className="xhub-team-permission-option flex items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-secondary/50 transition">
                       <span className={"h-5 w-9 rounded-full relative transition shrink-0 " + (on ? "bg-[hsl(var(--exito))]" : "bg-secondary border border-border")}>
                         <span className={"absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all " + (on ? "left-[18px]" : "left-0.5")} />
                       </span>
@@ -135,7 +147,7 @@ export default function Equipo() {
               </div></details>
             )}
             {u.rol !== "admin_cliente" && (
-              <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+              <div className="xhub-team-presets">
                 <span className="text-[10.5px] uppercase tracking-widest text-muted-foreground mr-1">Plantilla:</span>
                 {PLANTILLAS.map((pl) => (
                   <button key={pl.n} type="button" onClick={() => fijarPermisos(u, pl.permisos)}
@@ -148,16 +160,16 @@ export default function Equipo() {
                 Clave temporal (mostrala UNA vez): <b className="font-mono">{claveTmp.clave}</b> — pedile que la cambie al entrar.
               </div>
             )}
-            <div className="mt-2 flex gap-3 justify-end">
-              <button type="button" onClick={() => resetClave(u)} className="text-[12px] text-[hsl(var(--senal))] hover:underline">↺ resetear clave</button>
+            <div className="xhub-team-actions">
+              <button type="button" onClick={() => resetClave(u)} className="xhub-team-reset"><Icon name="arrows-clockwise" />Restablecer clave</button>
               {u.rol !== "admin_cliente" && (confirmarEliminar === u.id ? (
-                <span className="text-[12px] flex items-center gap-2">
+                <span className="xhub-team-delete-confirmation text-[12px] flex items-center gap-2">
                   <span className="text-muted-foreground">¿Eliminar?</span>
                   <button type="button" onClick={() => eliminarUsuario(u)} className="text-[hsl(var(--critico))] font-semibold hover:underline">Sí</button>
                   <button type="button" onClick={() => setConfirmarEliminar(null)} className="text-muted-foreground hover:underline">no</button>
                 </span>
               ) : (
-                <button type="button" onClick={() => setConfirmarEliminar(u.id)} className="text-[12px] text-muted-foreground hover:text-[hsl(var(--critico))]">eliminar</button>
+                <button type="button" onClick={() => setConfirmarEliminar(u.id)} className="xhub-team-delete"><Icon name="x" />Eliminar</button>
               ))}
             </div>
           </CardContent></Card>

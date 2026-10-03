@@ -17,7 +17,7 @@ export function RequierePermiso({ permiso, children }: { permiso: string; childr
   return (
     <div className="max-w-lg mx-auto p-6">
       <div className="rounded-lg border border-border bg-card p-6 text-center">
-        <div className="mx-auto mb-3 h-11 w-11 rounded-full grid place-items-center" style={{ background: "hsl(var(--aviso)/0.12)" }}>
+        <div className="xhub-permission-icon mx-auto mb-3 h-11 w-11 grid place-items-center">
           <Icon name="lock-key" className="text-xl text-[hsl(var(--aviso))]" />
         </div>
         <div className="font-medium">No tienes acceso a esta sección</div>

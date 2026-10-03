@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { signIn, twoFactor } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,12 @@ function MarcasOficiales() {
     <span className="xhub-login-partner-x5"><img src="/voxia/x5-official.png" width="51" height="64" alt="" /><span>X5 Soluciones</span></span>
     <span className="xhub-login-partner-divider" aria-hidden="true" />
     <img className="xhub-login-partner-xcontact" src="/voxia/xcontact-official.svg" width="213" height="47" alt="XContact" />
+  </div>;
+}
+
+function IlustracionConexiones() {
+  return <div className="xhub-login-art" aria-hidden="true">
+    <img className="xhub-login-art-image" src="/voxia/xhub-login-champagne-v2.webp" width="1774" height="887" alt="" loading="lazy" decoding="async" />
   </div>;
 }
 
@@ -65,22 +72,25 @@ export default function Login() {
   }
 
   return (
-    <main className="xhub-login-screen">
-      <a className="xhub-skip-link" href="#email">Ir al inicio de sesión</a>
+    <main className="xhub-login-screen" data-step={paso2fa ? "verification" : "password"}>
+      <a className="xhub-skip-link" href={paso2fa ? "#codigo" : "#email"}>Ir al inicio de sesión</a>
       <section className="xhub-login-hero" aria-labelledby="access-title">
         <header className="xhub-login-header"><Brand /><span className="xhub-login-edition">WORKSPACE</span></header>
         <div className="xhub-login-intro">
           <h1 id="access-title">Todo tu equipo.<br /><span>En un mismo lugar.</span></h1>
           <p>Personas, conversaciones y equipos.<br />Todo en un solo lugar.</p>
         </div>
+        <IlustracionConexiones />
         <footer className="xhub-login-brand-footer"><span className="xhub-login-brand-caption">Una solución de</span><MarcasOficiales /></footer>
       </section>
 
       <section className="xhub-login-auth" aria-labelledby="login-title">
         <div className="xhub-login-mobile-brand"><Brand /></div>
-        <button type="button" className="xhub-login-theme" onClick={alternarTemaAcceso} aria-label="Cambiar tema día / noche" aria-pressed={temaAcceso === "oscuro"} title={temaAcceso === "claro" ? "Usar modo oscuro" : "Usar modo claro"}><Icon name={temaAcceso === "claro" ? "sun-dim" : "moon"} weight="regular" /></button>
+        <div className="xhub-login-controls">
+          <button type="button" className="xhub-login-theme" onClick={alternarTemaAcceso} aria-label="Cambiar tema día / noche" aria-pressed={temaAcceso === "oscuro"} title={temaAcceso === "claro" ? "Usar modo oscuro" : "Usar modo claro"}><Icon name={temaAcceso === "claro" ? "sun-dim" : "moon"} weight="regular" /></button>
+        </div>
         <div className="xhub-login-auth-content">
-          <div className="xhub-login-eyebrow">Acceso a XHub</div>
+          <div className="xhub-login-eyebrow"><Icon name="shield-check" weight="duotone" /><span>Acceso a <strong>xHub</strong></span></div>
           <h2 id="login-title">{paso2fa ? "Verificación en dos pasos" : "Hola de nuevo."}</h2>
           <p className="xhub-login-welcome">{paso2fa ? "Ingresa el código de tu app de autenticación." : "Entra a tu espacio de trabajo."}</p>
 
@@ -107,11 +117,11 @@ export default function Login() {
               {mayusculas && <p className="xhub-login-caps" role="status"><Icon name="warning-circle" />Bloq Mayús está activado.</p>}
             </div>
             {error && <div role="alert" className="xhub-login-error"><Icon name="warning-circle" /><span>{error}</span></div>}
-            <Button type="submit" disabled={cargando} className="xhub-login-submit"><span>{cargando ? "Ingresando…" : "Ingresar a XHub"}</span><Icon name={cargando ? "circle-notch" : "arrow-right"} weight="regular" className={cargando ? "xhub-loading-icon" : ""} /></Button>
+            <Button type="submit" disabled={cargando} className="xhub-login-submit"><span>{cargando ? "Ingresando…" : "Ingresar a xHub"}</span><Icon name={cargando ? "circle-notch" : "arrow-right"} weight="regular" className={cargando ? "xhub-loading-icon" : ""} /></Button>
           </form>
           )}
           {!paso2fa && <div className="xhub-login-help"><Icon name="info" weight="regular" /><p>¿Necesitas una cuenta?<br /><span>Solicítala al administrador.</span></p></div>}
-          <p style={{ fontSize: 12, marginTop: 12, textAlign: "center" }}><a href="/privacidad" style={{ color: "hsl(var(--muted-foreground))", textDecoration: "underline" }}>Política de privacidad</a></p>
+          <p className="xhub-login-privacy"><Link href="/privacidad">Política de privacidad</Link></p>
         </div>
       </section>
     </main>

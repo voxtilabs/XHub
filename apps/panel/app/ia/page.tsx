@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/api";
 import { AppShell } from "@/components/app-shell";
+import { HeroFeatures } from "@/components/hero-features";
 
 type Resumen = {
   total: number; ok: number; fallidos: number; tokensPrompt: number; tokensSalida: number; msPromedio: number;
@@ -40,12 +41,13 @@ export default function ConsumoIA() {
   return (
     <main className="min-h-screen">
       <AppShell />
-      <div className="xhub-page flex flex-col gap-5">
-        <div className="xhub-page-heading">
+      <div className="xhub-page xhub-ai-page flex flex-col gap-5">
+        <div className="xhub-page-heading" data-hero="intelligence" data-hero-size="long">
           <div>
             <div className="xhub-eyebrow">XHUB · INTELIGENCIA ARTIFICIAL</div>
             <h1>Actividad de IA</h1>
             <p>Qué hizo la IA y cuánto consumió, en toda la plataforma.</p>
+          <HeroFeatures variant="ia" />
           </div>
           <div className="xhub-segmented-control flex gap-1">
             {[7, 30, 90].map((d) => (

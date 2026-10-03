@@ -1,8 +1,8 @@
-/* Consola X5 — tokens de xHub. ÚNICO archivo con valores de color.
-   Derivado de la identidad de x5s.cl. Ver docs/diseno/SISTEMA.md */
+/* Consola xHub — tokens compartidos de marca.
+   Paleta champán aprobada para la interfaz; logos oficiales conservados. */
 :root {
-  --accion: #ff7a1a;
-  --accion-tenue: #e8631a;
+  --accion: #cebc89;
+  --accion-tenue: #ddcea6;
   --senal: #75d8ee;
   --senal-claro: #0e6f86;
   --exito: #34d399;

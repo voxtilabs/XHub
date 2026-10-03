@@ -11,5 +11,5 @@ const badgeVariants = cva("inline-flex items-center gap-2 rounded-pill border px
       neutro: "border-border bg-background text-muted-foreground",
     } }, defaultVariants: { rol: "neutro" } });
 export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
-function Badge({ className, rol, ...props }: BadgeProps) { return <div className={cn(badgeVariants({ rol }), className)} {...props} />; }
+function Badge({ className, rol, ...props }: BadgeProps) { return <div data-tone={rol ?? "neutro"} className={cn("xhub-badge", badgeVariants({ rol }), className)} {...props} />; }
 export { Badge, badgeVariants };

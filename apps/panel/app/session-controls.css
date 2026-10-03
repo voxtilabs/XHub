@@ -1,0 +1,95 @@
+/* Quiet controls on the cinematic header; the account menu shares its dark glass palette. */
+.xhub-topbar .xhub-user-actions { gap:23px; min-width:0; }
+.xhub-topbar .xhub-theme-toggle {
+  width:44px; height:44px; border-radius:50%;
+  border:1px solid transparent; background:transparent; box-shadow:none; backdrop-filter:none;
+}
+main:has(> .xhub-shell):has(.xhub-page-heading) .xhub-topbar .xhub-theme-toggle { color:#c9d6e2; }
+.xhub-topbar .xhub-theme-toggle .ph { font-size:22px; }
+.xhub-topbar .xhub-theme-toggle:hover { background:#cebc8910; border-color:#e3d5b136; }
+.xhub-topbar .xhub-theme-toggle:focus-visible { outline:2px solid #e3d5b1; outline-offset:4px; }
+
+.xhub-session-menu::before {
+  content:""; position:absolute; left:-12px; top:50%; transform:translateY(-50%); width:1px; height:25px;
+  background:linear-gradient(180deg,transparent,#91a8bc50,transparent); pointer-events:none;
+}
+.xhub-session-menu>summary {
+  min-height:54px; gap:12px; padding:5px 0 5px 5px; border-radius:12px;
+  border:1px solid transparent; color:#f0f5fc; background:transparent;
+  box-shadow:none; backdrop-filter:none;
+}
+.xhub-session-menu>summary:hover,
+.xhub-session-menu[open]>summary {
+  border-color:transparent; background:transparent; box-shadow:none;
+}
+.xhub-session-menu>summary:focus-visible { outline:2px solid #e3d5b1; outline-offset:4px; }
+.xhub-session-menu .xhub-avatar {
+  position:relative; display:grid; place-items:center; flex:none; width:44px; height:44px; border-radius:50%;
+  border:1px solid var(--xhub-avatar-border);
+  background:var(--xhub-avatar-background);
+  color:var(--xhub-avatar-foreground); font:500 15px/1 Outfit,Inter,sans-serif; letter-spacing:.2px;
+  box-shadow:var(--xhub-avatar-shadow);
+  transition:border-color .18s,box-shadow .18s;
+}
+.xhub-session-menu>summary:hover .xhub-avatar,
+.xhub-session-menu[open]>summary .xhub-avatar {
+  border-color:#cdbb8b91;
+  box-shadow:inset 0 1px 0 #ffffff0d;
+}
+.xhub-session-menu .xhub-user-label { display:block; min-width:0; max-width:220px; padding-right:4px; line-height:1.45; }
+.xhub-session-menu .xhub-user-label>span { font:500 15px/1.3 Outfit,Inter,sans-serif; letter-spacing:.1px; }
+main:has(> .xhub-shell):has(.xhub-page-heading) .xhub-session-menu .xhub-user-label>small {
+  display:block; margin-top:4px; font-size:10px; font-weight:400; color:#9faebd;
+}
+.xhub-session-menu>summary>.ph {
+  flex:none; box-sizing:content-box; margin-left:0; padding:6px; font-size:13px;
+  color:#a8bacb; border:0; border-radius:0; background:transparent;
+  transition:transform .18s,color .18s;
+}
+.xhub-session-menu[open]>summary>.ph { transform:rotate(180deg); background:transparent; color:#e3d5b1; }
+
+.xhub-session-menu>.xhub-session-popover {
+  width:312px; max-width:calc(100vw - 28px); top:calc(100% + 10px); padding:21px;
+  border:1px solid #46515c; border-radius:14px;
+  background:radial-gradient(ellipse at 100% 0,#9f88511b,transparent 65%),linear-gradient(140deg,#122331f7,#08131efc 70%);
+  color:#f0f5fc; backdrop-filter:blur(24px);
+  box-shadow:0 20px 64px #0208128c,inset 0 1px 0 #e9dfc41c;
+}
+.xhub-session-menu>.xhub-session-popover::before { content:""; position:absolute; top:-1px; right:20px; width:94px; height:1px; background:linear-gradient(90deg,transparent,#e3d5b1,transparent); }
+.xhub-session-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:22px; }
+.xhub-session-heading>span:first-child { color:#a6b9c9; font-size:9px; font-weight:500; letter-spacing:2px; text-transform:uppercase; }
+.xhub-session-role { display:inline-flex; align-items:center; gap:6px; color:#d8c698; font-size:10px; line-height:1.4; padding:3px 0; border:0; border-radius:0; background:transparent; }
+.xhub-session-role .ph { font-size:14px; }
+.xhub-session-identity { display:flex; align-items:center; gap:13px; padding-bottom:22px; border-bottom:1px solid #8399aa24; }
+.xhub-session-identity .xhub-avatar { width:46px; height:46px; font-size:16px; }
+.xhub-session-identity>div { flex:1; min-width:0; }
+.xhub-session-identity strong { display:block; font:500 17px/1.4 Outfit,Inter,sans-serif; overflow-wrap:anywhere; }
+.xhub-session-identity small { display:block; margin-top:4px; color:#a7b8c8; font-size:11px; line-height:1.5; overflow-wrap:anywhere; }
+.xhub-session-menu .xhub-session-signout {
+  margin-top:12px; min-height:44px; padding:11px 9px; gap:10px; border-radius:8px;
+  border:1px solid transparent; background:transparent; color:#c3cfdb; font-size:12px; font-weight:400;
+  transition:background .18s,border-color .18s;
+}
+.xhub-session-menu .xhub-session-signout .ph { font-size:20px; }
+.xhub-session-menu .xhub-session-signout:hover { color:#eee4c7; background:#cebc890d; border-color:#cebc892e; }
+.xhub-session-menu .xhub-session-signout:focus-visible { outline:2px solid #e3d5b1; outline-offset:2px; }
+
+@media(max-width:1100px) { .xhub-session-menu .xhub-user-label { max-width:176px; } }
+@media(max-width:800px) {
+  .xhub-topbar .xhub-user-actions { gap:17px; }
+  .xhub-session-menu::before { left:-9px; }
+  .xhub-session-menu>summary { min-height:48px; padding:5px 0 5px 3px; gap:10px; border-radius:12px; }
+  .xhub-session-menu .xhub-avatar { width:36px; height:36px; border-radius:50%; font-size:13px; }
+  .xhub-topbar .xhub-theme-toggle { width:44px; height:44px; border-radius:50%; }
+  .xhub-session-menu>summary>.ph { font-size:13px; padding:5px; border-radius:0; }
+  .xhub-session-menu>.xhub-session-popover { top:calc(100% + 10px); }
+}
+@media(max-width:620px) {
+  .xhub-session-menu .xhub-user-label { display:none; }
+  .xhub-session-menu>summary { gap:8px; }
+  .xhub-session-menu>.xhub-session-popover { padding:20px; border-radius:14px; }
+  .xhub-session-identity .xhub-avatar { width:42px; height:42px; font-size:15px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .xhub-session-menu>summary,.xhub-session-menu>summary>.ph,.xhub-session-menu .xhub-avatar,.xhub-topbar .xhub-theme-toggle,.xhub-session-menu .xhub-session-signout { transition:none; }
+}

@@ -1,0 +1,244 @@
+/* Day workspace: neutral surfaces, readable ink and restrained brand accents.
+   The cinematic headers, navigation, login and dark theme keep their own styles. */
+html[data-tema="claro"] body:has(.xhub-shell),
+html[data-tema="claro"] body:has(.xhub-standalone-header),
+html[data-tema="claro"] body:has(.xhub-privacy-page) {
+  --background: 220 18% 96%;
+  --foreground: 220 34% 16%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 34% 16%;
+  --secondary: 220 20% 95%;
+  --secondary-foreground: 220 34% 16%;
+  --muted: 220 20% 95%;
+  --muted-foreground: 218 15% 39%;
+  --border: 218 20% 86%;
+  --input: 218 18% 73%;
+  --xhub-panel: #ffffff;
+  --xhub-panel-raised: #ffffff;
+  --xhub-panel-inset: #f1f3f6;
+  --xhub-line: #d8dee7;
+  --xhub-line-strong: #b6c1cf;
+  --xhub-shadow: 0 3px 7px #17203304, 0 12px 28px #17203306;
+  --xhub-cyan: #086781;
+  --xhub-cyan-soft: #eaf5f8;
+  --xhub-orange-soft: #f8f5ea;
+  --xhub-body: #465468;
+  --voxia-body: #465468;
+  --voxia-faint: #5c697b;
+  --voxia-field: #ffffff;
+  --voxia-action-text: #746137;
+  --voxia-action-soft: #f8f5ea;
+  --voxia-action-border: #ded1af;
+  --xhub-signal-soft: #eaf5f8;
+  --xhub-signal-border: #b5d7e0;
+  background: hsl(var(--background));
+}
+
+/* A white sheet is distinct from the neutral page and recessed working areas. */
+html[data-tema="claro"] .xhub-page :is(
+  .voxia-card, .crm-person-profile, .xhub-capacity, .xhub-ticket-management,
+  .xhub-platform-description, .xhub-platform-client, .xhub-fleet-card,
+  .xhub-webhook-endpoint, .xhub-fleet-summary
+) {
+  background: var(--xhub-panel);
+  border-color: var(--xhub-line);
+  box-shadow: var(--xhub-shadow);
+}
+html[data-tema="claro"] .xhub-page :is(
+  .crm-insight-card, .xhub-ticket-metric-card
+) > div { background: transparent; }
+
+html[data-tema="claro"] .xhub-page :is(.voxia-input, select, textarea) {
+  background: #fff;
+  color: hsl(var(--foreground));
+  border-color: var(--xhub-line-strong);
+  box-shadow: 0 1px 2px #17203304;
+}
+html[data-tema="claro"] .xhub-page :is(input, textarea)::placeholder {
+  color: #647084;
+  opacity: 1;
+}
+html[data-tema="claro"] .xhub-page :is(.voxia-input, select, textarea):focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / .12);
+}
+html[data-tema="claro"] .xhub-page .voxia-button-surface {
+  color: hsl(var(--foreground));
+  background: #fff;
+  border-color: var(--xhub-line-strong);
+  box-shadow: 0 1px 2px #17203306;
+}
+html[data-tema="claro"] .xhub-page .voxia-button-surface:hover {
+  color: var(--voxia-action-text);
+  background: var(--voxia-action-soft);
+  border-color: var(--voxia-action-border);
+}
+/* Hero buttons sit on the deliberately dark image in either theme. */
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading .voxia-button-surface {
+  color: #e5effb;
+  background: #142437;
+  border-color: #566c83;
+}
+html[data-tema="claro"] main:has(> .xhub-shell) .xhub-page-heading .voxia-button-surface:hover {
+  background: #20364d;
+  border-color: #829bb1;
+}
+html[data-tema="claro"] .xhub-page [role="tab"][data-state="active"] {
+  background: #fff;
+  border-color: var(--voxia-action-border);
+  box-shadow: 0 2px 4px #17203308;
+}
+
+/* KPI cards have neutral bodies; the existing semantic icons carry the color. */
+html[data-tema="claro"] .xhub-inbox-metric,
+html[data-tema="claro"] .crm-pipeline-summary > div,
+html[data-tema="claro"] .xhub-page .xhub-platform-stat {
+  background: #fff;
+  border-color: var(--xhub-line);
+  box-shadow: var(--xhub-shadow);
+}
+html[data-tema="claro"] :is(.xhub-inbox-metric, .crm-pipeline-summary) strong {
+  color: hsl(var(--foreground));
+}
+html[data-tema="claro"] .crm-pipeline-summary > div::before,
+html[data-tema="claro"] .xhub-inbox-metric::after { opacity: .35; }
+html[data-tema="claro"] .xhub-inbox-metric .xhub-metric-glyph {
+  background: var(--metric-tint);
+  box-shadow: inset 0 1px #fff;
+}
+
+/* CRM board: white stage headings and cards over a recessed neutral lane. */
+html[data-tema="claro"] .crm-pipeline-toolbar {
+  padding: 17px 19px;
+  border: 1px solid var(--xhub-line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 2px 5px #17203303;
+}
+html[data-tema="claro"] .crm-board-column {
+  background: #edf0f4;
+  border-color: #d3dbe5;
+  box-shadow: inset 0 1px #fff;
+}
+html[data-tema="claro"] .crm-board-column-heading {
+  background: #fff;
+  border-bottom-color: #d3dbe5;
+}
+html[data-tema="claro"] .crm-board-column-heading::before {
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / .16));
+}
+html[data-tema="claro"] .crm-board-column-heading > span:first-child { color: hsl(var(--foreground)); }
+html[data-tema="claro"] .crm-board-column-heading > span:nth-child(2) { border-radius: 6px; }
+html[data-tema="claro"] .crm-board-column-heading > span:last-child { color: var(--xhub-body); }
+html[data-tema="claro"] .crm-deal-card {
+  background: #fff;
+  border-color: #cfd8e3;
+  box-shadow: 0 2px 3px #17203304, 0 5px 12px #17203308;
+}
+html[data-tema="claro"] .crm-deal-card:is(:hover, :focus-within) {
+  border-color: var(--voxia-action-border);
+  box-shadow: 0 5px 16px #17203310;
+}
+html[data-tema="claro"] .crm-deal-actions { --exito: 158 85% 21%; }
+html[data-tema="claro"] .crm-board-empty {
+  margin: 5px;
+  padding: 30px 14px;
+  border: 1px dashed #c4ceda;
+  border-radius: 12px;
+  background: #f6f8fa;
+  color: #586579;
+}
+html[data-tema="claro"] .crm-board-empty > .ph {
+  color: #68768a;
+  background: #fff;
+  border-color: #d5dde7;
+  box-shadow: 0 3px 7px #17203306;
+  opacity: 1;
+}
+html[data-tema="claro"] .crm-board-column[data-drop-active="true"] {
+  background: var(--xhub-cyan-soft);
+  border-color: var(--xhub-cyan);
+  box-shadow: inset 0 0 0 1px var(--xhub-cyan);
+}
+
+/* Inbox: a calm work surface with clear row, filter and selection boundaries. */
+html[data-tema="claro"] .xhub-inbox-console {
+  background: #f9fafc;
+  border-color: #cfd8e3;
+  box-shadow: var(--xhub-shadow);
+}
+html[data-tema="claro"] .xhub-inbox-console::before { opacity: .25; }
+html[data-tema="claro"] .xhub-console-glyph {
+  color: var(--voxia-action-text);
+  background: var(--voxia-action-soft);
+  border-color: var(--voxia-action-border);
+}
+html[data-tema="claro"] .xhub-inbox-console .xhub-console-search .voxia-input { background: #fff; }
+html[data-tema="claro"] .xhub-inbox-console .xhub-segmented-control {
+  background: #edf0f4;
+  border-color: #d3dbe5;
+}
+html[data-tema="claro"] .xhub-inbox-console .xhub-status-filters button:not([aria-pressed="true"]):hover {
+  background: #e9edf2;
+  color: hsl(var(--foreground));
+}
+html[data-tema="claro"] .xhub-inbox-console .xhub-status-filters button[aria-pressed="true"] {
+  background: #f8f3e5;
+  border-color: #ded1af;
+}
+html[data-tema="claro"] .xhub-inbox-console .xhub-live-ticket-table thead th {
+  color: #536074;
+  font-weight: 600;
+}
+html[data-tema="claro"] .xhub-inbox-console .xhub-ticket-desktop-list {
+  background: transparent;
+  box-shadow: none;
+}
+html[data-tema="claro"] .xhub-inbox-console .xhub-live-ticket-table tbody td {
+  background: #fff;
+  border-color: #d3dbe5;
+}
+html[data-tema="claro"] .xhub-inbox-console .xhub-live-ticket-table tbody tr:is(:hover, :focus-within) td {
+  background: #fcfaf4;
+  border-color: #ded1af;
+}
+html[data-tema="claro"] .xhub-inbox-console .xhub-ticket-mobile-card {
+  background: #fff;
+  border-color: #cfd8e3;
+  box-shadow: 0 3px 9px #17203308;
+}
+
+/* Reporting and detail screens share the same paper/ink contrast. */
+html[data-tema="claro"] .xhub-ticket-metrics .xhub-ticket-chart,
+html[data-tema="claro"] .xhub-ticket-metrics .xhub-metric-distributions > .xhub-ticket-chart:first-child {
+  background: #fff;
+  border-color: var(--xhub-line);
+  box-shadow: var(--xhub-shadow);
+}
+html[data-tema="claro"] .xhub-ticket-metrics .xhub-ticket-metric-card:nth-child(n+5) { background: #edf0f4; }
+html[data-tema="claro"] .xhub-ticket-metrics .xhub-distribution-row,
+html[data-tema="claro"] .xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-row {
+  background: #f7f8fa;
+  border-color: var(--xhub-line);
+  box-shadow: none;
+}
+html[data-tema="claro"] .xhub-ticket-metrics .xhub-trend-tooltip {
+  background: #fff;
+  box-shadow: 0 8px 24px #1720331a;
+}
+html[data-tema="claro"] .crm-empty { background: linear-gradient(#fff, #f8f9fb); }
+html[data-tema="claro"] .crm-person-capabilities > span { background: #fff; }
+html[data-tema="claro"] .xhub-team-permissions button[role="switch"] { background: #f7f8fa; }
+html[data-tema="claro"] .xhub-team-permissions button[role="switch"][aria-checked="true"] {
+  background: #f1f8f7;
+  border-color: #c3dad5;
+}
+html[data-tema="claro"] .xhub-team-permissions button[role="switch"]:hover { border-color: var(--xhub-line-strong); }
+html[data-tema="claro"] .xhub-page .xhub-data-table tbody tr:hover { background: #fcfaf4; }
+html[data-tema="claro"] .xhub-page .xhub-prompt-dialog { box-shadow: 0 24px 70px #17203326; }
+
+@media (max-width: 620px) {
+  html[data-tema="claro"] .crm-pipeline-toolbar { padding: 16px; gap: 16px; }
+  html[data-tema="claro"] .crm-pipeline-toolbar .crm-toolbar-actions { width: 100%; }
+  html[data-tema="claro"] .crm-pipeline-toolbar .crm-toolbar-actions select { flex: 1 1 100%; }
+}

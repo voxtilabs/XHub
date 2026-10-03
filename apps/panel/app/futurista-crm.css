@@ -1,0 +1,230 @@
+/* The CRM keeps its live records and actions; these layers add visual hierarchy. */
+.xhub-crm-page .crm-section-title > .ph,
+.xhub-team-form .xhub-section-heading > .ph {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--voxia-action-text) 22%, transparent);
+  border-radius: 11px;
+  background: var(--xhub-orange-soft);
+  color: var(--voxia-action-text);
+}
+
+.crm-record-icon,
+.crm-summary-icon,
+.crm-person-avatar,
+.xhub-team-avatar {
+  background: linear-gradient(145deg, var(--xhub-orange-soft), var(--xhub-panel-raised));
+  border: 1px solid color-mix(in srgb, var(--voxia-action-text) 26%, var(--xhub-line));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 15%, transparent), 0 5px 18px #00000008;
+}
+
+.crm-record-row { padding-block: 25px; }
+.crm-record-title { font-weight: 600; }
+.crm-record-value { letter-spacing: -.5px; }
+.crm-record-actions { flex-wrap: wrap; }
+.crm-record-card:hover { box-shadow: 0 8px 28px #0000000d; }
+.crm-form-card { border-top-color: color-mix(in srgb, var(--voxia-action-text) 45%, var(--xhub-line)); }
+
+.crm-empty {
+  position: relative;
+  isolation: isolate;
+  background: radial-gradient(ellipse at 50% 0, var(--xhub-cyan-soft), transparent 63%);
+  border-radius: inherit;
+}
+.crm-empty > .ph {
+  width: 84px;
+  height: 84px;
+  padding: 21px;
+  border: 1px solid color-mix(in srgb, var(--voxia-action-text) 24%, var(--xhub-line));
+  border-radius: 24px;
+  background: linear-gradient(150deg, var(--xhub-orange-soft), var(--xhub-panel-raised));
+  box-shadow: inset 0 1px 0 #ffffff20, 0 12px 30px #0000000c;
+}
+.crm-person-welcome .crm-empty { gap: 16px; }
+.crm-person-capabilities { gap: 12px; }
+.crm-person-capabilities > span {
+  padding: 11px 15px;
+  border: 1px solid var(--xhub-line);
+  border-radius: 12px;
+  background: var(--xhub-panel-raised);
+}
+
+.crm-pipeline-summary { gap: 16px; margin-bottom: 28px; }
+.crm-pipeline-summary > div,
+.crm-pipeline-summary > div:first-child,
+.crm-pipeline-summary > div:last-child {
+  position: relative;
+  overflow: hidden;
+  padding: 22px;
+  border: 1px solid var(--xhub-line);
+  border-radius: 18px;
+  background: linear-gradient(125deg, var(--xhub-panel-raised), var(--xhub-panel));
+  box-shadow: var(--xhub-shadow);
+}
+.crm-pipeline-summary > div::before,
+.crm-insight-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 24px auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--voxia-action-text), transparent);
+  opacity: .55;
+  pointer-events: none;
+}
+.crm-pipeline-summary > div:nth-child(2) .crm-summary-icon {
+  color: var(--xhub-cyan);
+  background: linear-gradient(145deg, var(--xhub-cyan-soft), var(--xhub-panel-raised));
+  border-color: color-mix(in srgb, var(--xhub-cyan) 25%, var(--xhub-line));
+}
+.crm-pipeline-summary > div:nth-child(3) .crm-summary-icon {
+  color: hsl(var(--exito));
+  background: linear-gradient(145deg, hsl(var(--exito) / .13), var(--xhub-panel-raised));
+  border-color: hsl(var(--exito) / .25);
+}
+.crm-pipeline-summary strong { font-variant-numeric: tabular-nums; }
+.crm-pipeline-toolbar { margin-bottom: 20px; }
+.crm-board { gap: 18px; }
+.crm-board-column {
+  position: relative;
+  border: 1px solid var(--xhub-line);
+  border-radius: 17px;
+  background: var(--xhub-panel-inset);
+}
+.crm-board-column-heading {
+  position: relative;
+  padding: 24px 18px 18px;
+  background: linear-gradient(150deg, var(--xhub-panel-raised), var(--xhub-panel-inset));
+  border-color: var(--xhub-line);
+}
+.crm-board-column-heading::before {
+  content: "";
+  position: absolute;
+  inset: 0 18px auto;
+  height: 3px;
+  border-radius: 0 0 6px 6px;
+  background: linear-gradient(90deg, var(--voxia-action-text), color-mix(in srgb, var(--voxia-action-text) 15%, transparent));
+}
+.crm-board-column-heading > span:nth-child(2) { border: 1px solid color-mix(in srgb, var(--voxia-action-text) 17%, transparent); }
+.crm-board-column-heading > span:last-child { margin-top: 4px; }
+.crm-board-column[data-drop-active=true] { border-color: var(--xhub-cyan); background: var(--xhub-cyan-soft); box-shadow: inset 0 0 0 1px var(--xhub-cyan); }
+.crm-deal-card {
+  border-color: var(--xhub-line-strong);
+  border-radius: 13px;
+  background: linear-gradient(155deg, var(--xhub-panel-raised), var(--xhub-panel));
+  box-shadow: 0 5px 13px #00000008;
+}
+.crm-deal-card > a { font-weight: 600; }
+.crm-deal-card:focus-within { border-color: var(--voxia-action-text); }
+.crm-deal-actions { border-color: var(--xhub-line); }
+.crm-board-empty { padding-block: 35px; gap: 14px; }
+.crm-board-empty > .ph { width: 48px; height: 48px; padding: 11px; border: 1px solid var(--xhub-line); border-radius: 14px; background: var(--xhub-panel); }
+
+.crm-insight-card { position: relative; overflow: hidden; }
+.crm-insight-card > div { background: radial-gradient(ellipse at 100% 0, var(--xhub-cyan-soft), transparent 70%); }
+.crm-insight-card:nth-child(2) .crm-summary-icon { color: hsl(var(--exito)); border-color: hsl(var(--exito) / .25); background: hsl(var(--exito) / .10); }
+.crm-insight-card:nth-child(3) .crm-summary-icon { color: var(--xhub-cyan); border-color: color-mix(in srgb, var(--xhub-cyan) 25%, transparent); background: var(--xhub-cyan-soft); }
+.crm-chart-row { border-color: var(--xhub-line); }
+.crm-chart-label { font-weight: 500; }
+.crm-chart-track { height: 12px; background: var(--xhub-panel-inset); border: 1px solid var(--xhub-line); }
+.crm-chart-track > span { box-shadow: inset 0 1px 0 #ffffff35; }
+
+.crm-person-search { max-width: 760px; }
+.xhub-crm-page .crm-person-search > input { border-color: var(--xhub-line-strong); border-radius: 15px; box-shadow: var(--xhub-shadow); }
+.crm-person-search > .ph { z-index: 1; color: var(--xhub-cyan); }
+.crm-person-search > div { background: var(--xhub-panel-raised); border-color: var(--xhub-line-strong); }
+.crm-person-result { min-height: 66px; border-bottom: 1px solid var(--xhub-line); }
+.crm-person-result:last-child { border-bottom: 0; }
+.crm-person-result:hover { background: var(--xhub-cyan-soft); }
+.crm-person-result > .ph:first-child { width: 38px; height: 38px; padding: 8px; border-radius: 10px; background: var(--xhub-orange-soft); }
+.crm-person-profile {
+  padding: 28px;
+  border-color: var(--xhub-line-strong);
+  border-radius: 18px;
+  background: radial-gradient(ellipse at 100% 0, var(--xhub-cyan-soft), transparent 65%), var(--xhub-panel);
+  box-shadow: var(--xhub-shadow);
+}
+.crm-person-profile h2 { white-space: normal; overflow-wrap: anywhere; }
+.crm-person-avatar { width: 82px; height: 82px; border-radius: 23px; }
+.crm-person-stats { gap: 12px; margin-bottom: 24px; }
+.crm-person-stats > div { padding: 18px 20px; border-radius: 14px; border-color: var(--xhub-line); background: var(--xhub-panel); }
+.crm-person-stats > div > div:first-child { font: 600 26px/1.3 Outfit, sans-serif; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
+.crm-person-stats > div > div:last-child { margin-top: 6px; font-size: 11px; text-transform: none; letter-spacing: 0; }
+.crm-person-timeline-filters { gap: 8px; }
+.crm-person-timeline-filters button { min-height: 32px; padding: 6px 12px; }
+.crm-person-timeline-filters button[aria-pressed=true] { color: var(--voxia-action-text); background: var(--xhub-orange-soft); border-color: var(--voxia-action-border); }
+.crm-timeline-row { position: relative; border-color: var(--xhub-line); gap: 17px; padding-block: 21px; }
+.crm-timeline-icon { width: 40px; height: 40px; border: 1px solid color-mix(in srgb, var(--xhub-cyan) 25%, var(--xhub-line)); background: var(--xhub-cyan-soft); color: var(--xhub-cyan); border-radius: 12px; }
+.crm-person-related { border-color: var(--xhub-line); }
+.crm-person-related > div:first-child { font-weight: 500; }
+.crm-person-layout a.crm-person-related:hover { color: var(--voxia-action-text); }
+.crm-deal-detail > .voxia-card { max-width: none; }
+.crm-activity-types { gap: 8px; }
+.crm-activity-types button { border-radius: 11px; }
+.crm-activity-types button[aria-pressed=true] { background: var(--xhub-orange-soft); box-shadow: inset 0 1px 0 #ffffff15; }
+.crm-product-row { padding: 14px; border: 1px solid var(--xhub-line); border-radius: 12px; background: var(--xhub-panel-inset); }
+.crm-product-form { border-color: var(--xhub-line); }
+
+.xhub-capacity {
+  border-color: var(--xhub-line-strong);
+  border-radius: 18px;
+  padding: 22px 24px;
+  background: radial-gradient(ellipse at 100% 0, var(--xhub-cyan-soft), transparent 58%), var(--xhub-panel);
+  box-shadow: var(--xhub-shadow);
+}
+.xhub-capacity > .ph { width: 52px; height: 52px; padding: 12px; border-radius: 15px; background: var(--xhub-orange-soft); border: 1px solid color-mix(in srgb, var(--voxia-action-text) 22%, transparent); }
+.xhub-capacity strong { font: 600 18px/1.4 Outfit, sans-serif; }
+.xhub-capacity p { margin-top: 5px; font-size: 12px; }
+.xhub-capacity-track { height: 8px; max-width: 220px; background: var(--xhub-panel-inset); border: 1px solid var(--xhub-line); }
+.xhub-capacity-track span { background: linear-gradient(90deg, #b29a60, #e3d5b1); }
+.xhub-team-members { gap: 18px; }
+.xhub-team-card > div { padding: 24px; }
+.xhub-team-member-head { gap: 15px; }
+.xhub-team-avatar { width: 52px; height: 52px; border-radius: 16px; font-size: 18px; }
+.xhub-team-member-head h2 { font-size: 18px; font-weight: 600; }
+.xhub-team-member-head p { line-height: 1.5; }
+.xhub-team-card .xhub-context-note { padding: 13px 15px; background: var(--xhub-cyan-soft); border: 1px solid color-mix(in srgb, var(--xhub-cyan) 15%, transparent); border-radius: 11px; font-size: 12px; }
+.xhub-team-card .xhub-context-note > .ph { color: var(--xhub-cyan); font-size: 20px; }
+.xhub-team-permissions { border-color: var(--xhub-line); }
+.xhub-team-permissions summary { min-height: 56px; padding-block: 16px; }
+.xhub-team-permissions summary > span { padding: 5px 8px; border-radius: 7px; background: var(--xhub-panel-inset); color: hsl(var(--muted-foreground)); }
+.xhub-team-permissions button[role=switch] { border: 1px solid var(--xhub-line); background: var(--xhub-panel-inset); padding: 12px; border-radius: 11px; }
+.xhub-team-permissions button[role=switch]:hover { border-color: var(--xhub-line-strong); background: var(--xhub-panel-raised); }
+.xhub-team-permissions button[role=switch][aria-checked=true] { border-color: color-mix(in srgb, var(--xhub-cyan) 20%, var(--xhub-line)); }
+.xhub-team-presets { gap: 8px; margin-top: 14px; }
+.xhub-team-presets > button { min-height: 30px; padding-inline: 11px; background: var(--xhub-panel-inset); }
+.xhub-team-actions { padding-top: 15px; gap: 14px; }
+.xhub-team-actions > button { display: inline-flex; gap: 6px; align-items: center; min-height: 32px; }
+.xhub-team-actions > button > .ph { font-size: 16px; }
+.xhub-team-form { border-top-color: color-mix(in srgb, var(--voxia-action-text) 50%, var(--xhub-line)); }
+
+@media (max-width: 1200px) {
+  .crm-pipeline-summary > div, .crm-pipeline-summary > div:first-child, .crm-pipeline-summary > div:last-child { padding: 18px; gap: 12px; }
+}
+@media (max-width: 980px) {
+  .crm-pipeline-summary > div, .crm-pipeline-summary > div:first-child, .crm-pipeline-summary > div:last-child { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 620px) {
+  .crm-pipeline-summary { gap: 12px; }
+  .crm-pipeline-summary > div, .crm-pipeline-summary > div:first-child, .crm-pipeline-summary > div:last-child { flex-direction: row; align-items: center; padding: 17px; gap: 16px; }
+  .crm-person-profile { padding: 22px 18px; }
+  .crm-person-avatar { width: 56px; height: 56px; border-radius: 17px; }
+  .crm-person-stats { gap: 10px; }
+  .crm-person-stats > div { padding: 16px; }
+  .crm-person-stats > div > div:first-child { font-size: 23px; }
+  .crm-person-capabilities { align-items: stretch; }
+  .crm-person-capabilities > span { font-size: 11px; }
+  .xhub-capacity { flex-wrap: wrap; padding: 18px; gap: 13px; }
+  .xhub-capacity > div:not(.xhub-capacity-track) { flex: 1; min-width: 130px; }
+  .xhub-capacity strong { font-size: 17px; }
+  .xhub-capacity-track { min-width: 100%; margin: 2px 0 0; }
+  .xhub-team-card > div { padding: 20px 17px; }
+  .xhub-team-member-head { gap: 12px; flex-wrap: wrap; }
+  .xhub-team-avatar { width: 46px; height: 46px; font-size: 16px; }
+  .xhub-team-member-head h2 { font-size: 17px; }
+  .xhub-team-member-head > div.min-w-0 { min-width: 135px; }
+  .xhub-team-permissions summary { flex-wrap: wrap; gap: 7px; }
+  .xhub-team-permissions summary > span { margin-left: auto; }
+  .xhub-team-actions { flex-wrap: wrap; }
+}

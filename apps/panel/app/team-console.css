@@ -1,0 +1,596 @@
+/* Team administration: compact member cards and a clearly separated creation form.
+   This layer follows light-workspace.css and does not change permission behavior. */
+.xhub-team-page {
+  --team-card-surface: linear-gradient(145deg, var(--xhub-panel-raised), var(--xhub-panel) 65%);
+  --team-control-surface: var(--xhub-panel-inset);
+  --team-card-shadow: 0 8px 22px #02071120, inset 0 1px #ffffff05;
+  --team-capacity-surface: linear-gradient(110deg, var(--xhub-orange-soft), transparent 56%), var(--xhub-panel);
+}
+
+.xhub-team-page .xhub-capacity {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) minmax(190px, 29%);
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 28px;
+  padding: 21px 24px;
+  border: 1px solid var(--xhub-line);
+  border-radius: 18px;
+  background: var(--team-capacity-surface);
+  box-shadow: var(--team-card-shadow);
+}
+.xhub-team-page .xhub-capacity > .ph {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 8px;
+  border: 0;
+  border-radius: 0;
+  color: var(--voxia-action-text);
+  background: transparent;
+  box-shadow: none;
+  font-size: 27px;
+}
+.xhub-team-page .xhub-capacity > .xhub-capacity-copy,
+.xhub-team-page .xhub-capacity > .xhub-capacity-meter { min-width: 0; }
+.xhub-team-page .xhub-capacity-copy > strong {
+  display: block;
+  color: hsl(var(--foreground));
+  font: 600 20px/1.3 Outfit, sans-serif;
+  letter-spacing: -.35px;
+}
+.xhub-team-page .xhub-capacity-copy > p {
+  margin-top: 5px;
+  color: var(--xhub-body);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.xhub-team-page .xhub-capacity-meter {
+  display: grid;
+  gap: 10px;
+  padding-left: 24px;
+  border-left: 1px solid var(--xhub-line);
+}
+.xhub-team-page .xhub-capacity-meter-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+  line-height: 1.4;
+}
+.xhub-team-page .xhub-capacity-meter-label > strong {
+  flex-shrink: 0;
+  color: hsl(var(--foreground));
+  font: 600 15px/1.3 Outfit, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.xhub-team-page .xhub-capacity-track {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: 7px;
+  margin: 0;
+  border: 1px solid var(--xhub-line);
+  border-radius: 99px;
+  background: var(--xhub-panel-inset);
+  overflow: hidden;
+}
+.xhub-team-page .xhub-capacity-track > span {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--voxia-action-text), hsl(var(--primary)));
+}
+
+.xhub-team-page .xhub-team-section-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 15px;
+}
+.xhub-team-page .xhub-team-section-head > .xhub-section-heading {
+  color: hsl(var(--foreground));
+  font: 600 21px/1.35 Outfit, sans-serif;
+  letter-spacing: -.4px;
+}
+.xhub-team-page .xhub-team-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 27px;
+  min-height: 27px;
+  padding: 3px 9px;
+  border: 1px solid var(--xhub-line);
+  border-radius: 8px;
+  background: var(--xhub-panel);
+  color: var(--xhub-body);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.xhub-team-page .xhub-team-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(320px, 27vw, 360px);
+  align-items: start;
+  gap: 22px;
+}
+.xhub-team-page .xhub-team-members {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+  container-type: inline-size;
+}
+.xhub-team-page .xhub-team-card {
+  --team-member-accent: var(--xhub-cyan);
+  --team-member-soft: var(--xhub-cyan-soft);
+  min-width: 0;
+  border: 1px solid var(--xhub-line);
+  border-top: 2px solid color-mix(in srgb, var(--team-member-accent) 65%, var(--xhub-line));
+  border-radius: 16px;
+  background: var(--team-card-surface);
+  box-shadow: var(--team-card-shadow);
+}
+.xhub-team-page .xhub-team-card[data-member-role="admin_cliente"] {
+  --team-member-accent: var(--voxia-action-text);
+  --team-member-soft: var(--voxia-action-soft);
+}
+.xhub-team-page .xhub-team-card > .xhub-team-card-content { padding: 20px; }
+.xhub-team-page .xhub-team-member-head {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+}
+.xhub-team-page .xhub-team-avatar {
+  width: 48px;
+  height: 48px;
+  font: 500 17px/1 Outfit, Inter, sans-serif;
+  letter-spacing: .1px;
+}
+.xhub-team-page .xhub-team-member-head > div.min-w-0 { min-width: 0; }
+.xhub-team-page .xhub-team-member-head h3 {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font: 600 18px/1.35 Outfit, sans-serif;
+  letter-spacing: -.2px;
+  overflow-wrap: anywhere;
+}
+.xhub-team-page .xhub-team-member-head p {
+  margin-top: 4px;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.xhub-team-page .xhub-team-role {
+  align-self: start;
+  margin-top: 3px;
+  padding: 3px 9px;
+  border-color: color-mix(in srgb, var(--team-member-accent) 27%, var(--xhub-line));
+  border-radius: 7px;
+  background: var(--team-member-soft);
+  color: var(--team-member-accent);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.7;
+}
+.xhub-team-page .xhub-team-card .xhub-team-admin-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--team-member-accent) 18%, var(--xhub-line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--team-member-soft) 65%, var(--xhub-panel));
+  color: var(--xhub-body);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.xhub-team-page .xhub-team-card .xhub-team-admin-note > .ph {
+  flex-shrink: 0;
+  color: var(--team-member-accent);
+  font-size: 21px;
+}
+
+.xhub-team-page .xhub-team-permissions {
+  margin-top: 18px;
+  border-top: 1px solid var(--xhub-line);
+}
+.xhub-team-page .xhub-team-permissions > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 16px;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 12px 0;
+  border-radius: 6px;
+  color: var(--xhub-body);
+  list-style: none;
+}
+.xhub-team-page .xhub-team-permissions > summary > .xhub-team-permission-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: hsl(var(--foreground));
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.xhub-team-page .xhub-team-permission-title > .ph {
+  flex-shrink: 0;
+  color: var(--xhub-cyan);
+  font-size: 19px;
+}
+.xhub-team-page .xhub-team-permissions > summary > .xhub-team-permission-count {
+  margin: 0;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: var(--xhub-panel-inset);
+  color: hsl(var(--muted-foreground));
+  font-size: 10px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+.xhub-team-page .xhub-team-permissions > summary > .ph { font-size: 16px; }
+.xhub-team-page .xhub-team-permissions[open] > summary { margin-bottom: 1px; }
+.xhub-team-page .xhub-team-permission-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 0 5px;
+}
+.xhub-team-page .xhub-team-permissions .xhub-team-permission-option[role="switch"] {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  min-width: 0;
+  min-height: 76px;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--xhub-line);
+  border-radius: 10px;
+  background: var(--team-control-surface);
+  text-align: left;
+}
+.xhub-team-page .xhub-team-permission-option > span:first-child { margin-top: 2px; }
+.xhub-team-page .xhub-team-permission-option > span:last-child { min-width: 0; }
+.xhub-team-page .xhub-team-permission-option > span:last-child > span:first-child {
+  color: hsl(var(--foreground));
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.xhub-team-page .xhub-team-permission-option > span:last-child > span:last-child {
+  margin-top: 3px;
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.xhub-team-page .xhub-team-permissions .xhub-team-permission-option[aria-checked="true"] {
+  border-color: color-mix(in srgb, var(--xhub-cyan) 26%, var(--xhub-line));
+  background: color-mix(in srgb, var(--xhub-cyan-soft) 40%, var(--team-control-surface));
+}
+.xhub-team-page .xhub-team-permissions .xhub-team-permission-option:hover {
+  border-color: var(--xhub-line-strong);
+  background: var(--xhub-panel-raised);
+}
+.xhub-team-page .xhub-team-presets {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--xhub-line);
+  border-radius: 10px;
+  background: var(--xhub-panel-inset);
+}
+.xhub-team-page .xhub-team-presets > span {
+  width: 100%;
+  margin: 0 0 2px;
+  color: hsl(var(--muted-foreground));
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .07em;
+  line-height: 1.5;
+}
+.xhub-team-page .xhub-team-presets > button {
+  min-height: 31px;
+  padding: 5px 10px;
+  border: 1px solid var(--xhub-line-strong);
+  border-radius: 7px;
+  background: var(--xhub-panel);
+  color: var(--xhub-body);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.xhub-team-page .xhub-team-presets > button:hover {
+  border-color: var(--voxia-action-border);
+  background: var(--voxia-action-soft);
+  color: var(--voxia-action-text);
+}
+.xhub-team-page .xhub-team-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--xhub-line);
+}
+.xhub-team-page .xhub-team-actions > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 37px;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid var(--xhub-line);
+  border-radius: 8px;
+  background: var(--xhub-panel-inset);
+  color: var(--xhub-body);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-decoration: none;
+}
+.xhub-team-page .xhub-team-actions > .xhub-team-reset { margin-right: auto; }
+.xhub-team-page .xhub-team-actions > button > .ph { font-size: 17px; }
+.xhub-team-page .xhub-team-actions > .xhub-team-reset:hover {
+  border-color: var(--voxia-action-border);
+  background: var(--voxia-action-soft);
+  color: var(--voxia-action-text);
+}
+.xhub-team-page .xhub-team-actions > .xhub-team-delete {
+  border-color: color-mix(in srgb, hsl(var(--critico)) 18%, var(--xhub-line));
+  background: hsl(var(--critico) / .055);
+  color: hsl(var(--critico));
+}
+.xhub-team-page .xhub-team-actions > .xhub-team-delete:hover {
+  border-color: hsl(var(--critico) / .5);
+  background: hsl(var(--critico) / .11);
+}
+.xhub-team-page .xhub-team-delete-confirmation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+}
+.xhub-team-page .xhub-team-delete-confirmation > button {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--xhub-line);
+  border-radius: 7px;
+  background: var(--xhub-panel-inset);
+  color: var(--xhub-body);
+  font-weight: 600;
+  text-decoration: none;
+}
+.xhub-team-page .xhub-team-delete-confirmation > button:first-of-type {
+  border-color: hsl(var(--critico) / .25);
+  background: hsl(var(--critico) / .08);
+  color: hsl(var(--critico));
+}
+
+.xhub-team-page .xhub-team-form {
+  position: sticky;
+  top: 24px;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--xhub-line);
+  border-top: 3px solid hsl(var(--primary));
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--xhub-orange-soft), transparent 120px), var(--xhub-panel);
+  box-shadow: var(--team-card-shadow);
+  scroll-margin-top: 24px;
+}
+.xhub-team-page .xhub-team-form > .xhub-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  color: hsl(var(--foreground));
+  font: 600 22px/1.25 Outfit, sans-serif;
+  letter-spacing: -.4px;
+}
+.xhub-team-page .xhub-team-form > .xhub-section-heading > .ph {
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  flex-shrink: 0;
+  padding: 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--voxia-action-text);
+  font-size: 22px;
+}
+.xhub-team-page .xhub-team-form > p {
+  margin: 15px 0 23px;
+  color: var(--xhub-body);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.xhub-team-page .xhub-team-form-fields { display: grid; gap: 18px; }
+.xhub-team-page .xhub-team-form-fields label {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  color: hsl(var(--foreground));
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.xhub-team-page .xhub-team-form-fields .voxia-input {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  padding-inline: 13px;
+  border: 1px solid var(--xhub-line-strong);
+  border-radius: 9px;
+  background: var(--voxia-field);
+  color: hsl(var(--foreground));
+  box-shadow: inset 0 1px 2px #0207110a;
+  font-size: 13px;
+  font-weight: 400;
+}
+.xhub-team-page .xhub-team-form-fields small {
+  color: hsl(var(--muted-foreground));
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.xhub-team-page .xhub-team-form-fields > .voxia-button-primary {
+  min-height: 46px;
+  margin-top: 3px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+.xhub-team-page .xhub-team-form-fields > .voxia-button-primary > .ph { font-size: 19px; }
+.xhub-team-page .xhub-team-form-fields > .voxia-button-primary:disabled {
+  border-color: var(--xhub-line-strong);
+  background: var(--xhub-panel-inset);
+  color: var(--xhub-body);
+  box-shadow: none;
+  opacity: .68;
+  cursor: not-allowed;
+}
+.xhub-team-page .xhub-team-form-fields > p {
+  margin: -8px 0 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: center;
+}
+.xhub-team-page :is(.xhub-team-members, .xhub-team-form) :is(button, summary, input):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+.xhub-team-page .xhub-team-form-fields .voxia-input:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / .13);
+}
+
+/* Keep the new surfaces above the shared day-theme selectors. */
+html[data-tema="claro"] .xhub-team-page {
+  --team-card-surface: #ffffff;
+  --team-control-surface: #f7f8fa;
+  --team-card-shadow: 0 2px 4px #17203303, 0 8px 24px #17203305;
+  --team-capacity-surface: linear-gradient(110deg, #f9f6ec, #fff 63%);
+}
+html[data-tema="claro"] .xhub-team-page .xhub-capacity {
+  background: var(--team-capacity-surface);
+  box-shadow: var(--team-card-shadow);
+}
+html[data-tema="claro"] .xhub-team-page .xhub-team-card {
+  border-top-color: color-mix(in srgb, var(--team-member-accent) 65%, var(--xhub-line));
+  background: var(--team-card-surface);
+  box-shadow: var(--team-card-shadow);
+}
+html[data-tema="claro"] .xhub-team-page .xhub-team-form {
+  border-top-color: hsl(var(--primary));
+  background: linear-gradient(180deg, #fcfaf4, #fff 128px);
+  box-shadow: var(--team-card-shadow);
+}
+html[data-tema="claro"] .xhub-team-page .xhub-team-permissions .xhub-team-permission-option[role="switch"] {
+  border-color: var(--xhub-line);
+  background: var(--team-control-surface);
+}
+html[data-tema="claro"] .xhub-team-page .xhub-team-permissions .xhub-team-permission-option[aria-checked="true"] {
+  border-color: color-mix(in srgb, var(--xhub-cyan) 24%, var(--xhub-line));
+  background: #eef7f9;
+}
+html[data-tema="claro"] .xhub-team-page .xhub-team-permissions .xhub-team-permission-option:hover {
+  border-color: var(--xhub-line-strong);
+  background: var(--xhub-panel-raised);
+}
+
+/* The permission grid follows the member column, including beside the form. */
+@container (max-width: 590px) {
+  .xhub-team-page .xhub-team-permission-grid { grid-template-columns: minmax(0, 1fr); }
+  .xhub-team-page .xhub-team-permissions .xhub-team-permission-option[role="switch"] { min-height: 68px; }
+}
+@media (max-width: 1100px) {
+  .xhub-team-page .xhub-team-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .xhub-team-page .xhub-team-form { position: static; }
+  .xhub-team-page .xhub-capacity { grid-template-columns: 48px minmax(0, 1fr) minmax(165px, 30%); gap: 15px; padding: 20px; }
+  .xhub-team-page .xhub-capacity > .ph { width: 48px; height: 48px; padding: 6px; }
+  .xhub-team-page .xhub-capacity-meter { padding-left: 18px; }
+}
+@media (max-width: 620px) {
+  .xhub-team-page .xhub-capacity { grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 16px; margin-bottom: 24px; }
+  .xhub-team-page .xhub-capacity > .ph { width: 44px; height: 44px; padding: 6px; font-size: 24px; }
+  .xhub-team-page .xhub-capacity-copy > strong { font-size: 18px; }
+  .xhub-team-page .xhub-capacity-copy > p { font-size: 11px; }
+  .xhub-team-page .xhub-capacity-meter { grid-column: 1 / -1; padding: 13px 0 0; margin-top: 1px; border-left: 0; border-top: 1px solid var(--xhub-line); gap: 8px; }
+  .xhub-team-page .xhub-team-section-head { margin-bottom: 13px; }
+  .xhub-team-page .xhub-team-section-head > .xhub-section-heading { font-size: 20px; }
+  .xhub-team-page .xhub-team-card > .xhub-team-card-content { padding: 17px; }
+  .xhub-team-page .xhub-team-member-head { grid-template-columns: 44px minmax(0, 1fr); gap: 7px 11px; }
+  .xhub-team-page .xhub-team-avatar { grid-row: 1 / 3; width: 44px; height: 44px; font-size: 16px; }
+  .xhub-team-page .xhub-team-member-head h3 { font-size: 17px; }
+  .xhub-team-page .xhub-team-member-head p { font-size: 11px; margin-top: 3px; }
+  .xhub-team-page .xhub-team-role { grid-column: 2; justify-self: start; margin: 0; padding: 2px 7px; font-size: 10px; }
+  .xhub-team-page .xhub-team-card .xhub-team-admin-note { align-items: flex-start; padding: 10px; font-size: 11px; }
+  .xhub-team-page .xhub-team-permissions > summary { gap: 7px; grid-template-columns: minmax(0, 1fr) auto 14px; }
+  .xhub-team-page .xhub-team-permissions > summary > .xhub-team-permission-title { gap: 6px; font-size: 11px; }
+  .xhub-team-page .xhub-team-permissions > summary > .xhub-team-permission-count { padding: 4px 5px; font-size: 10px; }
+  .xhub-team-page .xhub-team-permission-title > .ph { font-size: 17px; }
+  .xhub-team-page .xhub-team-presets { padding: 10px; gap: 6px; }
+  .xhub-team-page .xhub-team-presets > button { min-height: 34px; font-size: 10px; padding-inline: 8px; }
+  .xhub-team-page .xhub-team-actions { gap: 7px; margin-top: 13px; padding-top: 13px; }
+  .xhub-team-page .xhub-team-actions > button { min-height: 40px; padding: 8px 9px; font-size: 11px; gap: 5px; }
+  .xhub-team-page .xhub-team-actions > button > .ph { font-size: 16px; }
+  .xhub-team-page .xhub-team-delete-confirmation { width: 100%; justify-content: flex-end; }
+  .xhub-team-page .xhub-team-form { padding: 20px 17px; scroll-margin-top: 88px; }
+  .xhub-team-page .xhub-team-form > .xhub-section-heading { font-size: 21px; }
+  .xhub-team-page .xhub-team-form-fields { gap: 16px; }
+  .xhub-team-page .xhub-team-form-fields .voxia-input { height: 44px; font-size: 16px; }
+  .xhub-team-page .xhub-team-form-fields .voxia-input::placeholder { font-size: 12px; }
+}
+/* Give the team illustration its own, more distant plane behind the copy. */
+main:has(> .xhub-shell) .xhub-team-page > .xhub-page-heading[data-hero] {
+  background-image:linear-gradient(110deg,#0a1420,#0b1722);
+}
+main:has(> .xhub-shell) .xhub-team-page > .xhub-page-heading[data-hero]::before {
+  content:""; position:absolute; inset:0 0 auto auto; z-index:0; pointer-events:none;
+  /* Fade at the artwork's own edge, even when the header is wider than the image. */
+  height:100%; width:auto; max-width:100%; aspect-ratio:1792 / 600;
+  background-color:transparent;
+  background-image:linear-gradient(90deg,#0a1420db,#0a142059 36%,transparent 65%),var(--xhub-hero-art);
+  background-size:100% 100%,auto 100%;
+  background-position:center,right center;
+  background-repeat:no-repeat;
+  mask-image:linear-gradient(90deg,transparent,#000 12%,#000 94%,transparent),linear-gradient(180deg,transparent,#000 12%,#000 84%,transparent);
+  mask-composite:intersect;
+  opacity:.9; transform-origin:right center; animation:none;
+}
+@keyframes xhub-team-art-depth {
+  from { transform:scale(1.015) translate(-3px,2px); }
+  to { transform:scale(1.035) translate(3px,-2px); }
+}
+@media(prefers-reduced-motion:no-preference) {
+  html[data-xhub-motion="active"] main:has(> .xhub-shell) .xhub-team-page > .xhub-page-heading[data-hero]::before {
+    animation:xhub-team-art-depth 16s ease-in-out infinite alternate;
+  }
+}
+@media(max-width:800px) {
+  main:has(> .xhub-shell) .xhub-team-page > .xhub-page-heading[data-hero]::before {
+    background-image:linear-gradient(90deg,#0a1420ed,#0a1420b3 56%,#0a142066),var(--xhub-hero-art);
+    background-position:center,64% center;
+  }
+}

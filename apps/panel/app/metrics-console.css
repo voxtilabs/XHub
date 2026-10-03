@@ -1,0 +1,257 @@
+/* A compact reporting canvas. Every value remains supplied by the existing API. */
+.xhub-ticket-metrics .xhub-metric-kicker { display:flex; justify-content:space-between; align-items:baseline; gap:14px; margin:0 0 16px; }
+.xhub-ticket-metrics .xhub-metric-kicker h2 { color:hsl(var(--foreground)); font:500 17px/1.4 Outfit,Inter,sans-serif; letter-spacing:-.15px; }
+.xhub-ticket-metrics .xhub-metric-kicker span { color:hsl(var(--muted-foreground)); font-size:11px; line-height:1.5; }
+.xhub-ticket-metrics .xhub-ticket-metrics-grid { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:12px; margin-bottom:23px; }
+.xhub-ticket-metrics .xhub-ticket-metric-card {
+  --metric-accent:var(--xhub-cyan); position:relative; min-width:0; grid-column:span 3;
+  overflow:hidden; border:1px solid var(--xhub-line); border-radius:15px;
+  background:linear-gradient(125deg,var(--xhub-panel-raised),var(--xhub-panel)); box-shadow:inset 0 1px #ffffff05;
+}
+.xhub-ticket-metrics .xhub-ticket-metric-card::before { content:""; position:absolute; top:22px; bottom:22px; left:0; width:2px; border-radius:0 2px 2px 0; background:var(--metric-accent); opacity:.8; }
+.xhub-ticket-metrics .xhub-ticket-metric-card>div {
+  display:grid; grid-template-columns:minmax(0,1fr) 42px; grid-template-rows:auto auto;
+  align-content:center; align-items:center; gap:7px 8px; min-height:106px; padding:18px 21px;
+  background:radial-gradient(ellipse at 100% 0,color-mix(in srgb,var(--metric-accent) 5%,transparent),transparent 74%);
+}
+.xhub-ticket-metrics .xhub-ticket-metric-card .xhub-ticket-card-glyph {
+  grid-column:2; grid-row:1 / 3; width:42px; height:44px; margin:0; border-radius:12px;
+  color:var(--metric-accent); border:1px solid color-mix(in srgb,var(--metric-accent) 20%,var(--xhub-panel));
+  background:color-mix(in srgb,var(--metric-accent) 7%,var(--xhub-panel)); box-shadow:none; font-size:25px;
+}
+.xhub-ticket-metrics .xhub-ticket-metric-number { grid-column:1; grid-row:1; font:600 clamp(28px,2.5vw,37px)/1.1 Outfit,Inter,sans-serif; letter-spacing:-1px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.xhub-ticket-metrics .xhub-ticket-metric-label { grid-column:1; grid-row:2; margin:0; font-size:11px; line-height:1.5; color:hsl(var(--muted-foreground)); }
+.xhub-ticket-metrics .xhub-ticket-metric-card:nth-child(n+5) { grid-column:span 4; background:var(--xhub-panel-inset); border-color:color-mix(in srgb,var(--xhub-line) 72%,transparent); }
+.xhub-ticket-metrics .xhub-ticket-metric-card:nth-child(n+5)::before { content:none; }
+.xhub-ticket-metrics .xhub-ticket-metric-card:nth-child(n+5)>div { grid-template-columns:32px minmax(0,1fr) auto; grid-template-rows:auto; min-height:72px; gap:12px; padding:16px 21px; background:none; }
+.xhub-ticket-metrics .xhub-ticket-metric-card:nth-child(n+5) .xhub-ticket-card-glyph { grid-column:1; grid-row:1; width:32px; height:34px; font-size:20px; border-radius:9px; border-color:var(--xhub-line); background:var(--xhub-panel); }
+.xhub-ticket-metrics .xhub-ticket-metric-card:nth-child(n+5) .xhub-ticket-metric-number { grid-column:3; grid-row:1; font-size:27px; }
+.xhub-ticket-metrics .xhub-ticket-metric-card:nth-child(n+5) .xhub-ticket-metric-label { grid-column:2; grid-row:1; }
+
+/* The main trend and the status mix sit together, with three compact breakdowns below. */
+.xhub-ticket-metrics .xhub-metrics-visuals { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:16px; min-width:0; align-items:stretch; }
+.xhub-ticket-metrics .xhub-metric-distributions { display:contents; }
+.xhub-ticket-metrics .xhub-ticket-chart {
+  min-width:0; grid-column:span 4; margin:0; border:1px solid var(--xhub-line); border-radius:18px;
+  background:var(--xhub-panel); box-shadow:inset 0 1px #ffffff04; overflow:visible;
+}
+.xhub-ticket-metrics .xhub-ticket-chart>div { display:flex; flex-direction:column; height:100%; min-width:0; padding:24px; }
+.xhub-ticket-metrics .xhub-ticket-chart .xhub-ticket-card-heading { gap:11px; margin:0 0 23px; align-items:center; }
+.xhub-ticket-metrics .xhub-ticket-chart .xhub-ticket-card-heading>div { min-width:0; }
+.xhub-ticket-metrics .xhub-ticket-chart .xhub-ticket-card-heading h2 { font:500 19px/1.3 Outfit,Inter,sans-serif; letter-spacing:-.25px; }
+.xhub-ticket-metrics .xhub-ticket-chart .xhub-ticket-card-heading p { color:hsl(var(--muted-foreground)); margin-top:5px; font-size:11px; line-height:1.6; }
+.xhub-ticket-metrics .xhub-ticket-chart .xhub-ticket-card-glyph { display:grid; width:38px; height:40px; border-radius:11px; font-size:22px; background:var(--xhub-orange-soft); box-shadow:none; }
+.xhub-ticket-metrics .xhub-metric-trend {
+  grid-column:span 8; position:relative;
+  border-color:color-mix(in srgb,var(--xhub-cyan) 21%,var(--xhub-line));
+  background:radial-gradient(ellipse at 0 0,color-mix(in srgb,var(--xhub-cyan-soft) 62%,transparent),transparent 58%),linear-gradient(155deg,var(--xhub-panel-raised),var(--xhub-panel) 65%);
+}
+.xhub-ticket-metrics .xhub-metric-trend .xhub-ticket-card-glyph { color:var(--xhub-cyan); border-color:color-mix(in srgb,var(--xhub-cyan) 24%,var(--xhub-panel)); background:var(--xhub-cyan-soft); }
+.xhub-ticket-metrics .xhub-metric-period { display:inline-flex; align-items:center; gap:6px; flex:none; margin-left:auto; padding:6px 8px; border:1px solid var(--xhub-line); border-radius:7px; background:var(--xhub-panel-inset); color:hsl(var(--muted-foreground)); font-size:9px; line-height:1.5; }
+.xhub-ticket-metrics .xhub-metric-period>.ph { color:var(--xhub-cyan); font-size:14px; }
+.xhub-ticket-metrics .xhub-trend-layout { display:flex; flex-direction:column; min-width:0; flex:1; gap:24px; }
+.xhub-ticket-metrics .xhub-trend-summary { display:flex; align-items:center; gap:30px; min-width:0; }
+.xhub-ticket-metrics .xhub-trend-total { display:flex; align-items:center; gap:15px; flex:1; min-width:0; }
+.xhub-ticket-metrics .xhub-trend-total strong { color:hsl(var(--foreground)); font:600 52px/1 Outfit,Inter,sans-serif; letter-spacing:-1.8px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.xhub-ticket-metrics .xhub-trend-total>span { color:hsl(var(--muted-foreground)); font-size:11px; line-height:1.65; }
+.xhub-ticket-metrics .xhub-trend-facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; margin:0; }
+.xhub-ticket-metrics .xhub-trend-facts>div { padding-left:20px; border-left:1px solid var(--xhub-line); }
+.xhub-ticket-metrics .xhub-trend-facts dt { color:hsl(var(--muted-foreground)); font-size:10px; line-height:1.5; margin-bottom:7px; }
+.xhub-ticket-metrics .xhub-trend-facts dd { color:hsl(var(--foreground)); font:500 17px/1.3 Outfit,Inter,sans-serif; font-variant-numeric:tabular-nums; }
+.xhub-ticket-metrics .xhub-trend-facts dd small { margin-left:2px; color:hsl(var(--muted-foreground)); font:400 10px/1.4 Inter,sans-serif; }
+.xhub-ticket-metrics .xhub-trend-chart { min-width:0; margin-top:auto; }
+.xhub-ticket-metrics .xhub-trend-chart-caption { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:23px; color:hsl(var(--muted-foreground)); font-size:10px; line-height:1.4; }
+.xhub-ticket-metrics .xhub-trend-chart-caption>span:first-child { color:var(--xhub-body); }
+.xhub-ticket-metrics .xhub-trend-chart-caption>span:last-child { font-size:9px; }
+.xhub-ticket-metrics .xhub-trend-plot { position:relative; height:170px; min-width:0; }
+.xhub-ticket-metrics .xhub-trend-grid { position:absolute; inset:0 0 0 27px; pointer-events:none; }
+.xhub-ticket-metrics .xhub-trend-gridline { position:absolute; left:0; right:0; height:1px; border-top:1px dashed color-mix(in srgb,var(--xhub-line) 76%,transparent); }
+.xhub-ticket-metrics .xhub-trend-gridline:first-child { border-top-style:solid; }
+.xhub-ticket-metrics .xhub-trend-gridline>span { position:absolute; right:calc(100% + 10px); top:0; transform:translateY(-50%); color:hsl(var(--muted-foreground)); font-size:9px; font-variant-numeric:tabular-nums; }
+.xhub-ticket-metrics .xhub-trend-columns { position:relative; display:flex; align-items:flex-end; gap:8px; height:100%; margin-left:27px; }
+.xhub-ticket-metrics .xhub-trend-column { position:relative; display:flex; flex:1 1 0; flex-direction:column; justify-content:flex-end; align-items:center; min-width:0; height:100%; border-radius:6px; outline-offset:4px; }
+.xhub-ticket-metrics .xhub-trend-column:is(:hover,:focus-visible) { background:color-mix(in srgb,var(--xhub-cyan) 4%,transparent); }
+.xhub-ticket-metrics .xhub-trend-bar {
+  position:relative; display:block; width:100%; max-width:38px; min-height:2px; border-radius:5px 5px 0 0;
+  background:linear-gradient(0deg,color-mix(in srgb,var(--xhub-cyan) 22%,var(--xhub-panel)),color-mix(in srgb,var(--xhub-cyan) 75%,var(--xhub-panel)));
+  border:1px solid color-mix(in srgb,var(--xhub-cyan) 48%,transparent); border-top:3px solid var(--xhub-cyan); border-bottom:0; box-shadow:none;
+}
+.xhub-ticket-metrics .xhub-trend-bar[data-zero="true"] { min-height:2px; background:var(--xhub-line-strong); border:0; }
+.xhub-ticket-metrics .xhub-trend-bar-value { position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); min-width:22px; max-width:40px; padding:3px 5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; color:var(--xhub-cyan); background:var(--xhub-cyan-soft); border:1px solid color-mix(in srgb,var(--xhub-cyan) 27%,var(--xhub-panel)); border-radius:5px; font:600 10px/1.3 Inter,sans-serif; font-variant-numeric:tabular-nums; }
+.xhub-ticket-metrics .xhub-trend-bar[data-zero="true"] .xhub-trend-bar-value { color:hsl(var(--muted-foreground)); background:var(--xhub-panel-inset); border-color:var(--xhub-line); }
+.xhub-ticket-metrics .xhub-trend-tooltip { position:absolute; z-index:3; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%); visibility:hidden; opacity:0; display:flex; flex-direction:column; gap:4px; padding:10px 12px; border:1px solid var(--xhub-line-strong); border-radius:9px; background:var(--xhub-panel-inset); color:hsl(var(--foreground)); box-shadow:0 8px 20px #02071230; font-size:10px; white-space:nowrap; pointer-events:none; }
+.xhub-ticket-metrics .xhub-trend-tooltip>strong { font:600 17px/1 Outfit,Inter,sans-serif; }
+.xhub-ticket-metrics .xhub-trend-tooltip>small { color:hsl(var(--muted-foreground)); font-size:9px; }
+.xhub-ticket-metrics .xhub-trend-column:is(:hover,:focus-visible) .xhub-trend-tooltip { visibility:visible; opacity:1; }
+.xhub-ticket-metrics .xhub-trend-column:first-child .xhub-trend-tooltip { left:0; transform:none; }
+.xhub-ticket-metrics .xhub-trend-column:last-child .xhub-trend-tooltip { left:auto; right:0; transform:none; }
+.xhub-ticket-metrics .xhub-trend-column:only-child .xhub-trend-tooltip { left:50%; right:auto; transform:translateX(-50%); }
+.xhub-ticket-metrics .xhub-trend-dates { display:flex; gap:8px; margin:10px 0 0 27px; }
+.xhub-ticket-metrics .xhub-trend-dates>* { flex:1 1 0; min-width:0; text-align:center; color:hsl(var(--muted-foreground)); font-size:9px; font-variant-numeric:tabular-nums; line-height:1.5; }
+.xhub-ticket-metrics .xhub-trend-dates b { display:block; font-weight:500; }
+.xhub-ticket-metrics .xhub-trend-dates small { display:block; margin-top:1px; font-size:inherit; opacity:.8; }
+.xhub-ticket-metrics .xhub-trend-note { display:flex; align-items:center; gap:7px; margin:16px 0 0; color:hsl(var(--muted-foreground)); font-size:9px; line-height:1.6; }
+.xhub-ticket-metrics .xhub-trend-note::before { content:""; width:5px; height:5px; flex:none; border-radius:2px; background:var(--xhub-cyan); }
+.xhub-ticket-metrics .xhub-trend-note>span:empty { display:none; }
+
+/* Status is the visual anchor; the other reports use compact, comparable rows. */
+.xhub-ticket-metrics .xhub-metric-distributions>.xhub-ticket-chart:first-child { background:linear-gradient(155deg,var(--xhub-orange-soft),transparent 45%),var(--xhub-panel); border-color:color-mix(in srgb,var(--voxia-action-border) 40%,var(--xhub-line)); }
+.xhub-ticket-metrics .xhub-distribution { display:flex; flex-direction:column; flex:1; min-width:0; }
+.xhub-ticket-metrics .xhub-distribution-total { display:flex; align-items:baseline; gap:8px; margin:0 0 20px; }
+.xhub-ticket-metrics .xhub-distribution-total>strong { color:hsl(var(--foreground)); font:600 32px/1 Outfit,Inter,sans-serif; letter-spacing:-.9px; font-variant-numeric:tabular-nums; }
+.xhub-ticket-metrics .xhub-distribution-total>span { color:hsl(var(--muted-foreground)); font-size:10px; line-height:1.5; }
+.xhub-ticket-metrics .xhub-distribution-body { display:flex; flex-direction:column; align-items:stretch; gap:22px; min-width:0; }
+.xhub-ticket-metrics .xhub-distribution[data-kind="estado"] .xhub-distribution-total { display:none; }
+.xhub-ticket-metrics .xhub-distribution[data-kind="estado"] .xhub-distribution-body { flex:1; justify-content:center; gap:29px; padding:10px 0 0; }
+.xhub-ticket-metrics .xhub-distribution-donut { display:grid; place-items:center; position:relative; align-self:center; flex:none; width:156px; height:156px; border-radius:50%; box-shadow:0 0 0 7px var(--xhub-panel-inset); }
+.xhub-ticket-metrics .xhub-distribution-donut>div { display:flex; flex-direction:column; justify-content:center; align-items:center; width:125px; height:125px; border:1px solid var(--xhub-line); border-radius:50%; background:var(--xhub-panel); }
+.xhub-ticket-metrics .xhub-distribution-donut strong { color:hsl(var(--foreground)); font:600 43px/1 Outfit,Inter,sans-serif; letter-spacing:-1px; font-variant-numeric:tabular-nums; }
+.xhub-ticket-metrics .xhub-distribution-donut span { margin-top:7px; color:hsl(var(--muted-foreground)); font-size:10px; line-height:1.4; }
+.xhub-ticket-metrics .xhub-distribution-list { display:grid; align-content:start; gap:12px; min-width:0; margin:0; padding:0; list-style:none; }
+.xhub-ticket-metrics .xhub-distribution-row { min-width:0; padding:12px; border:1px solid color-mix(in srgb,var(--xhub-line) 78%,transparent); border-radius:10px; background:color-mix(in srgb,var(--xhub-panel-inset) 63%,transparent); }
+.xhub-ticket-metrics .xhub-distribution-row-head { display:flex; align-items:center; justify-content:space-between; gap:9px; min-width:0; margin-bottom:10px; }
+.xhub-ticket-metrics .xhub-distribution-label { display:flex; align-items:center; gap:8px; min-width:0; color:var(--xhub-body); font-size:12px; line-height:1.45; text-transform:capitalize; }
+.xhub-ticket-metrics .xhub-distribution-label>span { min-width:0; overflow-wrap:anywhere; }
+.xhub-ticket-metrics .xhub-distribution-label>.ph { flex:none; box-sizing:content-box; padding:5px; color:var(--row-color); font-size:16px; border:1px solid color-mix(in srgb,var(--row-color) 15%,var(--xhub-line)); border-radius:7px; background:color-mix(in srgb,var(--row-color) 6%,var(--xhub-panel)); }
+.xhub-ticket-metrics .xhub-distribution-value { display:flex; align-items:baseline; justify-content:flex-end; gap:7px; flex:none; font-variant-numeric:tabular-nums; }
+.xhub-ticket-metrics .xhub-distribution-value>strong { color:hsl(var(--foreground)); font-size:14px; line-height:1.5; font-weight:600; }
+.xhub-ticket-metrics .xhub-distribution-value>small { min-width:32px; text-align:right; color:hsl(var(--muted-foreground)); font-size:10px; line-height:1.4; }
+.xhub-ticket-metrics .xhub-distribution-track { height:6px; border-radius:5px; background:var(--xhub-panel); box-shadow:inset 0 0 0 1px var(--xhub-line); overflow:hidden; }
+.xhub-ticket-metrics .xhub-distribution-track>span { display:block; height:100%; border-radius:5px; background:var(--row-color); }
+.xhub-ticket-metrics .xhub-distribution-footnote { margin:auto 0 0; padding-top:18px; color:hsl(var(--muted-foreground)); font-size:9px; line-height:1.65; }
+.xhub-ticket-metrics .xhub-distribution[data-kind="estado"] .xhub-distribution-footnote { margin-top:22px; padding-top:15px; border-top:1px solid var(--xhub-line); }
+.xhub-ticket-metrics .xhub-metric-empty { display:flex; flex:1; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:190px; padding:23px; border:1px dashed var(--xhub-line-strong); border-radius:12px; background:var(--xhub-panel-inset); text-align:center; }
+.xhub-ticket-metrics .xhub-metric-empty>.ph { font-size:30px; color:var(--xhub-cyan); margin-bottom:4px; }
+.xhub-ticket-metrics .xhub-metric-empty>strong { color:hsl(var(--foreground)); font:500 15px/1.4 Outfit,Inter,sans-serif; }
+.xhub-ticket-metrics .xhub-metric-empty>p { color:hsl(var(--muted-foreground)); font-size:11px; line-height:1.6; max-width:290px; }
+
+/* Detail reports retain the dashboard grid and add clearer icon and value hierarchy. */
+.xhub-ticket-metrics .xhub-metric-detail-card {
+  --report-accent:var(--voxia-action-text); position:relative;
+  border-color:color-mix(in srgb,var(--report-accent) 13%,var(--xhub-line));
+  background:linear-gradient(150deg,color-mix(in srgb,var(--report-accent) 3%,var(--xhub-panel)),var(--xhub-panel) 60%);
+}
+.xhub-ticket-metrics .xhub-metric-detail-card[data-report="categoria"] { --report-accent:var(--xhub-cyan); }
+.xhub-ticket-metrics .xhub-metric-detail-card[data-report="canal"] { background:linear-gradient(150deg,color-mix(in srgb,var(--xhub-cyan) 4%,var(--xhub-panel)),var(--xhub-panel) 60%); }
+.xhub-ticket-metrics .xhub-metric-detail-card::before { content:""; position:absolute; left:24px; right:24px; top:0; height:2px; border-radius:0 0 3px 3px; background:linear-gradient(90deg,var(--report-accent),color-mix(in srgb,var(--report-accent) 24%,transparent) 54%,transparent); opacity:.8; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-ticket-card-heading { gap:13px; margin-bottom:22px; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-ticket-card-glyph {
+  width:46px; height:46px; font-size:28px; color:var(--report-accent); border-radius:13px;
+  background:linear-gradient(140deg,color-mix(in srgb,var(--report-accent) 13%,var(--xhub-panel)),color-mix(in srgb,var(--report-accent) 4%,var(--xhub-panel)));
+  border:1px solid color-mix(in srgb,var(--report-accent) 29%,var(--xhub-line));
+  box-shadow:inset 0 1px #ffffff14,0 3px 6px #02071210;
+}
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-ticket-card-heading h2 { font-size:19px; line-height:1.3; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-ticket-card-heading p { font-size:11px; line-height:1.65; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-total { align-items:center; gap:10px; margin-bottom:18px; padding-bottom:18px; border-bottom:1px solid var(--xhub-line); }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-total>strong { font-size:36px; letter-spacing:-1px; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-total>span { font-size:11px; color:var(--xhub-body); }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-body { margin-bottom:20px; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-list { gap:12px; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-row { padding:13px; border-color:color-mix(in srgb,var(--row-color) 12%,var(--xhub-line)); background:linear-gradient(125deg,color-mix(in srgb,var(--row-color) 3%,var(--xhub-panel-inset)),var(--xhub-panel-inset)); box-shadow:inset 0 1px #ffffff04; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-row-head { gap:10px; margin-bottom:12px; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-label { gap:10px; color:hsl(var(--foreground)); font-size:12px; font-weight:500; line-height:1.5; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-symbol { display:grid; place-items:center; flex:none; width:36px; height:36px; border-radius:10px; color:var(--row-color); border:1px solid color-mix(in srgb,var(--row-color) 23%,var(--xhub-line)); background:linear-gradient(140deg,color-mix(in srgb,var(--row-color) 10%,var(--xhub-panel)),color-mix(in srgb,var(--row-color) 4%,var(--xhub-panel))); box-shadow:inset 0 1px #ffffff0c; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-symbol>.ph { display:block; font-size:20px; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-value { align-items:center; gap:8px; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-value>strong { font:600 17px/1.2 Outfit,Inter,sans-serif; color:hsl(var(--foreground)); }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-value>small { min-width:37px; padding:4px 5px; text-align:center; color:var(--xhub-body); border:1px solid var(--xhub-line); border-radius:6px; background:var(--xhub-panel); font-size:10px; line-height:1.3; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-track { height:6px; background:var(--xhub-panel); }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-track>span { background:linear-gradient(90deg,color-mix(in srgb,var(--row-color) 64%,var(--xhub-panel)),var(--row-color)); box-shadow:inset 0 1px #ffffff12; }
+.xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-footnote { margin-top:auto; padding-top:14px; border-top:1px solid var(--xhub-line); color:hsl(var(--muted-foreground)); font-size:10px; line-height:1.6; }
+
+@media(max-width:1199px) {
+  .xhub-ticket-metrics .xhub-metrics-visuals { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .xhub-ticket-metrics .xhub-ticket-chart { grid-column:auto; }
+  .xhub-ticket-metrics .xhub-metric-trend { grid-column:1 / -1; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card>div { padding:18px 15px; grid-template-columns:minmax(0,1fr) 34px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card .xhub-ticket-card-glyph { width:34px; height:38px; font-size:21px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card:nth-child(n+5)>div { padding:15px; }
+  .xhub-ticket-metrics .xhub-ticket-chart>div { padding:22px; }
+}
+@media(max-width:900px) {
+  .xhub-ticket-metrics .xhub-ticket-metrics-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card,.xhub-ticket-metrics .xhub-ticket-metric-card:nth-child(n+5) { grid-column:auto; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card:last-child { grid-column:1 / -1; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card>div { grid-template-columns:minmax(0,1fr) 40px; padding:18px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card .xhub-ticket-card-glyph { width:40px; height:42px; font-size:24px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-number { font-size:33px; }
+  .xhub-ticket-metrics .xhub-ticket-chart .xhub-ticket-card-heading h2 { font-size:18px; }
+  .xhub-ticket-metrics .xhub-ticket-chart .xhub-ticket-card-heading p { font-size:10px; }
+  .xhub-ticket-metrics .xhub-trend-summary { gap:20px; }
+  .xhub-ticket-metrics .xhub-trend-facts { gap:15px; }
+  .xhub-ticket-metrics .xhub-trend-facts>div { padding-left:15px; }
+}
+@media(max-width:650px) {
+  .xhub-ticket-metrics .xhub-metric-kicker { display:block; margin-bottom:14px; }
+  .xhub-ticket-metrics .xhub-metric-kicker h2 { font-size:16px; }
+  .xhub-ticket-metrics .xhub-metric-kicker span { display:block; margin-top:4px; font-size:10px; }
+  .xhub-ticket-metrics .xhub-ticket-metrics-grid { margin-bottom:19px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card { border-radius:13px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card>div { min-height:102px; padding:16px 13px; column-gap:5px; grid-template-columns:minmax(0,1fr) 31px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card .xhub-ticket-card-glyph { width:31px; height:34px; font-size:20px; border-radius:9px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-number { font-size:31px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-label { font-size:10px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card:nth-child(n+5)>div { grid-template-columns:minmax(0,1fr) 29px; grid-template-rows:auto auto; min-height:86px; padding:14px 13px; gap:6px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card:nth-child(n+5) .xhub-ticket-card-glyph { grid-column:2; grid-row:1 / 3; width:29px; height:32px; font-size:19px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card:nth-child(n+5) .xhub-ticket-metric-number { grid-column:1; grid-row:1; font-size:26px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card:nth-child(n+5) .xhub-ticket-metric-label { grid-column:1; grid-row:2; }
+  .xhub-ticket-metrics .xhub-metrics-visuals { grid-template-columns:minmax(0,1fr); gap:14px; }
+  .xhub-ticket-metrics .xhub-ticket-chart { border-radius:16px; }
+  .xhub-ticket-metrics .xhub-ticket-chart>div { padding:20px 17px; }
+  .xhub-ticket-metrics .xhub-ticket-chart .xhub-ticket-card-heading { gap:10px; margin-bottom:21px; align-items:start; }
+  .xhub-ticket-metrics .xhub-ticket-chart .xhub-ticket-card-glyph { width:35px; height:37px; font-size:21px; border-radius:10px; }
+  .xhub-ticket-metrics .xhub-metric-trend .xhub-ticket-card-heading { display:grid; grid-template-columns:35px minmax(0,1fr); }
+  .xhub-ticket-metrics .xhub-metric-period { grid-column:2; justify-self:start; margin-left:0; font-size:9px; padding:5px 7px; }
+  .xhub-ticket-metrics .xhub-trend-layout { gap:22px; }
+  .xhub-ticket-metrics .xhub-trend-summary { flex-wrap:wrap; gap:19px; }
+  .xhub-ticket-metrics .xhub-trend-total { flex-basis:100%; gap:13px; }
+  .xhub-ticket-metrics .xhub-trend-total strong { font-size:46px; }
+  .xhub-ticket-metrics .xhub-trend-total>span { font-size:10px; }
+  .xhub-ticket-metrics .xhub-trend-facts { flex:1; gap:14px; padding-top:16px; border-top:1px solid var(--xhub-line); }
+  .xhub-ticket-metrics .xhub-trend-facts>div:first-child { padding-left:0; border-left:0; }
+  .xhub-ticket-metrics .xhub-trend-facts dt { font-size:10px; }
+  .xhub-ticket-metrics .xhub-trend-facts dd { font-size:17px; }
+  .xhub-ticket-metrics .xhub-trend-chart-caption { margin-bottom:28px; }
+  .xhub-ticket-metrics .xhub-trend-plot { height:155px; }
+  .xhub-ticket-metrics .xhub-trend-columns,.xhub-ticket-metrics .xhub-trend-dates { gap:4px; }
+  .xhub-ticket-metrics .xhub-trend-dates>* { font-size:8px; }
+  .xhub-ticket-metrics .xhub-trend-dates small { overflow-wrap:anywhere; }
+  .xhub-ticket-metrics .xhub-trend-bar-value { min-width:18px; padding:3px; font-size:9px; }
+  .xhub-ticket-metrics .xhub-trend-columns:has(.xhub-trend-column:nth-child(8)) .xhub-trend-bar-value { display:none; }
+  .xhub-ticket-metrics .xhub-trend-note { align-items:flex-start; font-size:9px; }
+  .xhub-ticket-metrics .xhub-trend-note::before { margin-top:5px; }
+  .xhub-ticket-metrics .xhub-distribution-total { margin-bottom:17px; }
+  .xhub-ticket-metrics .xhub-distribution-total>strong { font-size:30px; }
+  .xhub-ticket-metrics .xhub-distribution[data-kind="estado"] .xhub-distribution-body { gap:25px; padding-top:5px; }
+  .xhub-ticket-metrics .xhub-distribution-donut { width:146px; height:146px; box-shadow:0 0 0 6px var(--xhub-panel-inset); }
+  .xhub-ticket-metrics .xhub-distribution-donut>div { width:117px; height:117px; }
+  .xhub-ticket-metrics .xhub-distribution-donut strong { font-size:38px; }
+  .xhub-ticket-metrics .xhub-distribution-row { padding:11px; }
+  .xhub-ticket-metrics .xhub-distribution-label { font-size:11px; }
+  .xhub-ticket-metrics .xhub-distribution-row-head { gap:7px; }
+  .xhub-ticket-metrics .xhub-distribution-value { gap:5px; }
+  .xhub-ticket-metrics .xhub-distribution-value>strong { font-size:13px; }
+  .xhub-ticket-metrics .xhub-distribution-value>small { font-size:9px; min-width:27px; }
+  .xhub-ticket-metrics .xhub-metric-detail-card::before { left:17px; right:17px; }
+  .xhub-ticket-metrics .xhub-metric-detail-card .xhub-ticket-card-heading { gap:11px; }
+  .xhub-ticket-metrics .xhub-metric-detail-card .xhub-ticket-card-glyph { width:42px; height:42px; font-size:26px; border-radius:12px; }
+  .xhub-ticket-metrics .xhub-metric-detail-card .xhub-ticket-card-heading h2 { font-size:18px; }
+  .xhub-ticket-metrics .xhub-metric-detail-card .xhub-ticket-card-heading p { font-size:10px; }
+  .xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-total { margin-bottom:16px; padding-bottom:16px; }
+  .xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-total>strong { font-size:33px; }
+  .xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-row { padding:11px; }
+  .xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-label { font-size:11px; gap:8px; }
+  .xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-value { gap:6px; }
+  .xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-value>small { min-width:33px; font-size:9px; }
+  .xhub-ticket-metrics .xhub-metric-detail-card .xhub-distribution-footnote { font-size:9px; }
+}
+@media(max-width:380px) {
+  .xhub-ticket-metrics .xhub-ticket-metric-card>div { grid-template-columns:minmax(0,1fr) 27px; padding:15px 10px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-card .xhub-ticket-card-glyph { width:27px; height:30px; font-size:18px; }
+  .xhub-ticket-metrics .xhub-ticket-metric-number { font-size:28px; }
+  .xhub-ticket-metrics .xhub-ticket-chart>div { padding-inline:14px; }
+  .xhub-ticket-metrics .xhub-distribution-row { padding:10px; }
+  .xhub-ticket-metrics .xhub-distribution-label { gap:6px; font-size:11px; }
+  .xhub-ticket-metrics .xhub-distribution-label>.ph { font-size:14px; padding:4px; }
+}

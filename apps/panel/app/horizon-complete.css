@@ -1,0 +1,31 @@
+/* Full-feature Horizon shell. Module styles extend these shared surfaces. */
+.xhub-sidebar { padding-bottom:28px; overflow-y:auto; overscroll-behavior:contain; }
+.xhub-sidebar-brand { flex-shrink:0; }
+.xhub-nav { margin-top:26px; gap:4px; }
+.xhub-nav-link { min-height:44px; padding:10px 15px; gap:14px; font-size:13px; flex-shrink:0; }
+.xhub-nav-link .ph { font-size:23px; }
+.xhub-sidebar-footer { flex-shrink:0; padding-top:25px; }
+.xhub-tenant-brand { display:flex; align-items:center; gap:9px; padding:12px; margin:22px 3px 0; border:1px solid #ffffff18; border-radius:10px; color:#d4deeb; font-size:12px; }
+.xhub-tenant-brand img { max-width:74px; max-height:30px; object-fit:contain; }
+.xhub-tenant-brand span { min-width:0; overflow-wrap:anywhere; }
+.xhub-support-banner { display:flex; align-items:center; gap:10px; position:relative; z-index:41; background:#9e233b; color:#fff; padding:10px 22px; font-size:12px; }
+.xhub-support-banner>span { flex:1; }
+.xhub-support-banner button { display:flex; align-items:center; gap:8px; padding:7px 11px; border:1px solid #ffffff66; border-radius:7px; font-weight:600; }
+main:has(.xhub-support-banner) .xhub-topbar { top:58px !important; }
+.xhub-page select, .xhub-page textarea { color:hsl(var(--foreground)); background:hsl(var(--card)); border:1px solid hsl(var(--border)); outline-offset:3px; max-width:100%; }
+.xhub-page select { min-height:40px; padding:8px 12px; }
+.xhub-page textarea { padding:12px 14px; min-height:90px; }
+.xhub-page button:focus-visible, .xhub-page a:focus-visible, .xhub-page input:focus-visible, .xhub-page select:focus-visible, .xhub-page textarea:focus-visible { outline:2px solid hsl(var(--ring)); outline-offset:3px; }
+.xhub-page .xhub-page-heading h1 { overflow-wrap:anywhere; }
+.xhub-page .xhub-page-heading a:not(.voxia-button-primary) { color:inherit; }
+/* Respect the optional tenant colors still supplied by useMarca. */
+html[style*="--primary"] .xhub-page .voxia-button-primary { background:hsl(var(--primary)); border-color:hsl(var(--primary)); }
+html[style*="--primary"] .xhub-nav-link.is-active { color:hsl(var(--primary)); background:hsl(var(--primary) / .13); }
+html[style*="--primary"] .xhub-nav-link.is-active::before { background:hsl(var(--primary)); }
+@media(max-width:800px) {
+  .xhub-sidebar { padding-bottom:24px; }
+  .xhub-nav { gap:3px; margin-top:20px; }
+  .xhub-nav-link { min-height:44px; }
+  .xhub-support-banner { font-size:11px; padding:10px 14px; gap:8px; }
+}
+@media(prefers-reduced-motion:reduce) { .xhub-shell *, .xhub-page * { scroll-behavior:auto !important; animation-duration:.01ms !important; transition-duration:.01ms !important; } }

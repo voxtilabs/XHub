@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 export default {
   reactStrictMode: true,
+  // Conserva las rutas compiladas al alternar entre módulos en desarrollo.
+  onDemandEntries: {
+    maxInactiveAge: 10 * 60 * 1000,
+    pagesBufferLength: 32,
+  },
   // Sin config de ESLint en el repo; el type-check de TS sí corre en el build.
   eslint: { ignoreDuringBuilds: true },
   // El panel proxea el API por SU MISMO origen (same-origin) → la cookie de sesión es
