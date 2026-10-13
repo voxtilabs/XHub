@@ -82,6 +82,17 @@ export function crearApp(): FastifyInstance {
   });
 
   // Filtro único de errores: código estable, voz propia, nunca filtra internals
+  // Un DELETE/PUT sin cuerpo pero con content-type: application/json (lo que manda
+  // cualquier cliente que fija la cabecera por defecto, el panel incluido) hacía que
+  // Fastify rechazara la petición con 500 "Body cannot be empty". Un cuerpo vacío en
+  // esos verbos es legítimo: lo tratamos como {}.
+  app.addContentTypeParser("application/json", { parseAs: "string" }, (_req, cuerpo, hecho) => {
+    const txt = typeof cuerpo === "string" ? cuerpo.trim() : "";
+    if (!txt) return hecho(null, {});
+    try { hecho(null, JSON.parse(txt)); }
+    catch { hecho(new ErrorApi("VALIDACION", "El cuerpo no es JSON válido"), undefined); }
+  });
+
   app.setErrorHandler((err, req, reply) => {
     const { http, cuerpo } = aCuerpo(err instanceof ErrorApi ? err : err, req.requestId);
     reply.code(http).send(cuerpo);

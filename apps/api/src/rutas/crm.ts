@@ -123,19 +123,69 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
     // Embudo de un pipeline: etapas + deals (abiertos + ganados) con la persona resuelta.
     r.get("/oportunidades", async (req) => {
       const ctx = await ctxGuard(req, "crm.ver");
-      const q = req.query as { pipeline?: string };
+      const q = req.query as { pipeline?: string; desde?: string; hasta?: string; limite?: string; offset?: string; estado?: string; q?: string };
+      // El día del negocio viaja como TEXTO AAAA-MM-DD y se compara contra la fecha local
+      // de Chile (ley de la casa nº3: nunca un Date a Postgres para comparar con ::date).
+      const DIA = /^\d{4}-\d{2}-\d{2}$/;
+      if (q.desde && !DIA.test(q.desde)) throw new ErrorApi("VALIDACION", "El filtro «desde» debe ser AAAA-MM-DD");
+      if (q.hasta && !DIA.test(q.hasta)) throw new ErrorApi("VALIDACION", "El filtro «hasta» debe ser AAAA-MM-DD");
+      if (q.desde && q.hasta && q.desde > q.hasta) throw new ErrorApi("VALIDACION", "El rango de fechas está invertido");
+      const limite = Math.min(500, Math.max(1, Number(q.limite) || 100));
+      const offset = Math.max(0, Number(q.offset) || 0);
+      // "activas" (por defecto) = todo menos las perdidas, como era antes.
+      const estado = ["abierta", "ganada", "perdida", "todas"].includes(String(q.estado)) ? String(q.estado) : "activas";
+      const busca = (q.q ?? "").trim().slice(0, 120);
+
       return conCliente(ctx.clienteId, async (c) => {
         const plId = q.pipeline || await asegurarPipeline(c, ctx.clienteId);
         const etapas = (await c.query("select id, nombre, orden, probabilidad from crm_etapas where pipeline_id=$1 order by orden asc", [plId])).rows;
+
+        // Un solo juego de condiciones para la página, el conteo y los totales por etapa:
+        // así la paginación nunca miente (los totales son del conjunto filtrado completo).
+        // pBase = pipeline + rango de fechas + búsqueda. p = pBase + estado.
+        const pBase: unknown[] = [plId];
+        const base: string[] = ["o.pipeline_id=$1"];
+        if (q.desde) { pBase.push(q.desde); base.push(`(o.creado_en at time zone 'America/Santiago')::date >= $${pBase.length}::date`); }
+        if (q.hasta) { pBase.push(q.hasta); base.push(`(o.creado_en at time zone 'America/Santiago')::date <= $${pBase.length}::date`); }
+        if (busca) { pBase.push(`%${busca}%`); base.push(`o.titulo ilike $${pBase.length}`); }
+        const p: unknown[] = [...pBase];
+        // El resumen usa el rango de fechas pero NO el estado: si no, al mirar solo las
+        // abiertas el panel diría "0 ganadas", que es falso.
+        const whereBase = base.join(" and ");
+        const cond = [...base];
+        if (estado === "activas") cond.push("o.estado <> 'perdida'");
+        else if (estado !== "todas") { p.push(estado); cond.push(`o.estado=$${p.length}`); }
+        const where = cond.join(" and ");
+
         const ops = (await c.query(
           `select o.id, o.titulo, o.valor::float8 as valor, o.moneda, o.etapa_id, o.estado, o.persona_id, o.probabilidad, o.cierre_esperado, o.creado_en, o.org_id, o.etiquetas,
                   (select nombre from crm_organizaciones og where og.id=o.org_id) as org_nombre,
                   (select identificador from nucleo.identidades i where i.persona_id=o.persona_id and i.canal='email' limit 1) as persona_email
-             from crm_oportunidades o where o.pipeline_id=$1 and o.estado <> 'perdida' order by o.creado_en desc limit 300`, [plId])).rows;
-        const abiertas = ops.filter((o) => o.estado === "abierta");
-        const valorAbierto = abiertas.reduce((a, o) => a + Number(o.valor), 0);
-        const g = (await c.query("select count(*)::int n, coalesce(sum(valor),0)::float8 v from crm_oportunidades where estado='ganada' and pipeline_id=$1", [plId])).rows[0];
-        return { datos: ops, etapas, pipelineId: plId, resumen: { abiertas: abiertas.length, valorAbierto, ganadas: g.n, valorGanado: g.v }, puede: { gestionar: ctx.esAdmin || ctx.permisos.includes("crm.gestionar") } };
+             from crm_oportunidades o where ${where} order by o.creado_en desc limit $${p.length + 1} offset $${p.length + 2}`,
+          [...p, limite, offset])).rows;
+
+        // Totales del conjunto FILTRADO (no de la página): antes el resumen se calculaba
+        // sobre las 300 filas traídas y mentía en embudos grandes.
+        const total = Number((await c.query(`select count(*)::int n from crm_oportunidades o where ${where}`, p)).rows[0].n);
+        const tot = (await c.query(
+          `select count(*) filter (where o.estado='abierta')::int abiertas,
+                  coalesce(sum(o.valor) filter (where o.estado='abierta'),0)::float8 valor_abierto,
+                  count(*) filter (where o.estado='ganada')::int ganadas,
+                  coalesce(sum(o.valor) filter (where o.estado='ganada'),0)::float8 valor_ganado
+             from crm_oportunidades o where ${whereBase}`, pBase)).rows[0];
+        const porEtapa = (await c.query(
+          `select o.etapa_id, count(*)::int n, coalesce(sum(o.valor),0)::float8 v
+             from crm_oportunidades o where ${where} group by o.etapa_id`, p)).rows;
+        const mapa = new Map(porEtapa.map((x) => [x.etapa_id as string, x]));
+        const etapasConTotal = etapas.map((e) => ({ ...e, total: mapa.get(e.id)?.n ?? 0, valor: mapa.get(e.id)?.v ?? 0 }));
+
+        return {
+          datos: ops, etapas: etapasConTotal, pipelineId: plId,
+          total, limite, offset, hayMas: offset + ops.length < total,
+          filtros: { desde: q.desde ?? null, hasta: q.hasta ?? null, estado, q: busca || null },
+          resumen: { abiertas: tot.abiertas, valorAbierto: tot.valor_abierto, ganadas: tot.ganadas, valorGanado: tot.valor_ganado },
+          puede: { gestionar: ctx.esAdmin || ctx.permisos.includes("crm.gestionar") },
+        };
       });
     });
 
@@ -234,6 +284,51 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
       const r2 = await conCliente(ctx.clienteId, (c) => c.query("update crm_oportunidades set etiquetas=$2, actualizado_en=now() where id=$1 returning id", [id, etq]));
       if (r2.rowCount === 0) throw new ErrorApi("NO_ENCONTRADO", "Oportunidad no encontrada");
       return { ok: true, etiquetas: etq };
+    });
+
+    // EDITAR el deal (campos ricos). Solo los campos presentes en el body se tocan.
+    r.put("/oportunidades/:id", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const { id } = req.params as { id: string };
+      const b = req.body as { titulo?: string; valor?: number; moneda?: string; cierreEsperado?: string | null; probabilidad?: number | null; orgId?: string | null };
+      const set: string[] = []; const p: unknown[] = [id];
+      if (typeof b?.titulo === "string") {
+        if (!b.titulo.trim()) throw new ErrorApi("VALIDACION", "El título no puede ir vacío");
+        p.push(b.titulo.trim().slice(0, 200)); set.push(`titulo=$${p.length}`);
+      }
+      if (b?.valor !== undefined) { p.push(Math.max(0, Number(b.valor) || 0)); set.push(`valor=$${p.length}`); }
+      if (typeof b?.moneda === "string" && b.moneda.trim()) { p.push(b.moneda.trim().slice(0, 8)); set.push(`moneda=$${p.length}`); }
+      if (b?.cierreEsperado !== undefined) {
+        if (b.cierreEsperado && !/^\d{4}-\d{2}-\d{2}$/.test(b.cierreEsperado)) throw new ErrorApi("VALIDACION", "El cierre esperado debe ser AAAA-MM-DD");
+        p.push(b.cierreEsperado || null); set.push(`cierre_esperado=$${p.length}`);
+      }
+      if (b?.probabilidad !== undefined) {
+        const pr = b.probabilidad === null ? null : Math.min(100, Math.max(0, Number(b.probabilidad) || 0));
+        p.push(pr); set.push(`probabilidad=$${p.length}`);
+      }
+      if (b?.orgId !== undefined) { p.push(b.orgId || null); set.push(`org_id=$${p.length}`); }
+      if (!set.length) throw new ErrorApi("VALIDACION", "No hay nada que actualizar");
+      const r2 = await conCliente(ctx.clienteId, (c) => c.query(
+        `update crm_oportunidades set ${set.join(", ")}, actualizado_en=now() where id=$1
+         returning id, titulo, valor::float8 as valor, moneda, etapa_id, estado, persona_id, probabilidad, cierre_esperado, org_id, etiquetas`, p));
+      if (r2.rowCount === 0) throw new ErrorApi("NO_ENCONTRADO", "Oportunidad no encontrada");
+      return r2.rows[0];
+    });
+
+    // ELIMINAR el deal. Actividades y line items caen por cascada; un lead que apuntaba
+    // a este deal se desvincula (su FK no tiene cascade y bloquearía el borrado).
+    // Queda registrado en la línea de tiempo de la persona (la historia no se borra).
+    r.delete("/oportunidades/:id", async (req) => {
+      const ctx = await ctxGuard(req, "crm.gestionar");
+      const { id } = req.params as { id: string };
+      return conCliente(ctx.clienteId, async (c) => {
+        const o = (await c.query("select id, persona_id, titulo from crm_oportunidades where id=$1", [id])).rows[0];
+        if (!o) throw new ErrorApi("NO_ENCONTRADO", "Oportunidad no encontrada");
+        await c.query("update crm_leads set deal_id=null where deal_id=$1", [id]);
+        await c.query("delete from crm_oportunidades where id=$1", [id]);
+        await nucleo.registrarInteraccion(c, { personaId: o.persona_id, tipo: "oportunidad.eliminada", moduloOrigen: "crm", objetoTipo: "oportunidad", objetoId: o.id, resumen: `Oportunidad eliminada: ${o.titulo}` });
+        return { ok: true };
+      });
     });
 
     // Cerrar (ganada / perdida) + motivo de pérdida (Pipedrive lost_reason).

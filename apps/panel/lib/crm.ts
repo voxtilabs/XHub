@@ -1,19 +1,27 @@
 "use client";
 import { apiFetch } from "@/lib/api";
 
-export type Etapa = { id: string; nombre: string; orden: number; probabilidad: number };
+export type Etapa = { id: string; nombre: string; orden: number; probabilidad: number; total?: number; valor?: number };
 export type Pipeline = { id: string; nombre: string; orden: number; etapas: Etapa[] };
 export type Oportunidad = { id: string; titulo: string; valor: number; moneda: string; etapa_id: string | null; estado: "abierta" | "ganada" | "perdida"; persona_id: string; persona_email: string | null; probabilidad: number | null; cierre_esperado: string | null; creado_en: string; org_id?: string | null; org_nombre?: string | null; etiquetas?: string[] };
-export type Embudo = { datos: Oportunidad[]; etapas: Etapa[]; pipelineId: string; resumen: { abiertas: number; valorAbierto: number; ganadas: number; valorGanado: number }; puede: { gestionar: boolean } };
+export type FiltroEmbudo = { pipeline?: string; desde?: string; hasta?: string; estado?: string; q?: string; limite?: number; offset?: number };
+export type Embudo = { datos: Oportunidad[]; etapas: Etapa[]; pipelineId: string; total: number; limite: number; offset: number; hayMas: boolean; filtros: { desde: string | null; hasta: string | null; estado: string; q: string | null }; resumen: { abiertas: number; valorAbierto: number; ganadas: number; valorGanado: number }; puede: { gestionar: boolean } };
 export type Actividad = { id: string; tipo: string; cuerpo: string; hecho: boolean; autor: string | null; creado_en: string };
 export type OportunidadDetalle = Oportunidad & { etapa: string | null; motivo_perdida: string | null; actividades: Actividad[]; puede: { gestionar: boolean } };
 
 export const getPipelines = () => apiFetch<{ datos: Pipeline[] }>("/cliente/crm/pipelines");
-export const getOportunidades = (pipeline?: string) => apiFetch<Embudo>(`/cliente/oportunidades${pipeline ? `?pipeline=${pipeline}` : ""}`);
+export const getOportunidades = (f: FiltroEmbudo = {}) => {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(f)) if (v !== undefined && v !== null && v !== "") qs.set(k, String(v));
+  const s = qs.toString();
+  return apiFetch<Embudo>(`/cliente/oportunidades${s ? `?${s}` : ""}`);
+};
 export const getOportunidad = (id: string) => apiFetch<OportunidadDetalle>(`/cliente/oportunidades/${id}`);
 export type TicketDeOportunidad = { id: string; numero: string; asunto: string; estado: string; prioridad: string; creado_en: string };
 export const getTicketsDeOportunidad = (id: string) => apiFetch<{ datos: TicketDeOportunidad[] }>(`/cliente/oportunidades/${id}/tickets`);
 export const crearOportunidad = (b: { canal: string; identidad: string; titulo: string; valor?: number; moneda?: string; pipelineId?: string; etapaId?: string; cierreEsperado?: string; probabilidad?: number; orgId?: string }) => apiFetch<Oportunidad>("/cliente/oportunidades", { method: "POST", body: JSON.stringify(b) });
+export const actualizarOportunidad = (id: string, b: { titulo?: string; valor?: number; moneda?: string; cierreEsperado?: string | null; probabilidad?: number | null; orgId?: string | null }) => apiFetch<Oportunidad>(`/cliente/oportunidades/${id}`, { method: "PUT", body: JSON.stringify(b) });
+export const borrarOportunidad = (id: string) => apiFetch<{ ok: true }>(`/cliente/oportunidades/${id}`, { method: "DELETE" });
 export const moverEtapa = (id: string, etapaId: string) => apiFetch(`/cliente/oportunidades/${id}/etapa`, { method: "PUT", body: JSON.stringify({ etapaId }) });
 export const cerrarOportunidad = (id: string, estado: "ganada" | "perdida", motivo?: string) => apiFetch(`/cliente/oportunidades/${id}/cerrar`, { method: "PUT", body: JSON.stringify({ estado, motivo }) });
 export const agregarActividad = (id: string, tipo: string, cuerpo: string) => apiFetch<Actividad>(`/cliente/oportunidades/${id}/actividades`, { method: "POST", body: JSON.stringify({ tipo, cuerpo }) });

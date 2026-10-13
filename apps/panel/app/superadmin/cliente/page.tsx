@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
+import { usePrompt } from "@/components/prompt-dialog";
 import { AppShell } from "@/components/app-shell";
 import { Icon } from "@/components/icon";
 import { HeroFeatures } from "@/components/hero-features";
@@ -55,6 +56,9 @@ export default function ClienteDetalle() {
   const [usuarios, setUsuarios] = useState<Usuarios | null>(null);
   const [lim, setLim] = useState("");
   const [nu, setNu] = useState({ email: "", nombre: "", password: "" });
+  const { ask, dialog } = usePrompt();
+  const [uPorBorrar, setUPorBorrar] = useState<string | null>(null);
+  const [claveNueva, setClaveNueva] = useState<{ id: string; clave: string } | null>(null);
   const [ia, setIa] = useState<ResumenIA | null>(null);
   const [autos, setAutos] = useState<Automatizacion[]>([]);
 
@@ -110,6 +114,20 @@ export default function ClienteDetalle() {
   const guardarScopes = (l: Llave) => accion(async () => { await apiFetch(`/admin/clientes/${id}/llaves/${l.id}/scopes`, { method: "PUT", body: JSON.stringify({ scopes: editScopes }) }); setEditando(null); await recargarLlaves(); }, "Scopes actualizados");
   const revocarLlave = (l: Llave) => accion(async () => { await apiFetch(`/admin/clientes/${id}/llaves/${l.id}`, { method: "DELETE" }); await recargarLlaves(); }, "Llave revocada");
   const guardarLimite = () => accion(async () => { const n = Number(lim); await apiFetch(`/admin/clientes/${id}/limite-usuarios`, { method: "PUT", body: JSON.stringify({ limite: n }) }); setUsuarios((u) => u && { ...u, limite: n }); }, "Tope de usuarios fijado");
+  const renombrarUsuario = (u: UsuarioCliente) => accion(async () => {
+    const nombre = await ask("Nuevo nombre:", u.nombre || "", { title: "Renombrar usuario", icon: "user", confirmLabel: "Guardar" });
+    if (nombre === null || !nombre.trim()) return;
+    await apiFetch(`/admin/clientes/${id}/usuarios/${u.id}`, { method: "PUT", body: JSON.stringify({ nombre: nombre.trim() }) });
+    await recargarUsuarios(id);
+  }, "Usuario renombrado");
+  const resetClave = (u: UsuarioCliente) => accion(async () => {
+    const r = await apiFetch<{ clave: string }>(`/admin/clientes/${id}/usuarios/${u.id}/reset-clave`, { method: "PUT" });
+    setClaveNueva({ id: u.id, clave: r.clave });
+  }, "Clave reseteada");
+  const eliminarUsuario = (u: UsuarioCliente) => accion(async () => {
+    await apiFetch(`/admin/clientes/${id}/usuarios/${u.id}`, { method: "DELETE" });
+    setUPorBorrar(null); await recargarUsuarios(id);
+  }, "Usuario eliminado");
   const crearUsuario = () => accion(async () => {
     await apiFetch(`/admin/clientes/${id}/usuarios`, { method: "POST", body: JSON.stringify(nu) });
     setNu({ email: "", nombre: "", password: "" }); await recargarUsuarios(id);
@@ -204,9 +222,30 @@ export default function ClienteDetalle() {
                   <div className="text-[13px] font-medium truncate">{u.nombre || u.email}</div>
                   <div className="text-[11px] text-muted-foreground truncate">{u.email}</div>
                 </div>
-                <Badge rol={u.rol === "admin_cliente" ? "senal" : "neutro"}>{u.rol === "admin_cliente" ? "Admin" : u.rol}</Badge>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Badge rol={u.rol === "admin_cliente" ? "senal" : "neutro"}>{u.rol === "admin_cliente" ? "Admin" : u.rol}</Badge>
+                  {uPorBorrar === u.id ? (
+                    <>
+                      <span className="text-[11px] text-muted-foreground">¿Eliminar?</span>
+                      <button onClick={() => eliminarUsuario(u)} className="text-[11.5px] px-2 h-7 rounded-md border border-[hsl(var(--critico)/0.5)] text-[hsl(var(--critico))] hover:bg-[hsl(var(--critico)/0.1)]">Sí, eliminar</button>
+                      <button onClick={() => setUPorBorrar(null)} className="text-[11.5px] px-2 h-7 rounded-md border border-border text-muted-foreground hover:text-foreground">Cancelar</button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => renombrarUsuario(u)} title="Renombrar" className="text-[11.5px] px-2 h-7 rounded-md border border-border text-muted-foreground hover:text-foreground">Renombrar</button>
+                      <button onClick={() => resetClave(u)} title="Resetear clave" className="text-[11.5px] px-2 h-7 rounded-md border border-border text-muted-foreground hover:text-foreground">Clave</button>
+                      <button onClick={() => setUPorBorrar(u.id)} title="Eliminar" className="text-[11.5px] px-2 h-7 rounded-md border border-border text-muted-foreground hover:text-[hsl(var(--critico))]">Eliminar</button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
+            {claveNueva && (
+              <div className="rounded-md px-3 py-2 text-[12.5px]" style={{ background: "hsl(var(--aviso)/0.1)", color: "hsl(var(--aviso))" }}>
+                Clave nueva (se muestra una sola vez): <code className="font-mono text-foreground">{claveNueva.clave}</code>
+                <button onClick={() => setClaveNueva(null)} className="ml-2 underline">ocultar</button>
+              </div>
+            )}
           </div>
 
           {/* Alta del admin del cliente (respeta el tope) */}
@@ -393,6 +432,7 @@ export default function ClienteDetalle() {
         </CardContent></Card>
         </div>
       </div>
+      {dialog}
     </main>
   );
 }
