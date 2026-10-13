@@ -16,7 +16,9 @@ export async function apiFetch<T = unknown>(path: string, opts: RequestInit = {}
   const r = await fetch(apiBase() + path, {
     ...opts,
     credentials: "include",
-    headers: { "content-type": "application/json", ...(opts.headers || {}) },
+    // Solo declaramos JSON cuando REALMENTE va un cuerpo: un DELETE/PUT sin body con
+    // content-type: application/json es rechazado por los parsers estrictos.
+    headers: { ...(opts.body ? { "content-type": "application/json" } : {}), ...(opts.headers || {}) },
   });
   const data = await r.json().catch(() => ({} as Record<string, unknown>));
   if (!r.ok) {

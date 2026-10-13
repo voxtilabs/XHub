@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { createHmac } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
 import { ErrorApi, cifrarSecreto, resolverCredencial, reenvolverConActual, esCifrado, presignS3, configAlmacen, almacenConfigurado } from "@xhub/core";
 import { conPlataforma, listarAuditoria, verificarCadena, auditar, type FiltroAudit } from "@xhub/db";
@@ -227,6 +227,55 @@ export function registrarRutasAdmin(app: FastifyInstance): void {
         usados: await contarUsuariosCliente(c, id),
         usuarios: await listarUsuariosCliente(c, id),
       }));
+    });
+
+    // CRUD del usuario de un cliente desde la plataforma: renombrar, resetear clave y
+    // ELIMINAR. Antes solo se podían crear, y una cuenta mal creada no había cómo sacarla.
+    // Siempre acotado al cliente de la ruta (un id de otro cliente da 404, no se cruza).
+    async function usuarioDelCliente(clienteId: string, uid: string): Promise<{ id: string; email: string | null; rol: string | null }> {
+      const u = (await conPlataforma((c) => c.query(
+        `select id, email, rol from "user" where id=$1 and "clienteId"=$2`, [uid, clienteId]))).rows[0];
+      if (!u) throw new ErrorApi("NO_ENCONTRADO", "Ese usuario no existe en este cliente");
+      return u;
+    }
+
+    admin.put("/clientes/:id/usuarios/:uid", async (req) => {
+      const { id, uid } = req.params as { id: string; uid: string };
+      const b = req.body as { nombre?: string };
+      const nombre = b?.nombre?.trim();
+      if (!nombre || nombre.length < 2) throw new ErrorApi("VALIDACION", "El nombre debe tener al menos 2 caracteres");
+      await usuarioDelCliente(id, uid);
+      await conPlataforma((c) => c.query(`update "user" set name=$2, "updatedAt"=now() where id=$1`, [uid, nombre.slice(0, 120)]));
+      await auditar({ clienteId: id, actorTipo: "plataforma", accion: "usuario.renombrado", recurso: "usuario", recursoId: uid, resultado: "ok" });
+      return { ok: true, id: uid, nombre: nombre.slice(0, 120) };
+    });
+
+    admin.put("/clientes/:id/usuarios/:uid/reset-clave", async (req) => {
+      const { id, uid } = req.params as { id: string; uid: string };
+      await usuarioDelCliente(id, uid);
+      const nueva = randomBytes(9).toString("base64url");
+      const contexto = await auth.$context;
+      const hash = await contexto.password.hash(nueva);
+      const r2 = await conPlataforma((c) => c.query(
+        `update "account" set password=$2, "updatedAt"=now() where "userId"=$1 and "providerId"='credential'`, [uid, hash]));
+      if (!r2.rowCount) throw new ErrorApi("NO_ENCONTRADO", "Ese usuario no tiene credencial de acceso");
+      // Cerrar sus sesiones: la clave vieja no debe seguir dando acceso.
+      await conPlataforma((c) => c.query(`delete from "session" where "userId"=$1`, [uid]));
+      await auditar({ clienteId: id, actorTipo: "plataforma", accion: "usuario.clave-reseteada", recurso: "usuario", recursoId: uid, resultado: "ok" });
+      return { clave: nueva };
+    });
+
+    admin.delete("/clientes/:id/usuarios/:uid", async (req) => {
+      const { id, uid } = req.params as { id: string; uid: string };
+      const u = await usuarioDelCliente(id, uid);
+      await conPlataforma(async (c) => {
+        await c.query("delete from plataforma.usuario_permisos where usuario_id=$1", [uid]);
+        await c.query(`delete from "account" where "userId"=$1`, [uid]);
+        await c.query(`delete from "session" where "userId"=$1`, [uid]);
+        await c.query(`delete from "user" where id=$1 and "clienteId"=$2`, [uid, id]);
+      });
+      await auditar({ clienteId: id, actorTipo: "plataforma", accion: "usuario.eliminado", recurso: "usuario", recursoId: uid, resultado: "ok", metadata: { email: u.email } });
+      return { ok: true };
     });
 
     // Fijar el tope de usuarios del cliente (lo decide la plataforma)

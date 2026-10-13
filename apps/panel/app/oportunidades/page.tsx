@@ -8,7 +8,7 @@ import { AppShell } from "@/components/app-shell";
 import { Icon } from "@/components/icon";
 import { usePrompt } from "@/components/prompt-dialog";
 import { RequierePermiso } from "@/components/requiere-permiso";
-import { getOportunidades, crearOportunidad, moverEtapa, cerrarOportunidad, getOrganizaciones, getPipelines, crearPipeline, agregarEtapa, borrarEtapa, type Embudo, type Etapa, type Oportunidad, type Organizacion, type Pipeline } from "@/lib/crm";
+import { getOportunidades, crearOportunidad, moverEtapa, cerrarOportunidad, getOrganizaciones, getPipelines, crearPipeline, agregarEtapa, borrarEtapa, actualizarOportunidad, borrarOportunidad, type Embudo, type Etapa, type Oportunidad, type Organizacion, type Pipeline } from "@/lib/crm";
 import { HeroFeatures } from "@/components/hero-features";
 
 const CANALES = ["email", "telefono", "webchat", "instagram", "messenger"];
@@ -38,6 +38,10 @@ function Contenido() {
   const solicitudCarga = useRef(0);
   const [config, setConfig] = useState(false);
   const [filtroEtq, setFiltroEtq] = useState<string | null>(null);
+  // Filtros del servidor: día del negocio (AAAA-MM-DD) + estado + búsqueda. Y paginación.
+  const [filtros, setFiltros] = useState({ desde: "", hasta: "", estado: "abierta", q: "" });
+  const [limite, setLimite] = useState(100);
+  const [porBorrar, setPorBorrar] = useState<string | null>(null);
   const [drag, setDrag] = useState<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -48,13 +52,13 @@ function Contenido() {
     const solicitud = ++solicitudCarga.current;
     setCargando(true); setError(null);
     try {
-      const d = await getOportunidades(pipeSel || undefined);
+      const d = await getOportunidades({ pipeline: pipeSel || undefined, desde: filtros.desde || undefined, hasta: filtros.hasta || undefined, estado: filtros.estado, q: filtros.q || undefined, limite });
       if (solicitud !== solicitudCarga.current) return;
       setData(d);
       if (!pipeSel) { pipelineInicial.current = d.pipelineId; setPipeSel(d.pipelineId); }
     } catch (e) { if (solicitud === solicitudCarga.current) setError((e as Error).message); }
     finally { if (solicitud === solicitudCarga.current) setCargando(false); }
-  }, [pipeSel]);
+  }, [pipeSel, filtros, limite]);
   useEffect(() => {
     const resuelto = pipelineInicial.current;
     pipelineInicial.current = null;
@@ -66,8 +70,34 @@ function Contenido() {
   useEffect(() => { getPipelines().then((r) => setPipelines(r.datos)).catch(() => {}); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 2500); return () => clearTimeout(t); }, [toast]);
 
+  // Rango rápido en día del negocio (Chile): hoy / últimos N días.
+  const diaChile = (desplazamiento = 0) => {
+    const f = new Date(Date.now() - desplazamiento * 86400000);
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit" }).format(f);
+  };
+  const rangoRapido = (dias: number | null) => {
+    setLimite(100);
+    setFiltros((f) => (dias === null ? { ...f, desde: "", hasta: "" } : { ...f, desde: diaChile(dias), hasta: diaChile(0) }));
+  };
+  const rangoActivo = (dias: number | null) =>
+    dias === null ? !filtros.desde && !filtros.hasta : filtros.hasta === diaChile(0) && filtros.desde === diaChile(dias);
+
+  async function editar(o: Oportunidad) {
+    const t = await ask("Título de la oportunidad:", o.titulo, { title: "Editar oportunidad", icon: "kanban", confirmLabel: "Guardar" });
+    if (t === null) return;
+    const v = await ask("Valor del negocio:", String(o.valor), { title: "Valor", icon: "chart-line", confirmLabel: "Guardar", cancelLabel: "Mantener" });
+    try {
+      await actualizarOportunidad(o.id, { titulo: t.trim() || o.titulo, valor: v === null ? o.valor : Math.max(0, Number(v) || 0) });
+      setToast("Oportunidad actualizada"); await cargar();
+    } catch (e) { setError((e as Error).message); }
+  }
+  async function eliminar(id: string) {
+    try { await borrarOportunidad(id); setPorBorrar(null); setToast("Oportunidad eliminada"); await cargar(); }
+    catch (e) { setError((e as Error).message); }
+  }
+
   const etapas: Etapa[] = data?.etapas ?? [];
-  const ops = (data?.datos ?? []).filter((o) => o.estado === "abierta");
+  const ops = data?.datos ?? [];
   const todasEtq = Array.from(new Set(ops.flatMap((o) => o.etiquetas ?? [])));
   const opsVis = filtroEtq ? ops.filter((o) => (o.etiquetas ?? []).includes(filtroEtq)) : ops;
   const puede = data?.puede.gestionar ?? false;
@@ -190,6 +220,43 @@ function Contenido() {
         </CardContent></Card>
       )}
 
+      {/* Filtros del embudo: rango de fechas (día del negocio), estado y búsqueda. */}
+      <div className="crm-filter-bar flex gap-2 flex-wrap items-end mb-3">
+        <div className="flex gap-1.5 flex-wrap items-center">
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mr-1">Periodo</span>
+          {([["Hoy", 0], ["7 días", 6], ["30 días", 29], ["Todo", null]] as [string, number | null][]).map(([et, d]) => (
+            <button key={et} type="button" aria-pressed={rangoActivo(d)} onClick={() => rangoRapido(d)}
+              className={"px-2.5 h-7 rounded-pill text-[12px] border " + (rangoActivo(d) ? "bg-[hsl(var(--senal)/0.15)] border-[hsl(var(--senal)/0.5)] text-foreground" : "border-border text-muted-foreground hover:text-foreground")}>{et}</button>
+          ))}
+        </div>
+        <label className="text-[11px] text-muted-foreground flex flex-col gap-1">Desde
+          <input type="date" value={filtros.desde} max={filtros.hasta || undefined}
+            onChange={(e) => { setLimite(100); setFiltros((f) => ({ ...f, desde: e.target.value })); }}
+            className="h-8 rounded-md border border-border bg-background px-2 text-[12.5px] text-foreground" />
+        </label>
+        <label className="text-[11px] text-muted-foreground flex flex-col gap-1">Hasta
+          <input type="date" value={filtros.hasta} min={filtros.desde || undefined}
+            onChange={(e) => { setLimite(100); setFiltros((f) => ({ ...f, hasta: e.target.value })); }}
+            className="h-8 rounded-md border border-border bg-background px-2 text-[12.5px] text-foreground" />
+        </label>
+        <label className="text-[11px] text-muted-foreground flex flex-col gap-1">Estado
+          <select value={filtros.estado} onChange={(e) => { setLimite(100); setFiltros((f) => ({ ...f, estado: e.target.value })); }}
+            className="h-8 rounded-md border border-border bg-background px-2 text-[12.5px] text-foreground">
+            <option value="abierta">Abiertas</option>
+            <option value="ganada">Ganadas</option>
+            <option value="perdida">Perdidas</option>
+            <option value="activas">Abiertas + ganadas</option>
+            <option value="todas">Todas</option>
+          </select>
+        </label>
+        <label className="text-[11px] text-muted-foreground flex flex-col gap-1 flex-1 min-w-[180px]">Buscar
+          <input value={filtros.q} placeholder="Título de la oportunidad…"
+            onChange={(e) => { setLimite(100); setFiltros((f) => ({ ...f, q: e.target.value })); }}
+            className="h-8 rounded-md border border-border bg-background px-2 text-[12.5px] text-foreground" />
+        </label>
+        {data && <span className="text-[11.5px] text-muted-foreground pb-1.5">{data.datos.length} de {data.total}</span>}
+      </div>
+
       {todasEtq.length > 0 && (
         <div className="crm-label-filters flex gap-1.5 flex-wrap mb-3 items-center">
           <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mr-1">Etiquetas</span>
@@ -217,7 +284,7 @@ function Contenido() {
                 className="crm-board-column">
                 <header className="crm-board-column-heading">
                   <div className="crm-lane-title"><h3>{etapa.nombre}</h3><span aria-label={`Etapa ${indice + 1}`}>{String(indice + 1).padStart(2, "0")}</span></div>
-                  <div className="crm-lane-summary"><div className="crm-lane-count"><strong>{items.length}</strong><span>{items.length === 1 ? "oportunidad" : "oportunidades"}</span></div><div className="crm-lane-value"><span>Valor en etapa</span>{valores.length ? valores.map(([moneda, valor]) => <strong key={moneda}>{money(valor, moneda)}</strong>) : <strong>$0</strong>}</div></div>
+                  <div className="crm-lane-summary"><div className="crm-lane-count"><strong>{items.length}{typeof etapa.total === "number" && etapa.total > items.length ? ` de ${etapa.total}` : ""}</strong><span>{(etapa.total ?? items.length) === 1 ? "oportunidad" : "oportunidades"}</span></div><div className="crm-lane-value"><span>Valor en etapa</span>{valores.length ? valores.map(([moneda, valor]) => <strong key={moneda}>{money(valor, moneda)}</strong>) : <strong>$0</strong>}</div></div>
                   <div className="crm-lane-probability"><div><span>Probabilidad de la etapa</span><strong>{etapa.probabilidad}%</strong></div><div className="crm-lane-probability-track" aria-hidden="true"><span style={{ width: `${Math.min(100, Math.max(0, etapa.probabilidad))}%` }} /></div></div>
                 </header>
                 <div className="crm-lane-body">
@@ -235,10 +302,19 @@ function Contenido() {
                       </div>}
                       {(o.etiquetas ?? []).length > 0 && <div className="crm-deal-labels">{(o.etiquetas ?? []).map((e) => <span key={e}>{e}</span>)}</div>}
                       {puede && (
-                        <div className="crm-deal-actions">
-                          <button className="crm-deal-win" onClick={() => cerrar(o, "ganada")}><Icon name="check-circle" />Ganar</button>
-                          <button className="crm-deal-lose" onClick={() => cerrar(o, "perdida")}><Icon name="flag" />Perder</button>
-                        </div>
+                        porBorrar === o.id ? (
+                          <div className="crm-deal-actions" role="alertdialog" aria-label="Confirmar eliminación">
+                            <button className="crm-deal-lose" onClick={() => eliminar(o.id)}><Icon name="x" />Sí, eliminar</button>
+                            <button className="crm-deal-win" onClick={() => setPorBorrar(null)}><Icon name="x" />Cancelar</button>
+                          </div>
+                        ) : (
+                          <div className="crm-deal-actions">
+                            <button className="crm-deal-win" onClick={() => cerrar(o, "ganada")}><Icon name="check-circle" />Ganar</button>
+                            <button className="crm-deal-lose" onClick={() => cerrar(o, "perdida")}><Icon name="flag" />Perder</button>
+                            <button onClick={() => editar(o)} title="Editar"><Icon name="note-pencil" />Editar</button>
+                            <button onClick={() => setPorBorrar(o.id)} title="Eliminar"><Icon name="x" />Eliminar</button>
+                          </div>
+                        )
                       )}
                     </div>
                   ))}
@@ -249,6 +325,15 @@ function Contenido() {
           })}
         </div>
       </div>
+
+      {data?.hayMas && (
+        <div className="flex justify-center my-3">
+          <Button size="sm" variant="secondary" disabled={cargando} onClick={() => setLimite((l) => l + 100)}>
+            <Icon name="arrow-down" weight="regular" />
+            {cargando ? "Cargando…" : `Cargar más (${data.datos.length} de ${data.total})`}
+          </Button>
+        </div>
+      )}
 
       <div className="crm-pipeline-footnote">
         <Icon name="info" weight="regular" />
