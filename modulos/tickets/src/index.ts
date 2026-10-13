@@ -225,6 +225,25 @@ export function crearModuloTickets(nucleo: NucleoApi) {
       const datos = (hayMas ? filas.slice(0, limite) : filas).map(({ _n, ...t }) => t);
       return { datos, siguiente: hayMas ? codificarCursor(filas[limite - 1]._n) : null };
     },
+
+    /**
+     * Bandeja POR HOJAS: misma vista que listarBandeja pero con total y salto directo a
+     * una hoja (la consola necesita "hoja 3 de 12" y elegir 20/50/100 por hoja). El cursor
+     * keyset de listarBandeja se mantiene intacto para la API pública /v1.
+     */
+    async listarBandejaPagina(c: PoolClient, filtro: { estado?: EstadoTicket; asignadoA?: string } = {}, limite = 50, offset = 0) {
+      const cid = await clienteDe(c);
+      const cond = ["t.cliente_id=$1"]; const params: unknown[] = [cid];
+      if (filtro.estado) { params.push(filtro.estado); cond.push(`t.estado=$${params.length}`); }
+      if (filtro.asignadoA) { params.push(filtro.asignadoA); cond.push(`t.asignado_a=$${params.length}`); }
+      const where = cond.join(" and ");
+      const total = Number((await c.query(`select count(*)::int n from tickets t where ${where}`, params)).rows[0].n);
+      const r = await c.query(
+        `select t.id, t.numero::text, t.persona_id, t.asunto, t.estado, t.prioridad, t.canal_origen, t.asignado_a, t.resumen
+           from tickets t where ${where} order by t.numero desc limit $${params.length + 1} offset $${params.length + 2}`,
+        [...params, limite, offset]);
+      return { datos: r.rows as Ticket[], total };
+    },
   };
 }
 

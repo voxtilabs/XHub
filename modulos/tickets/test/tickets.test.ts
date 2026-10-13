@@ -69,3 +69,21 @@ test("bandeja por jerarquía: admin ve todo, agente solo lo suyo", async () => {
   expect(bAdmin.datos.some((x) => x.id === t.id)).toBe(true);
   expect(bAgente.datos.some((x) => x.id === t.id)).toBe(false);
 });
+
+test("bandeja POR HOJAS: 20/50/100 por hoja, total correcto y sin perder tickets", async () => {
+  const cid = (await conPlataforma((c) => crearCliente(c, "Hojas SpA"))).id;
+  for (let i = 0; i < 25; i++) {
+    await conCliente(cid, (c) => T.crearTicket(c, { canal: "email", identidad: `h${i}@x.cl`, asunto: `Ticket ${i}` }));
+  }
+  const h1 = await conCliente(cid, (c) => T.listarBandejaPagina(c, {}, 20, 0));
+  expect(h1.total).toBe(25);
+  expect(h1.datos.length).toBe(20);
+  const h2 = await conCliente(cid, (c) => T.listarBandejaPagina(c, {}, 20, 20));
+  expect(h2.datos.length).toBe(5);
+  // ninguna hoja repite ni se salta tickets: juntas son el total exacto
+  const vistos = new Set([...h1.datos, ...h2.datos].map((t) => t.id));
+  expect(vistos.size).toBe(25);
+  // hojas de 100: entra todo de una
+  const todo = await conCliente(cid, (c) => T.listarBandejaPagina(c, {}, 100, 0));
+  expect(todo.datos.length).toBe(25);
+});

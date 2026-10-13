@@ -10,6 +10,7 @@ import { usePrompt } from "@/components/prompt-dialog";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import { getOportunidades, crearOportunidad, moverEtapa, cerrarOportunidad, getOrganizaciones, getPipelines, crearPipeline, agregarEtapa, borrarEtapa, actualizarOportunidad, borrarOportunidad, type Embudo, type Etapa, type Oportunidad, type Organizacion, type Pipeline } from "@/lib/crm";
 import { HeroFeatures } from "@/components/hero-features";
+import { Paginador } from "@/components/paginador";
 
 const CANALES = ["email", "telefono", "webchat", "instagram", "messenger"];
 const MONEDAS = ["CLP", "UF", "USD"];
@@ -40,7 +41,8 @@ function Contenido() {
   const [filtroEtq, setFiltroEtq] = useState<string | null>(null);
   // Filtros del servidor: día del negocio (AAAA-MM-DD) + estado + búsqueda. Y paginación.
   const [filtros, setFiltros] = useState({ desde: "", hasta: "", estado: "abierta", q: "" });
-  const [limite, setLimite] = useState(100);
+  const [limite, setLimite] = useState(50);
+  const [pagina, setPagina] = useState(1);
   const [porBorrar, setPorBorrar] = useState<string | null>(null);
   const [drag, setDrag] = useState<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
@@ -52,13 +54,13 @@ function Contenido() {
     const solicitud = ++solicitudCarga.current;
     setCargando(true); setError(null);
     try {
-      const d = await getOportunidades({ pipeline: pipeSel || undefined, desde: filtros.desde || undefined, hasta: filtros.hasta || undefined, estado: filtros.estado, q: filtros.q || undefined, limite });
+      const d = await getOportunidades({ pipeline: pipeSel || undefined, desde: filtros.desde || undefined, hasta: filtros.hasta || undefined, estado: filtros.estado, q: filtros.q || undefined, limite, pagina });
       if (solicitud !== solicitudCarga.current) return;
       setData(d);
       if (!pipeSel) { pipelineInicial.current = d.pipelineId; setPipeSel(d.pipelineId); }
     } catch (e) { if (solicitud === solicitudCarga.current) setError((e as Error).message); }
     finally { if (solicitud === solicitudCarga.current) setCargando(false); }
-  }, [pipeSel, filtros, limite]);
+  }, [pipeSel, filtros, limite, pagina]);
   useEffect(() => {
     const resuelto = pipelineInicial.current;
     pipelineInicial.current = null;
@@ -76,7 +78,7 @@ function Contenido() {
     return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit" }).format(f);
   };
   const rangoRapido = (dias: number | null) => {
-    setLimite(100);
+    setPagina(1);
     setFiltros((f) => (dias === null ? { ...f, desde: "", hasta: "" } : { ...f, desde: diaChile(dias), hasta: diaChile(0) }));
   };
   const rangoActivo = (dias: number | null) =>
@@ -231,16 +233,16 @@ function Contenido() {
         </div>
         <label className="text-[11px] text-muted-foreground flex flex-col gap-1">Desde
           <input type="date" value={filtros.desde} max={filtros.hasta || undefined}
-            onChange={(e) => { setLimite(100); setFiltros((f) => ({ ...f, desde: e.target.value })); }}
+            onChange={(e) => { setPagina(1); setFiltros((f) => ({ ...f, desde: e.target.value })); }}
             className="h-8 rounded-md border border-border bg-background px-2 text-[12.5px] text-foreground" />
         </label>
         <label className="text-[11px] text-muted-foreground flex flex-col gap-1">Hasta
           <input type="date" value={filtros.hasta} min={filtros.desde || undefined}
-            onChange={(e) => { setLimite(100); setFiltros((f) => ({ ...f, hasta: e.target.value })); }}
+            onChange={(e) => { setPagina(1); setFiltros((f) => ({ ...f, hasta: e.target.value })); }}
             className="h-8 rounded-md border border-border bg-background px-2 text-[12.5px] text-foreground" />
         </label>
         <label className="text-[11px] text-muted-foreground flex flex-col gap-1">Estado
-          <select value={filtros.estado} onChange={(e) => { setLimite(100); setFiltros((f) => ({ ...f, estado: e.target.value })); }}
+          <select value={filtros.estado} onChange={(e) => { setPagina(1); setFiltros((f) => ({ ...f, estado: e.target.value })); }}
             className="h-8 rounded-md border border-border bg-background px-2 text-[12.5px] text-foreground">
             <option value="abierta">Abiertas</option>
             <option value="ganada">Ganadas</option>
@@ -251,7 +253,7 @@ function Contenido() {
         </label>
         <label className="text-[11px] text-muted-foreground flex flex-col gap-1 flex-1 min-w-[180px]">Buscar
           <input value={filtros.q} placeholder="Título de la oportunidad…"
-            onChange={(e) => { setLimite(100); setFiltros((f) => ({ ...f, q: e.target.value })); }}
+            onChange={(e) => { setPagina(1); setFiltros((f) => ({ ...f, q: e.target.value })); }}
             className="h-8 rounded-md border border-border bg-background px-2 text-[12.5px] text-foreground" />
         </label>
         {data && <span className="text-[11.5px] text-muted-foreground pb-1.5">{data.datos.length} de {data.total}</span>}
@@ -326,14 +328,8 @@ function Contenido() {
         </div>
       </div>
 
-      {data?.hayMas && (
-        <div className="flex justify-center my-3">
-          <Button size="sm" variant="secondary" disabled={cargando} onClick={() => setLimite((l) => l + 100)}>
-            <Icon name="arrow-down" weight="regular" />
-            {cargando ? "Cargando…" : `Cargar más (${data.datos.length} de ${data.total})`}
-          </Button>
-        </div>
-      )}
+      {data && <Paginador pagina={data.pagina} paginas={data.paginas} total={data.total} limite={limite} cargando={cargando}
+        etiqueta="oportunidades" onPagina={setPagina} onLimite={(l) => { setLimite(l); setPagina(1); }} />}
 
       <div className="crm-pipeline-footnote">
         <Icon name="info" weight="regular" />

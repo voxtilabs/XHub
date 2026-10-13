@@ -4,8 +4,8 @@ import { apiFetch } from "@/lib/api";
 export type Etapa = { id: string; nombre: string; orden: number; probabilidad: number; total?: number; valor?: number };
 export type Pipeline = { id: string; nombre: string; orden: number; etapas: Etapa[] };
 export type Oportunidad = { id: string; titulo: string; valor: number; moneda: string; etapa_id: string | null; estado: "abierta" | "ganada" | "perdida"; persona_id: string; persona_email: string | null; probabilidad: number | null; cierre_esperado: string | null; creado_en: string; org_id?: string | null; org_nombre?: string | null; etiquetas?: string[] };
-export type FiltroEmbudo = { pipeline?: string; desde?: string; hasta?: string; estado?: string; q?: string; limite?: number; offset?: number };
-export type Embudo = { datos: Oportunidad[]; etapas: Etapa[]; pipelineId: string; total: number; limite: number; offset: number; hayMas: boolean; filtros: { desde: string | null; hasta: string | null; estado: string; q: string | null }; resumen: { abiertas: number; valorAbierto: number; ganadas: number; valorGanado: number }; puede: { gestionar: boolean } };
+export type FiltroEmbudo = { pipeline?: string; desde?: string; hasta?: string; estado?: string; q?: string; limite?: number; offset?: number; pagina?: number };
+export type Embudo = { datos: Oportunidad[]; etapas: Etapa[]; pipelineId: string; total: number; limite: number; offset: number; pagina: number; paginas: number; hayMas: boolean; filtros: { desde: string | null; hasta: string | null; estado: string; q: string | null }; resumen: { abiertas: number; valorAbierto: number; ganadas: number; valorGanado: number }; puede: { gestionar: boolean } };
 export type Actividad = { id: string; tipo: string; cuerpo: string; hecho: boolean; autor: string | null; creado_en: string };
 export type OportunidadDetalle = Oportunidad & { etapa: string | null; motivo_perdida: string | null; actividades: Actividad[]; puede: { gestionar: boolean } };
 
