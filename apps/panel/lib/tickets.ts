@@ -4,7 +4,7 @@ import { apiFetch } from "@/lib/api";
 export type Estado = "nuevo" | "abierto" | "pendiente" | "resuelto" | "cerrado";
 export type Prioridad = "baja" | "media" | "alta" | "urgente";
 export type TicketRow = { id: string; numero: string; persona_id: string; asunto: string; estado: Estado; prioridad: Prioridad; canal_origen: string | null; asignado_a: string | null; asignado_usuario?: string | null; resumen: string | null; sla_incumplido?: boolean };
-export type Bandeja = { datos: TicketRow[]; siguiente: string | null; porEstado: Record<string, number>; sinAsignar: number; vencidos: number; puede: { gestionar: boolean } };
+export type Bandeja = { datos: TicketRow[]; siguiente: string | null; total: number; pagina: number; paginas: number; limite: number; porEstado: Record<string, number>; sinAsignar: number; vencidos: number; puede: { gestionar: boolean } };
 export type Identidad = { canal: string; identificador: string };
 export type Detalle = TicketRow & { categoria: string | null; etiquetas: string[]; asignado_usuario: string | null; urgencia_detectada: string | null; sla_primera_resp_vence: string | null; sla_resolucion_vence: string | null; primera_respuesta_en: string | null; resuelto_en: string | null; satisfaccion: number | null; sla_incumplido: boolean; creado_en: string; actualizado_en: string; persona_nombre?: string | null; persona_identidades?: Identidad[]; puede: { gestionar: boolean } };
 export type Mensaje = { seq: number; autor_tipo: "persona" | "agente" | "sistema"; autor_id: string | null; cuerpo: string; interno: boolean; creado_en: string };
@@ -15,7 +15,8 @@ export const ESTADOS: Estado[] = ["nuevo", "abierto", "pendiente", "resuelto", "
 
 const qs = (o: Record<string, string | undefined>) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(o)) if (v) p.set(k, v); const s = p.toString(); return s ? "?" + s : ""; };
 
-export const getBandeja = (estado?: string, cursor?: string) => apiFetch<Bandeja>(`/cliente/tickets${qs({ estado, cursor })}`);
+export const getBandeja = (o: { estado?: string; pagina?: number; limite?: number } = {}) =>
+  apiFetch<Bandeja>(`/cliente/tickets${qs({ estado: o.estado, pagina: o.pagina ? String(o.pagina) : undefined, limite: o.limite ? String(o.limite) : undefined })}`);
 export const getTicket = (id: string) => apiFetch<Detalle>(`/cliente/tickets/${id}`);
 export const getMensajes = (id: string) => apiFetch<{ datos: Mensaje[] }>(`/cliente/tickets/${id}/mensajes`);
 export const getContexto = (id: string) => apiFetch<Contexto>(`/cliente/tickets/${id}/contexto`);

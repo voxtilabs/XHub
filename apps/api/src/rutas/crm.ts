@@ -123,15 +123,18 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
     // Embudo de un pipeline: etapas + deals (abiertos + ganados) con la persona resuelta.
     r.get("/oportunidades", async (req) => {
       const ctx = await ctxGuard(req, "crm.ver");
-      const q = req.query as { pipeline?: string; desde?: string; hasta?: string; limite?: string; offset?: string; estado?: string; q?: string };
+      const q = req.query as { pipeline?: string; desde?: string; hasta?: string; limite?: string; offset?: string; pagina?: string; estado?: string; q?: string };
       // El día del negocio viaja como TEXTO AAAA-MM-DD y se compara contra la fecha local
       // de Chile (ley de la casa nº3: nunca un Date a Postgres para comparar con ::date).
       const DIA = /^\d{4}-\d{2}-\d{2}$/;
       if (q.desde && !DIA.test(q.desde)) throw new ErrorApi("VALIDACION", "El filtro «desde» debe ser AAAA-MM-DD");
       if (q.hasta && !DIA.test(q.hasta)) throw new ErrorApi("VALIDACION", "El filtro «hasta» debe ser AAAA-MM-DD");
       if (q.desde && q.hasta && q.desde > q.hasta) throw new ErrorApi("VALIDACION", "El rango de fechas está invertido");
-      const limite = Math.min(500, Math.max(1, Number(q.limite) || 100));
-      const offset = Math.max(0, Number(q.offset) || 0);
+      // Hojas: el panel ofrece 20/50/100 por hoja; se acepta cualquier tamaño hasta 500.
+      const limite = Math.min(500, Math.max(1, Number(q.limite) || 50));
+      const pagina = Math.max(1, Number(q.pagina) || 1);
+      // `pagina` manda; `offset` se mantiene para quien ya lo usaba.
+      const offset = q.pagina !== undefined ? (pagina - 1) * limite : Math.max(0, Number(q.offset) || 0);
       // "activas" (por defecto) = todo menos las perdidas, como era antes.
       const estado = ["abierta", "ganada", "perdida", "todas"].includes(String(q.estado)) ? String(q.estado) : "activas";
       const busca = (q.q ?? "").trim().slice(0, 120);
@@ -181,7 +184,7 @@ export function registrarConsolaCrm(app: FastifyInstance): void {
 
         return {
           datos: ops, etapas: etapasConTotal, pipelineId: plId,
-          total, limite, offset, hayMas: offset + ops.length < total,
+          total, limite, offset, pagina: Math.floor(offset / limite) + 1, paginas: Math.max(1, Math.ceil(total / limite)), hayMas: offset + ops.length < total,
           filtros: { desde: q.desde ?? null, hasta: q.hasta ?? null, estado, q: busca || null },
           resumen: { abiertas: tot.abiertas, valorAbierto: tot.valor_abierto, ganadas: tot.ganadas, valorGanado: tot.valor_ganado },
           puede: { gestionar: ctx.esAdmin || ctx.permisos.includes("crm.gestionar") },

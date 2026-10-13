@@ -86,10 +86,15 @@ export function registrarConsolaTickets(app: FastifyInstance): void {
     // Bandeja real (RLS + jerarquía de cursor del módulo) + conteos para las pestañas.
     r.get("/tickets", async (req) => {
       const ctx = await guard(req); exigir(ctx, "bandeja.ver");
-      const q = req.query as { estado?: string; cursor?: string };
+      const q = req.query as { estado?: string; cursor?: string; limite?: string; pagina?: string };
       const estado = q.estado && ESTADOS.has(q.estado) ? (q.estado as never) : undefined;
+      // Hojas de 20/50/100 (lo que ofrece el selector). Cualquier otro valor cae a 50.
+      const limite = [20, 50, 100].includes(Number(q.limite)) ? Number(q.limite) : 50;
+      const pagina = Math.max(1, Number(q.pagina) || 1);
       return conCliente(ctx.clienteId, async (c) => {
-        const res = await T.listarBandeja(c, { estado }, q.cursor, 50);
+        const pag = await T.listarBandejaPagina(c, { estado }, limite, (pagina - 1) * limite);
+        const paginas = Math.max(1, Math.ceil(pag.total / limite));
+        const res = { datos: pag.datos, siguiente: null, total: pag.total, pagina, paginas, limite };
         const ids = res.datos.map((t) => t.id);
         if (ids.length) {
           const asg = await c.query("select id, asignado_usuario from tickets where id = any($1)", [ids]);

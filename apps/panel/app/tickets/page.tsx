@@ -10,6 +10,7 @@ import { AppShell } from "@/components/app-shell";
 import { Icon } from "@/components/icon";
 import { RequierePermiso } from "@/components/requiere-permiso";
 import { useYo } from "@/lib/permisos";
+import { Paginador } from "@/components/paginador";
 import { getBandeja, cambiarEstado, getAgentes, TRANS, ESTADOS, type Bandeja, type TicketRow, type Estado, type Prioridad } from "@/lib/tickets";
 import { HeroFeatures } from "@/components/hero-features";
 
@@ -68,12 +69,17 @@ function Contenido() {
   const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null);
   const [agentes, setAgentes] = useState<Record<string, string>>({});
   const [vistaRapida, setVistaRapida] = useState<"todos" | "mios" | "sin">("todos");
+  // Hoja actual y tamaño de hoja (20/50/100). Antes la bandeja traía 50 y no había
+  // forma de ver el resto: los tickets más viejos quedaban invisibles.
+  const [pagina, setPagina] = useState(1);
+  const [limite, setLimite] = useState(50);
   const { yo } = useYo();
 
   const cargar = useCallback(async () => {
     setCargando(true); setError(null);
-    try { setData(await getBandeja()); } catch (e) { setError((e as Error).message); } finally { setCargando(false); }
-  }, []);
+    try { setData(await getBandeja({ pagina, limite, estado: filtro === "todos" ? undefined : filtro })); }
+    catch (e) { setError((e as Error).message); } finally { setCargando(false); }
+  }, [pagina, limite, filtro]);
   useEffect(() => { cargar(); }, [cargar]);
   useEffect(() => { getAgentes().then((r) => setAgentes(Object.fromEntries(r.datos.map((a) => [a.id, a.nombre || a.email])))).catch(() => {}); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 2800); return () => clearTimeout(t); }, [toast]);
@@ -84,7 +90,7 @@ function Contenido() {
   const cnt = (f: Estado | "todos") => f === "todos" ? tickets.filter(match).length : (data?.porEstado[f] ?? 0);
   const nombreAgente = (t: TicketRow) => t.asignado_usuario ? (agentes[t.asignado_usuario] ?? "Asignado") : null;
   const pasaRapida = (t: TicketRow) => vistaRapida === "todos" || (vistaRapida === "mios" ? t.asignado_usuario === yo?.id : !t.asignado_usuario);
-  const rows = tickets.filter((t) => (filtro === "todos" || t.estado === filtro) && pasaRapida(t) && match(t));
+  const rows = tickets.filter((t) => pasaRapida(t) && match(t));  // el estado lo filtró el servidor
 
   async function mover(id: string, hacia: Estado) {
     const t = tickets.find((x) => x.id === id);
@@ -149,7 +155,7 @@ function Contenido() {
             </div>
             <div className="xhub-status-filters" role="group" aria-label="Filtrar por estado">
             {FILTROS.map((x) => (
-              <button key={x} onClick={() => setFiltro(x)} aria-pressed={filtro === x} data-status={x}
+              <button key={x} onClick={() => { setFiltro(x); setPagina(1); }} aria-pressed={filtro === x} data-status={x}
                 className={"inline-flex items-center gap-1.5 px-3 h-8 rounded-pill text-[13px] font-medium border capitalize " + (filtro === x ? "bg-secondary border-border text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
                 <span className="xhub-filter-label">{x === "todos" ? "Todos" : x}</span>
                 <span className="xhub-filter-count tabular-nums text-[10px] rounded-pill px-1.5 py-px">{cnt(x)}</span>
@@ -196,6 +202,8 @@ function Contenido() {
               </table>
             </div>
           </Card>
+          {data && <Paginador pagina={data.pagina} paginas={data.paginas} total={data.total} limite={limite} cargando={cargando}
+            etiqueta="tickets" onPagina={setPagina} onLimite={(l) => { setLimite(l); setPagina(1); }} />}
         </>
       ) : (
         <div className="xhub-board-workspace">
@@ -239,6 +247,8 @@ function Contenido() {
             })}
           </div>
         </div>
+          {data && <Paginador pagina={data.pagina} paginas={data.paginas} total={data.total} limite={limite} cargando={cargando}
+            etiqueta="tickets" onPagina={setPagina} onLimite={(l) => { setLimite(l); setPagina(1); }} />}
         </div>
       )}
       </section>
