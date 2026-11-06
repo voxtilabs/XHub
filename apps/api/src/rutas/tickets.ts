@@ -34,8 +34,8 @@ export function registrarRutasTickets(app: FastifyInstance): void {
   });
   app.post("/tickets/avisos-voz/reservar",async(req)=>{
     exigirScope(req.ctx!,"tickets.notificar");
-    E.validar(z.object({}).strict(),req.body??{});
-    return {aviso:await conContexto(req,(c)=>reservarAvisoVoz(c))};
+    const b=E.validar(z.object({telefonosPermitidos:z.array(z.string().min(8).max(30)).max(10).optional()}).strict(),req.body??{});
+    return {aviso:await conContexto(req,(c)=>reservarAvisoVoz(c,new Date(),b.telefonosPermitidos))};
   });
   app.post("/tickets/avisos-voz/:id/resultado",async(req)=>{
     exigirScope(req.ctx!,"tickets.notificar");

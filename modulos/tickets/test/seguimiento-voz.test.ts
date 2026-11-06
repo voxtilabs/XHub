@@ -57,6 +57,8 @@ test('concurrent reservation, no repeat after uncertain result, cooldown per pho
   const first=await ticket(C,'one',true),second=await ticket(C,'two',true);
   for(const t of [first,second])await conCliente(C,c=>T.agregarMensaje(c,t.id,{autorTipo:'agente',cuerpo:'Contestación para el ciudadano'}));
   const when=new Date('2026-11-06T12:00:00Z');
+  expect(await conCliente(C,c=>reservarAvisoVoz(c,when,['+56999999999']))).toBeNull();
+  expect(await conCliente(C,c=>reservarAvisoVoz(c,when,[]))).toBeNull();
   const attempts=await Promise.all([1,2,3].map(()=>conCliente(C,c=>reservarAvisoVoz(c,when))));
   const reserved=attempts.filter(Boolean);expect(reserved).toHaveLength(1);
   const j=reserved[0]!;

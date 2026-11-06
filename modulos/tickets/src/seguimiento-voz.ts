@@ -95,8 +95,10 @@ export async function prepararAvisosVoz(c: PoolClient): Promise<number> {
 
 /** Reserve once before dialing. No automatic lease expiry/retry: a timeout can
  * mean a real call was placed. Only a new public reply can generate a new job. */
-export async function reservarAvisoVoz(c: PoolClient,now=new Date()): Promise<null|Record<string,unknown>> {
+export async function reservarAvisoVoz(c: PoolClient,now=new Date(),permitidos?:string[]): Promise<null|Record<string,unknown>> {
   if(!dentroHorarioVoz(now)) return null;
+  const allowed=permitidos?.map(telefonoVoz);
+  if(allowed?.length===0) return null;
   const cid=await cliente(c);await prepararAvisosVoz(c);
   const r=await c.query(`select a.id,a.ticket_id,a.mensaje_seq,t.numero::text,t.telefono_voz,
       i.identificador rut,m.cuerpo respuesta from ticket_avisos_voz a
@@ -104,6 +106,7 @@ export async function reservarAvisoVoz(c: PoolClient,now=new Date()): Promise<nu
       join tickets_mensajes m on m.seq=a.mensaje_seq and m.cliente_id=a.cliente_id
       join nucleo.identidades i on i.persona_id=t.persona_id and i.cliente_id=t.cliente_id and i.canal='rut'
       where a.cliente_id=$1 and a.estado='cola' and t.autoriza_aviso_voz is true
+        and ($3::text[] is null or t.telefono_voz=any($3))
         and t.telefono_voz is not null and t.asunto<>'[suprimido]'
         and m.interno is false and m.autor_tipo='agente' and m.cuerpo<>'[contenido suprimido]'
         and not exists(select 1 from ticket_avisos_voz b join tickets tb
@@ -113,7 +116,7 @@ export async function reservarAvisoVoz(c: PoolClient,now=new Date()): Promise<nu
             ($2::timestamptz at time zone 'America/Santiago')::date)
         and m.seq=(select max(mm.seq) from tickets_mensajes mm where mm.ticket_id=t.id
           and mm.cliente_id=$1 and mm.autor_tipo='agente' and mm.interno is false)
-      order by m.seq limit 1 for update of a skip locked`,[cid,now]);
+      order by m.seq limit 1 for update of a skip locked`,[cid,now,allowed??null]);
   if(!r.rowCount) return null;
   const job=r.rows[0];
   const lockKey=`${cid}:${job.telefono_voz}:${new Intl.DateTimeFormat('en-CA',{timeZone:'America/Santiago'}).format(now)}`;
