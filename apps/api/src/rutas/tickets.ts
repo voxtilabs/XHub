@@ -1,14 +1,49 @@
 import type { FastifyInstance } from "fastify";
 import { ErrorApi } from "@xhub/core";
 import { exigirScope } from "@xhub/modulo-nucleo";
-import { crearModuloTickets, contextoOmnicanal, reincidencia } from "@xhub/modulo-tickets";
+import { crearModuloTickets, contextoOmnicanal, reincidencia, detalleVoz, consultarPorVoz,
+  fijarContactoVoz, reservarAvisoVoz, terminarAvisoVoz, listarAlertasSla } from "@xhub/modulo-tickets";
 import { nucleo } from "../nucleo.js";
 import { conContexto } from "../app.js";
 import * as E from "../esquemas.js";
+import { z } from "zod";
 
 const T = crearModuloTickets(nucleo);
 
 export function registrarRutasTickets(app: FastifyInstance): void {
+  app.get("/tickets/alertas-sla",async(req)=>{
+    exigirScope(req.ctx!,"tickets.leer");
+    return conContexto(req,(c)=>listarAlertasSla(c));
+  });
+  app.post("/tickets/consulta-voz",async(req)=>{
+    exigirScope(req.ctx!,"tickets.leer");
+    const b=E.validar(E.consultaVoz,req.body);
+    return conContexto(req,(c)=>consultarPorVoz(c,b.rut,b.telefono));
+  });
+  app.get("/tickets/:id/seguimiento",async(req)=>{
+    exigirScope(req.ctx!,"tickets.leer");
+    const {id}=E.validar(z.object({id:z.string().uuid()}),req.params);
+    return conContexto(req,(c)=>detalleVoz(c,id));
+  });
+  app.put("/tickets/:id/contacto-voz",async(req)=>{
+    exigirScope(req.ctx!,"tickets.responder");
+    const {id}=E.validar(z.object({id:z.string().uuid()}),req.params);
+    const b=E.validar(E.contactoVoz,req.body);
+    await conContexto(req,(c)=>fijarContactoVoz(c,id,b.telefono,b.autoriza));
+    return {ok:true};
+  });
+  app.post("/tickets/avisos-voz/reservar",async(req)=>{
+    exigirScope(req.ctx!,"tickets.notificar");
+    E.validar(z.object({}).strict(),req.body??{});
+    return {aviso:await conContexto(req,(c)=>reservarAvisoVoz(c))};
+  });
+  app.post("/tickets/avisos-voz/:id/resultado",async(req)=>{
+    exigirScope(req.ctx!,"tickets.notificar");
+    const {id}=E.validar(z.object({id:z.string().uuid()}),req.params);
+    const b=E.validar(E.resultadoVoz,req.body);
+    await conContexto(req,(c)=>terminarAvisoVoz(c,id,b.reserva,b.estado));
+    return {ok:true};
+  });
   // Crear ticket
   app.post("/tickets", async (req) => {
     exigirScope(req.ctx!, "tickets.crear");

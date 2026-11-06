@@ -4,6 +4,7 @@ import { crearSinkUsoIA, entregarWebhooksPendientes } from "@xhub/modulo-nucleo"
 import { construirRegistro } from "./registro.js";
 import { tickSondeo, tickReconciliacion } from "./sondeo.js";
 import { tickRetencion, retencionDebida } from "./retencion.js";
+import { tickSeguimientoTickets } from "./seguimiento-tickets.js";
 
 // El triage con IA corre aquí (consumidores del outbox): registra su consumo.
 fijarObservadorIA(crearSinkUsoIA());
@@ -40,6 +41,9 @@ async function bucle(): Promise<void> {
         process.stdout.write(`[xhub-workers] leidos=${r.leidos} ok=${r.procesados} fallidos=${r.fallidos} sin-consumidor=${r.sinConsumidor}\n`);
       // Entrega de webhooks salientes: el POST va FUERA de transacción (ley 7).
       const w = await entregarWebhooksPendientes(conPlataforma, { limite: 20 });
+      const seguimiento=await tickSeguimientoTickets().catch(()=>null);
+      if(seguimiento && (seguimiento.alertas || seguimiento.avisos))
+        process.stdout.write(`[tickets] alertas_sla=${seguimiento.alertas} avisos_voz=${seguimiento.avisos}\n`);
       if (w.intentadas)
         process.stdout.write(`[xhub-workers] webhooks intentadas=${w.intentadas} ok=${w.entregadas} reprog=${w.reprogramadas} fallidas=${w.fallidas} bloqueadas=${w.bloqueadas}\n`);
       // Sondeo incremental de XContact (throttled). Aislado por instancia (#136).
