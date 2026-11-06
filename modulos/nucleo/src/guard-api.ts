@@ -18,6 +18,7 @@ export const CATALOGO_SCOPES: ScopeDef[] = [
   { scope: "tickets.crear", modulo: "tickets", descripcion: "Crear tickets." },
   { scope: "tickets.responder", modulo: "tickets", descripcion: "Cambiar estado y pedir respuesta sugerida." },
   { scope: "tickets.asignar", modulo: "tickets", descripcion: "Asignar tickets a un usuario." },
+  { scope: "tickets.notificar", modulo: "tickets", descripcion: "Reservar y confirmar avisos de voz consentidos con respuestas públicas." },
   { scope: "crm.leer", modulo: "crm", descripcion: "Leer embudos, oportunidades, organizaciones, prospectos e insights." },
   { scope: "crm.escribir", modulo: "crm", descripcion: "Crear y actualizar oportunidades, organizaciones, prospectos y actividades." },
 ];

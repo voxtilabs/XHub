@@ -18,7 +18,14 @@ export const crearTicket = z.object({
   prioridad: prioridadEnum.optional(),
   canalOrigen: z.string().max(40).optional(),
   cuerpo: z.string().max(5000).optional(),
+  telefonoContacto:z.string().min(8).max(30).optional(),
+  autorizaAvisoVoz:z.boolean().optional(),
+  slaPrimeraRespuestaMin:z.number().int().min(1).max(10080).optional(),
+  slaModo:z.enum(["habil","corrido"]).optional(),
 }).strict();
+export const consultaVoz=z.object({rut:z.string().min(7).max(15),telefono:z.string().min(8).max(30)}).strict();
+export const contactoVoz=z.object({telefono:z.string().min(8).max(30),autoriza:z.boolean()}).strict();
+export const resultadoVoz=z.object({reserva:z.string().uuid(),estado:z.enum(["entregado","fallido","incierto"])}).strict();
 export const cambiarEstado = z.object({ estado: estadoEnum }).strict();
 export const cambiarEstadoCliente = z.object({ estado: estadoClienteEnum }).strict();
 export const asignar = z.object({ usuarioId: z.string().uuid() }).strict();

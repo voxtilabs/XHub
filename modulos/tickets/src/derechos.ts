@@ -15,7 +15,7 @@ export const consumidorSupresion = {
     // vaciar contenido de los mensajes (mantener la fila y el autor_tipo)
     await c.query("update tickets_mensajes set cuerpo='[contenido suprimido]' where cliente_id=$1 and ticket_id in (select id from tickets where cliente_id=$1 and persona_id=$2)", [cid, p]);
     // anonimizar el ticket: asunto y resumen (mantener numero/estado/fechas)
-    const r = await c.query("update tickets set asunto='[suprimido]', resumen=null where cliente_id=$1 and persona_id=$2", [cid, p]);
+    const r = await c.query("update tickets set asunto='[suprimido]', resumen=null,telefono_voz=null,autoriza_aviso_voz=false where cliente_id=$1 and persona_id=$2", [cid, p]);
     return { tickets: r.rowCount ?? 0 };
   },
 };

@@ -6,6 +6,7 @@ import { type Agente, filtroVisibilidad, permisosDe } from "./roles.js";
 import { analizarUrgencia } from "./urgencia.js";
 import { resumirConversacionIA, sugerirRespuestaIA, leerConfigIA } from "@xhub/ia";
 import { clasificar, decidir, configTriage, type MensajeConv } from "./triage.js";
+import { telefonoVoz } from "./seguimiento-voz.js";
 
 export type EstadoTicket = "nuevo" | "abierto" | "pendiente" | "resuelto" | "cerrado";
 export type Prioridad = "baja" | "media" | "alta" | "urgente";
@@ -37,7 +38,7 @@ async function proximoNumero(c: PoolClient, cid: string): Promise<number> {
  */
 export function crearModuloTickets(nucleo: NucleoApi) {
   return {
-    async crearTicket(c: PoolClient, args: { canal: string; identidad: string; asunto: string; prioridad?: Prioridad; canalOrigen?: string; cuerpo?: string; equipoId?: string; categoria?: string; etiquetas?: string[]; sinFicha?: boolean }): Promise<Ticket> {
+    async crearTicket(c: PoolClient, args: { canal: string; identidad: string; asunto: string; prioridad?: Prioridad; canalOrigen?: string; cuerpo?: string; equipoId?: string; categoria?: string; etiquetas?: string[]; sinFicha?: boolean; telefonoContacto?: string; autorizaAvisoVoz?: boolean; slaPrimeraRespuestaMin?:number; slaModo?:"habil"|"corrido" }): Promise<Ticket> {
       const cid = await clienteDe(c);
       if (!args.asunto.trim()) throw new ErrorApi("VALIDACION", "El asunto es obligatorio");
       const persona = await nucleo.asegurarPersona(c, args.canal, args.identidad);
@@ -46,12 +47,20 @@ export function crearModuloTickets(nucleo: NucleoApi) {
       // SLA: calcula vencimientos en horario hábil desde ahora
       const pol = await politicaSla(c, prioridad);
       const ahora = new Date();
-      const vencePR = pol ? sumarMinutosHabiles(ahora, pol.primeraRespuestaMin) : null;
+      const phone=args.telefonoContacto?telefonoVoz(args.telefonoContacto):null;
+      if(args.autorizaAvisoVoz && !phone) throw new ErrorApi("VALIDACION","El aviso requiere teléfono y consentimiento");
+      const modo=args.slaModo??"habil";
+      if(args.slaPrimeraRespuestaMin!==undefined &&
+         (!Number.isInteger(args.slaPrimeraRespuestaMin)||args.slaPrimeraRespuestaMin<1||args.slaPrimeraRespuestaMin>10080))
+        throw new ErrorApi("VALIDACION","Plazo de primera respuesta inválido");
+      const minutos=args.slaPrimeraRespuestaMin??pol?.primeraRespuestaMin;
+      const vencePR=minutos===undefined?null:modo==="corrido"?
+        new Date(ahora.getTime()+minutos*60000):sumarMinutosHabiles(ahora,minutos);
       const venceRes = pol ? sumarMinutosHabiles(ahora, pol.resolucionMin) : null;
       const r = await c.query(
-        `insert into tickets (cliente_id, numero, persona_id, asunto, prioridad, canal_origen, equipo_id, categoria, etiquetas, sla_primera_resp_vence, sla_resolucion_vence)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id, numero::text, persona_id, asunto, estado, prioridad, canal_origen, asignado_a, resumen`,
-        [cid, numero, persona.id, args.asunto.trim(), prioridad, args.canalOrigen ?? args.canal, args.equipoId ?? null, args.categoria ?? null, args.etiquetas ?? [], vencePR, venceRes]);
+        `insert into tickets (cliente_id, numero, persona_id, asunto, prioridad, canal_origen, equipo_id, categoria, etiquetas, sla_primera_resp_vence, sla_resolucion_vence,telefono_voz,autoriza_aviso_voz,sla_modo)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning id, numero::text, persona_id, asunto, estado, prioridad, canal_origen, asignado_a, resumen`,
+        [cid, numero, persona.id, args.asunto.trim(), prioridad, args.canalOrigen ?? args.canal, args.equipoId ?? null, args.categoria ?? null, args.etiquetas ?? [], vencePR, venceRes,phone,args.autorizaAvisoVoz??false,modo]);
       const t = r.rows[0] as Ticket;
       if (args.cuerpo) {
         await c.query("insert into tickets_mensajes (cliente_id, ticket_id, autor_tipo, cuerpo) values ($1,$2,'persona',$3)", [cid, t.id, args.cuerpo]);
@@ -91,6 +100,8 @@ export function crearModuloTickets(nucleo: NucleoApi) {
     async agregarMensaje(c: PoolClient, ticketId: string, args: { autorTipo: "persona" | "agente" | "sistema"; autorId?: string; cuerpo: string; interno?: boolean }): Promise<void> {
       const cid = await clienteDe(c);
       await c.query("insert into tickets_mensajes (cliente_id, ticket_id, autor_tipo, autor_id, cuerpo, interno) values ($1,$2,$3,$4,$5,$6)", [cid, ticketId, args.autorTipo, args.autorId ?? null, args.cuerpo, args.interno ?? false]);
+      if(args.autorTipo==="agente" && !args.interno && args.cuerpo.trim())
+        await c.query("update tickets set primera_respuesta_en=coalesce(primera_respuesta_en,now()) where cliente_id=$1 and id=$2",[cid,ticketId]);
     },
     async resumirConversacion(c: PoolClient, ticketId: string, resumen?: string, modelo?: string | null, contexto?: string | null): Promise<string> {
       const cid = await clienteDe(c);
@@ -248,13 +259,19 @@ export function crearModuloTickets(nucleo: NucleoApi) {
 }
 
 export const definicion: DefinicionModulo = {
-  manifiesto: { nombre: "tickets", depende: ["nucleo"], permisos: ["tickets.leer", "tickets.crear", "tickets.responder", "tickets.asignar", "tickets.manage"], eventos: ["ticket.creado", "ticket.estado", "ticket.asignado"] },
-  migraciones: ["0013_tickets.sql", "0014_tickets_pro.sql", "0015_tickets_auto.sql", "0016_tickets_fusion.sql", "0017_tickets_sla_pausa.sql", "0019_tickets_triage.sql"],
+  manifiesto: { nombre: "tickets", depende: ["nucleo"], permisos: ["tickets.leer", "tickets.crear", "tickets.responder", "tickets.asignar", "tickets.manage", "tickets.notificar"], eventos: ["ticket.creado", "ticket.estado", "ticket.asignado"] },
+  migraciones: ["0013_tickets.sql", "0014_tickets_pro.sql", "0015_tickets_auto.sql", "0016_tickets_fusion.sql", "0017_tickets_sla_pausa.sql", "0019_tickets_triage.sql", "0053_tickets_seguimiento_voz.sql"],
   rutas: [
     { metodo: "GET", ruta: "/tickets", scope: "tickets.leer" },
     { metodo: "POST", ruta: "/tickets", scope: "tickets.crear" },
     { metodo: "PUT", ruta: "/tickets/:id/estado", scope: "tickets.responder" },
     { metodo: "PUT", ruta: "/tickets/:id/asignar", scope: "tickets.asignar" },
+    { metodo: "GET", ruta: "/tickets/:id/seguimiento", scope: "tickets.leer" },
+    { metodo: "GET", ruta: "/tickets/alertas-sla", scope: "tickets.leer" },
+    { metodo: "POST", ruta: "/tickets/consulta-voz", scope: "tickets.leer" },
+    { metodo: "PUT", ruta: "/tickets/:id/contacto-voz", scope: "tickets.responder" },
+    { metodo: "POST", ruta: "/tickets/avisos-voz/reservar", scope: "tickets.notificar" },
+    { metodo: "POST", ruta: "/tickets/avisos-voz/:id/resultado", scope: "tickets.notificar" },
   ],
 };
 
@@ -271,3 +288,4 @@ export * from "./triage.js";
 export * from "./consumidor.js";
 
 export * from "./derechos.js";
+export * from "./seguimiento-voz.js";

@@ -45,6 +45,26 @@ export function generarOpenApi(): object {
   r.registerPath({ method: "get", path: "/v1/tickets/{id}/contexto", summary: "Contexto omnicanal + reincidencia", description: "Alcance requerido: `tickets.leer`.", security: seg,
     request: { params: z.object({ id: z.string() }) },
     responses: { 200: { description: "Contexto 360" }, 401: respError, 403: respError } });
+  const respuestaVoz=z.object({id:z.string(),texto:z.string(),publicadaEn:z.string(),publica:z.literal(true),autorTipo:z.literal("agente")}).nullable();
+  const ticketVoz=z.object({id:z.string(),numero:z.string(),estado:E.estadoEnum,prioridad:E.prioridadEnum,
+    creadoEn:z.string(),primeraRespuestaEn:z.string().nullable(),primeraRespuestaVence:z.string().nullable(),respuesta:respuestaVoz});
+  r.registerPath({method:"get",path:"/v1/tickets/{id}/seguimiento",summary:"Estado y última respuesta pública del agente",security:seg,
+    description:"tickets.leer. No expone notas internas, mensajes del ciudadano ni sugerencias IA. El adaptador de voz debe verificar identidad y contacto antes de comunicarlo.",
+    request:{params:z.object({id:z.string().uuid()})},responses:{200:{description:"Seguimiento",content:json(ticketVoz)},401:respError,403:respError,404:respError}});
+  r.registerPath({method:"post",path:"/v1/tickets/consulta-voz",summary:"Consultar por RUT y contacto registrado",security:seg,
+    description:"tickets.leer. Coincidencia exacta de RUT y teléfono, sin búsquedas difusas ni alta de identidades. El llamante debe ser verificado por el adaptador.",
+    request:{body:{content:json(E.consultaVoz)}},responses:{200:{description:"Hasta cinco solicitudes propias",content:json(z.object({datos:z.array(ticketVoz)}))},401:respError,403:respError,422:respError}});
+  r.registerPath({method:"put",path:"/v1/tickets/{id}/contacto-voz",summary:"Registrar o revocar consentimiento de aviso",security:seg,
+    description:"tickets.responder. Solo registrar consentimiento efectivamente obtenido del ciudadano.",
+    request:{params:z.object({id:z.string().uuid()}),body:{content:json(E.contactoVoz)}},responses:{200:{description:"Actualizado"},401:respError,403:respError,404:respError}});
+  r.registerPath({method:"post",path:"/v1/tickets/avisos-voz/reservar",summary:"Reservar un aviso de voz sin duplicados",security:seg,
+    description:"tickets.notificar. Solo 09:00–19:00 America/Santiago, consentimiento vigente y mensaje público. Reserva consumida antes de llamar; nunca se reasigna automáticamente por timeout.",
+    request:{body:{content:json(z.object({telefonosPermitidos:z.array(z.string().min(8).max(30)).max(10).optional()}).strict())}},responses:{200:{description:"Aviso reservado o null fuera de ventana/sin pendientes"},401:respError,403:respError}});
+  r.registerPath({method:"post",path:"/v1/tickets/avisos-voz/{id}/resultado",summary:"Confirmar resultado de un aviso reservado",security:seg,
+    description:"tickets.notificar. La reserva debe coincidir; entregado significa que el adaptador verificó identidad y reprodujo la respuesta.",
+    request:{params:z.object({id:z.string().uuid()}),body:{content:json(E.resultadoVoz)}},responses:{200:{description:"Resultado registrado"},401:respError,403:respError,409:respError}});
+  r.registerPath({method:"get",path:"/v1/tickets/alertas-sla",summary:"Alertas de primera respuesta vencida",security:seg,
+    description:"tickets.leer. El worker detecta vencimientos sin confundir primera respuesta con resolución.",responses:{200:{description:"Alertas activas"},401:respError,403:respError}});
   r.registerPath({ method: "get", path: "/v1/tickets/{id}/sugerencia", summary: "Respuesta sugerida por IA", description: "Alcance requerido: `tickets.responder`.", security: seg,
     request: { params: z.object({ id: z.string() }) },
     responses: { 200: { description: "Sugerencia (o null)", content: json(z.object({ sugerencia: z.string().nullable() })) } } });
