@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { ErrorApi } from "@xhub/core";
 import { exigirScope } from "@xhub/modulo-nucleo";
 import { crearModuloTickets, contextoOmnicanal, reincidencia, detalleVoz, consultarPorVoz,
-  fijarContactoVoz, reservarAvisoVoz, terminarAvisoVoz, listarAlertasSla } from "@xhub/modulo-tickets";
+  fijarContactoVoz, reservarAvisoVoz, terminarAvisoVoz, listarAlertasSla, diagnosticoAvisosVoz } from "@xhub/modulo-tickets";
 import { nucleo } from "../nucleo.js";
 import { conContexto } from "../app.js";
 import * as E from "../esquemas.js";
@@ -11,6 +11,11 @@ import { z } from "zod";
 const T = crearModuloTickets(nucleo);
 
 export function registrarRutasTickets(app: FastifyInstance): void {
+  app.post("/tickets/avisos-voz/diagnostico",async(req)=>{
+    exigirScope(req.ctx!,"tickets.notificar");
+    const b=E.validar(z.object({telefonosPermitidos:z.array(z.string().min(8).max(30)).max(10)}).strict(),req.body);
+    return conContexto(req,c=>diagnosticoAvisosVoz(c,new Date(),b.telefonosPermitidos));
+  });
   app.get("/tickets/alertas-sla",async(req)=>{
     exigirScope(req.ctx!,"tickets.leer");
     return conContexto(req,(c)=>listarAlertasSla(c));

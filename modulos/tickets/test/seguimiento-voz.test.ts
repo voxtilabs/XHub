@@ -3,7 +3,7 @@ import {conCliente,conPlataforma,cerrarPool,migrar,cargarDe} from '@xhub/db';
 import {crearCliente} from '@xhub/modulo-nucleo';
 import {join} from 'node:path';
 import {crearModuloTickets,detalleVoz,consultarPorVoz,telefonoVoz,fijarContactoVoz,
-  prepararAvisosVoz,reservarAvisoVoz,terminarAvisoVoz,dentroHorarioVoz,detectarAlertasSla,listarAlertasSla} from '../src/index.js';
+  prepararAvisosVoz,reservarAvisoVoz,terminarAvisoVoz,dentroHorarioVoz,detectarAlertasSla,listarAlertasSla,diagnosticoAvisosVoz} from '../src/index.js';
 import {nucleoReal} from './nucleo-real.js';
 const T=crearModuloTickets(nucleoReal);let A='',B='';
 beforeAll(async()=>{
@@ -75,6 +75,25 @@ test('revoking consent prevents pending callback',async()=>{
   await conCliente(C,c=>prepararAvisosVoz(c));
   await conCliente(C,c=>fijarContactoVoz(c,t.id,phone,false));
   expect(await conCliente(C,c=>reservarAvisoVoz(c,new Date('2026-11-06T12:00:00Z')))).toBeNull();
+});
+test('diagnostics show blockers without reserving, revealing text or crossing tenant',async()=>{
+  const C=(await conPlataforma(c=>crearCliente(c,'Voz diagnóstico'))).id;
+  const one=await conCliente(C,c=>T.crearTicket(c,{canal:'rut',identidad:'12345678-5',asunto:'QA DIDECO',
+    canalOrigen:'voz_ia',categoria:'DIDECO',telefonoContacto:phone,autorizaAvisoVoz:true}));
+  const now=new Date('2026-11-06T12:00:00Z');
+  let d=await conCliente(C,c=>diagnosticoAvisosVoz(c,now,[phone]));
+  expect(d).toMatchObject({total:1,sin_respuesta_publica:1,elegibles:0});
+  await conCliente(C,c=>T.agregarMensaje(c,one.id,{autorTipo:'agente',cuerpo:'SECRETO INTERNO',interno:true}));
+  d=await conCliente(C,c=>diagnosticoAvisosVoz(c,now,[phone]));
+  expect(d.sin_respuesta_publica).toBe(1);
+  await conCliente(C,c=>T.agregarMensaje(c,one.id,{autorTipo:'agente',cuerpo:'Respuesta pública para el vecino'}));
+  d=await conCliente(C,c=>diagnosticoAvisosVoz(c,now,[phone]));expect(d.elegibles).toBe(1);
+  expect(JSON.stringify(d)).not.toContain('SECRETO');expect(JSON.stringify(d)).not.toContain(phone);
+  expect((await conCliente(C,c=>c.query('select count(*)::int n from ticket_avisos_voz'))).rows[0].n).toBe(0);
+  const denied=await conCliente(C,c=>diagnosticoAvisosVoz(c,now,['+56999999999']));
+  expect(denied.fuera_lista_permitida).toBe(1);expect(denied.elegibles).toBe(0);
+  const D=(await conPlataforma(c=>crearCliente(c,'Voz diagnóstico aislado'))).id;
+  expect((await conCliente(D,c=>diagnosticoAvisosVoz(c,now,[phone]))).total).toBe(0);
 });
 test('24 elapsed hours, alert once, public first response stops the alert',async()=>{
   const C=(await conPlataforma(c=>crearCliente(c,'Voz SLA'))).id;const t=await ticket(C,'sla');

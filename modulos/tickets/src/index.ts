@@ -41,6 +41,11 @@ export function crearModuloTickets(nucleo: NucleoApi) {
     async crearTicket(c: PoolClient, args: { canal: string; identidad: string; asunto: string; prioridad?: Prioridad; canalOrigen?: string; cuerpo?: string; equipoId?: string; categoria?: string; etiquetas?: string[]; sinFicha?: boolean; telefonoContacto?: string; autorizaAvisoVoz?: boolean; slaPrimeraRespuestaMin?:number; slaModo?:"habil"|"corrido" }): Promise<Ticket> {
       const cid = await clienteDe(c);
       if (!args.asunto.trim()) throw new ErrorApi("VALIDACION", "El asunto es obligatorio");
+      const categoria=args.categoria?.trim();
+      if(categoria && (categoria.length>100 || /[\u0000-\u001f\u007f<>\[\]]/u.test(categoria)))
+        throw new ErrorApi("VALIDACION","Categoría inválida");
+      if(categoria) await c.query(`insert into ticket_categorias(cliente_id,nombre) values($1,$2)
+        on conflict(cliente_id,nombre) do nothing`,[cid,categoria]);
       const persona = await nucleo.asegurarPersona(c, args.canal, args.identidad);
       const numero = await proximoNumero(c, cid);
       const prioridad = args.prioridad ?? "media";
@@ -60,7 +65,7 @@ export function crearModuloTickets(nucleo: NucleoApi) {
       const r = await c.query(
         `insert into tickets (cliente_id, numero, persona_id, asunto, prioridad, canal_origen, equipo_id, categoria, etiquetas, sla_primera_resp_vence, sla_resolucion_vence,telefono_voz,autoriza_aviso_voz,sla_modo)
            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning id, numero::text, persona_id, asunto, estado, prioridad, canal_origen, asignado_a, resumen`,
-        [cid, numero, persona.id, args.asunto.trim(), prioridad, args.canalOrigen ?? args.canal, args.equipoId ?? null, args.categoria ?? null, args.etiquetas ?? [], vencePR, venceRes,phone,args.autorizaAvisoVoz??false,modo]);
+        [cid, numero, persona.id, args.asunto.trim(), prioridad, args.canalOrigen ?? args.canal, args.equipoId ?? null, categoria ?? null, args.etiquetas ?? [], vencePR, venceRes,phone,args.autorizaAvisoVoz??false,modo]);
       const t = r.rows[0] as Ticket;
       if (args.cuerpo) {
         await c.query("insert into tickets_mensajes (cliente_id, ticket_id, autor_tipo, cuerpo) values ($1,$2,'persona',$3)", [cid, t.id, args.cuerpo]);
@@ -271,6 +276,7 @@ export const definicion: DefinicionModulo = {
     { metodo: "POST", ruta: "/tickets/consulta-voz", scope: "tickets.leer" },
     { metodo: "PUT", ruta: "/tickets/:id/contacto-voz", scope: "tickets.responder" },
     { metodo: "POST", ruta: "/tickets/avisos-voz/reservar", scope: "tickets.notificar" },
+    { metodo: "POST", ruta: "/tickets/avisos-voz/diagnostico", scope: "tickets.notificar" },
     { metodo: "POST", ruta: "/tickets/avisos-voz/:id/resultado", scope: "tickets.notificar" },
   ],
 };

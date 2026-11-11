@@ -18,6 +18,7 @@ export const crearTicket = z.object({
   prioridad: prioridadEnum.optional(),
   canalOrigen: z.string().max(40).optional(),
   cuerpo: z.string().max(5000).optional(),
+  categoria: z.string().trim().min(1).max(100).regex(/^[^\u0000-\u001f\u007f<>\[\]]+$/u).optional(),
   telefonoContacto:z.string().min(8).max(30).optional(),
   autorizaAvisoVoz:z.boolean().optional(),
   slaPrimeraRespuestaMin:z.number().int().min(1).max(10080).optional(),
