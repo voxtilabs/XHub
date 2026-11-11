@@ -86,7 +86,8 @@ export async function diagnosticoAvisosVoz(c:PoolClient,now=new Date(),permitido
   const cid=await cliente(c);const allowed=permitidos?.map(telefonoVoz)??[];
   const rows=await c.query(`with base as (
     select t.id,t.autoriza_aviso_voz,t.telefono_voz,
-      m.seq,a.estado,a.reservado_en,
+      case when length(trim(m.cuerpo))>0 and m.cuerpo<>'[contenido suprimido]' then m.seq end seq,
+      a.estado,a.reservado_en,
       exists(select 1 from nucleo.identidades i where i.cliente_id=t.cliente_id
         and i.persona_id=t.persona_id and i.canal='rut') rut_presente,
       exists(select 1 from ticket_avisos_voz b join tickets tb
@@ -95,15 +96,15 @@ export async function diagnosticoAvisosVoz(c:PoolClient,now=new Date(),permitido
           (b.reservado_en at time zone 'America/Santiago')::date=
           ($2::timestamptz at time zone 'America/Santiago')::date) limite_hoy
     from tickets t left join lateral (
-      select mm.seq from tickets_mensajes mm where mm.cliente_id=t.cliente_id and mm.ticket_id=t.id
-        and mm.autor_tipo='agente' and mm.interno is false and length(trim(mm.cuerpo))>0
-        and mm.cuerpo<>'[contenido suprimido]' order by seq desc limit 1) m on true
+      select mm.seq,mm.cuerpo from tickets_mensajes mm where mm.cliente_id=t.cliente_id and mm.ticket_id=t.id
+        and mm.autor_tipo='agente' and mm.interno is false order by seq desc limit 1) m on true
       left join ticket_avisos_voz a on a.cliente_id=t.cliente_id and a.ticket_id=t.id and a.mensaje_seq=m.seq
     where t.cliente_id=$1 and t.canal_origen='voz_ia' and t.asunto<>'[suprimido]')
     select count(*)::int total,
       count(*) filter(where autoriza_aviso_voz is not true)::int sin_consentimiento,
       count(*) filter(where autoriza_aviso_voz and telefono_voz is null)::int sin_telefono,
       count(*) filter(where autoriza_aviso_voz and seq is null)::int sin_respuesta_publica,
+      count(*) filter(where autoriza_aviso_voz and not rut_presente)::int sin_rut,
       count(*) filter(where autoriza_aviso_voz and seq is not null and telefono_voz is not null
         and not(telefono_voz=any($3::text[])))::int fuera_lista_permitida,
       count(*) filter(where estado='reservado')::int reservados,

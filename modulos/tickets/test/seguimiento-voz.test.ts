@@ -92,6 +92,9 @@ test('diagnostics show blockers without reserving, revealing text or crossing te
   expect((await conCliente(C,c=>c.query('select count(*)::int n from ticket_avisos_voz'))).rows[0].n).toBe(0);
   const denied=await conCliente(C,c=>diagnosticoAvisosVoz(c,now,['+56999999999']));
   expect(denied.fuera_lista_permitida).toBe(1);expect(denied.elegibles).toBe(0);
+  await conCliente(C,c=>T.agregarMensaje(c,one.id,{autorTipo:'agente',cuerpo:'[contenido suprimido]'}));
+  d=await conCliente(C,c=>diagnosticoAvisosVoz(c,now,[phone]));
+  expect(d.sin_respuesta_publica).toBe(1);expect(d.elegibles).toBe(0);
   const D=(await conPlataforma(c=>crearCliente(c,'Voz diagnóstico aislado'))).id;
   expect((await conCliente(D,c=>diagnosticoAvisosVoz(c,now,[phone]))).total).toBe(0);
 });
